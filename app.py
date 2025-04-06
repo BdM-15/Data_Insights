@@ -15,9 +15,7 @@ column_mapping = {
     "award_id_piid": "Award ID",
     "parent_award_id_piid": "Parent Award ID",
     "naics_code": "NAICS Code",
-    "naics_description": "NAICS Description",
     "product_or_service_code": "PSC Code",
-    "product_or_service_code_description": "PSC Description",
     "transaction_description": "Contract Description",
     "federal_action_obligation": "Contract Award Amount",
     "total_dollars_obligated": "Total Obligated Amount",
@@ -94,51 +92,57 @@ with st.sidebar:
     contractors = get_unique_values('recipient_name', table_name='awards')
     selected_contractor = st.selectbox("Select Contractor", ["All"] + contractors)
     
-    naics_desc = get_unique_values('naics_description', table_name='awards')
-    selected_naics = st.selectbox("Select NAICS Description", ["All"] + naics_desc)
+    naics_codes = get_unique_values('naics_code', table_name='awards')
+    selected_naics = st.selectbox("Select NAICS Code", ["All"] + naics_codes)
     
-    psc_desc = get_unique_values('product_or_service_code_description', table_name='awards')
-    selected_psc = st.selectbox("Select PSC Description", ["All"] + psc_desc)
+    psc_codes = get_unique_values('product_or_service_code', table_name='awards')
+    selected_psc = st.selectbox("Select PSC Code", ["All"] + psc_codes)
     
     contract_types = get_unique_values('type_of_contract_pricing', table_name='awards')
     selected_contract_type = st.selectbox("Select Type of Contract", ["All"] + contract_types)
     
+    extent_competeds = get_unique_values('extent_competed', table_name='awards')
+    selected_extent_competed = st.selectbox("Select Extent Competed", ["All"] + extent_competeds)
+    
     set_aside_types = get_unique_values('type_of_set_aside', table_name='awards')
     selected_set_aside = st.selectbox("Select Set-Aside Type", ["All"] + set_aside_types)
 
-# Build the SQL query dynamically
+# Build the SQL query dynamically with named placeholders
 columns_to_select = list(column_mapping.keys())
-query = f"SELECT {', '.join(columns_to_select)} FROM awards WHERE action_date BETWEEN ? AND ?"
-params = [start_date_str, end_date_str]
+query = f"SELECT {', '.join(columns_to_select)} FROM awards WHERE action_date BETWEEN :start_date AND :end_date"
+params = {"start_date": start_date_str, "end_date": end_date_str}
 
 # Add filters to the query if selections are made
 if selected_agency != "All":
-    query += " AND awarding_agency_name = ?"
-    params.append(selected_agency)
+    query += " AND awarding_agency_name = :agency"
+    params["agency"] = selected_agency
 if selected_sub_agency != "All":
-    query += " AND awarding_sub_agency_name = ?"
-    params.append(selected_sub_agency)
+    query += " AND awarding_sub_agency_name = :sub_agency"
+    params["sub_agency"] = selected_sub_agency
 if selected_contractor != "All":
-    query += " AND recipient_name = ?"
-    params.append(selected_contractor)
+    query += " AND recipient_name = :contractor"
+    params["contractor"] = selected_contractor
 if selected_naics != "All":
-    query += " AND naics_description = ?"
-    params.append(selected_naics)
+    query += " AND naics_code = :naics"
+    params["naics"] = selected_naics
 if selected_psc != "All":
-    query += " AND product_or_service_code_description = ?"
-    params.append(selected_psc)
+    query += " AND product_or_service_code = :psc"
+    params["psc"] = selected_psc
 if selected_contract_type != "All":
-    query += " AND type_of_contract_pricing = ?"
-    params.append(selected_contract_type)
+    query += " AND type_of_contract_pricing = :contract_type"
+    params["contract_type"] = selected_contract_type
+if selected_extent_competed != "All":
+    query += " AND extent_competed = :extent_competed"
+    params["extent_competed"] = selected_extent_competed
 if selected_set_aside != "All":
-    query += " AND type_of_set_aside = ?"
-    params.append(selected_set_aside)
+    query += " AND type_of_set_aside = :set_aside"
+    params["set_aside"] = selected_set_aside
 
 # Display results
 if st.button("Run Query"):
     try:
         with engine.connect() as connection:
-            df = pd.read_sql(text(query), connection, params=tuple(params))
+            df = pd.read_sql(text(query), connection, params=params)
         
         # Display the results with human-readable column names
         st.write("Query Results", df.rename(columns=column_mapping))
