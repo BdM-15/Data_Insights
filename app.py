@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import create_engine, text
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
 import re
 
@@ -11,9 +12,9 @@ st.set_page_config(page_title="USAspending.gov Dashboard", layout="wide")
 # Increase the maximum number of cells for Pandas Styler
 pd.set_option('styler.render.max_elements', 1000000)
 
-# Connect to the SQLite database
-db_path = r'sqlite:///C:\GitHub\Opp_Sem_Search\backend\data\usaspending_historical.db'
-engine = create_engine(db_path)
+# Connect to the SQLite database with a timeout
+db_path = r'sqlite:///C:\GitHub\Opp_Sem_Search\backend\data\usaspending_historical.db?timeout=30'
+engine = create_engine(db_path, connect_args={'timeout': 30})
 
 # Define the updated column mapping with human-readable names
 column_mapping = {
@@ -108,16 +109,57 @@ def get_unique_values(column_name, table_name='awards_slim', filter_conditions=N
         st.error(f"Error fetching unique values for {column_name}: {str(e)}")
         return []
 
-# Function to generate all quarters between start and end dates
-def generate_quarters(start_date, end_date):
-    quarters = []
-    current_date = pd.to_datetime(start_date)
+# Function to calculate the federal fiscal year and quarter (vectorized)
+def calculate_fiscal_year_quarter(dates):
+    # Federal fiscal year runs from October 1 to September 30
+    # Q1: Oct 1 - Dec 31
+    # Q2: Jan 1 - Mar 31
+    # Q3: Apr 1 - Jun 30
+    # Q4: Jul 1 - Sep 30
+    months = dates.dt.month
+    years = dates.dt.year
+    
+    # Fiscal year: If the date is on or after October 1, it belongs to the next fiscal year
+    fiscal_years = years + (months >= 10).astype(int)
+    
+    # Fiscal quarter
+    fiscal_quarters = pd.cut(
+        months,
+        bins=[0, 3, 6, 9, 12],
+        labels=[2, 3, 4, 1],
+        include_lowest=True,
+        right=True
+    ).astype(int)
+    
+    # Adjust quarters for dates in October-December (Q1 of the next fiscal year)
+    fiscal_quarters = fiscal_quarters.where(months < 10, 1)
+    
+    return fiscal_years, fiscal_quarters
+
+# Function to generate all fiscal quarters between start and end dates
+def generate_fiscal_quarters(start_date, end_date):
+    start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
-    while current_date <= end_date:
-        year = current_date.year
-        quarter = (current_date.month - 1) // 3 + 1
-        quarters.append(f"{year} Q{quarter}")
-        current_date = current_date + pd.offsets.QuarterBegin(1)
+    
+    # Calculate the fiscal year and quarter for the start and end dates
+    start_fy, start_fq = calculate_fiscal_year_quarter(pd.Series([start_date]))[0][0], calculate_fiscal_year_quarter(pd.Series([start_date]))[1][0]
+    end_fy, end_fq = calculate_fiscal_year_quarter(pd.Series([end_date]))[0][0], calculate_fiscal_year_quarter(pd.Series([end_date]))[1][0]
+    
+    quarters = []
+    current_fy = start_fy
+    current_fq = start_fq
+    
+    while True:
+        quarters.append(f"FY{current_fy} Q{current_fq}")
+        if current_fy == end_fy and current_fq == end_fq:
+            break
+        
+        # Increment the fiscal quarter
+        current_fq += 1
+        if current_fq > 4:
+            current_fq = 1
+            current_fy += 1
+    
     return quarters
 
 # Main app title
@@ -262,29 +304,114 @@ if st.button("Run Query"):
             mime="text/csv",
         )
         
-        # Create a quarter column for the chart
+        # Create a fiscal quarter column for the chart (vectorized)
         df['action_date'] = pd.to_datetime(df['action_date'])
-        df['year'] = df['action_date'].dt.year
-        df['quarter'] = df['action_date'].dt.quarter
-        df['year_quarter'] = df['year'].astype(str) + ' Q' + df['quarter'].astype(str)
+        fiscal_years, fiscal_quarters = calculate_fiscal_year_quarter(df['action_date'])
+        df['fiscal_year'] = fiscal_years
+        df['fiscal_quarter'] = fiscal_quarters
+        df['year_quarter'] = df.apply(lambda x: f"FY{x['fiscal_year']} Q{x['fiscal_quarter']}", axis=1)
         
-        # Generate all quarters between start and end dates
-        all_quarters = generate_quarters(start_date, end_date)
+        # Generate all fiscal quarters between start and end dates
+        all_quarters = generate_fiscal_quarters(start_date, end_date)
         
-        # Group by quarter and calculate total spending
-        quarterly_spending = df.groupby('year_quarter')['total_dollars_obligated'].sum().reset_index()
+        # Group by fiscal quarter and calculate total spending and number of award actions
+        # Award actions are counted where modification_number = '0' (as a string)
+        quarterly_spending = df.groupby('year_quarter')['federal_action_obligation'].sum().reset_index()
+        quarterly_awards = df[df['modification_number'] == '0'].groupby('year_quarter').size().reset_index(name='award_count')
         
-        # Create a DataFrame with all quarters and merge with spending data
+        # Create a DataFrame with all quarters and merge with spending and award count data
         quarterly_df = pd.DataFrame({'year_quarter': all_quarters})
         quarterly_df = quarterly_df.merge(quarterly_spending, on='year_quarter', how='left')
-        quarterly_df['total_dollars_obligated'] = quarterly_df['total_dollars_obligated'].fillna(0)
+        quarterly_df = quarterly_df.merge(quarterly_awards, on='year_quarter', how='left')
+        quarterly_df['federal_action_obligation'] = quarterly_df['federal_action_obligation'].fillna(0)
+        quarterly_df['award_count'] = quarterly_df['award_count'].fillna(0)
         
-        # Visualize spending trends by quarter
-        st.subheader("Spending Trends")
-        fig = px.line(quarterly_df, x='year_quarter', y='total_dollars_obligated', 
-                      title="Total Spending by Quarter")
-        fig.update_layout(xaxis_title="Quarter", yaxis_title="Total Spending ($)")
+        # Determine tick values for the right y-axis (Number of Award Actions)
+        max_awards = quarterly_df['award_count'].max()
+        num_ticks = 5  # Number of ticks to display on the right y-axis
+        award_step = max_awards / (num_ticks - 1) if max_awards > 0 else 1
+        award_ticks = [i * award_step for i in range(num_ticks)]
+        
+        # Visualize spending trends by quarter with award actions overlaid (dual-axis)
+        st.subheader("Spending and Award Actions by Quarter")
+        fig = go.Figure()
+        
+        # Add line for total spending (left y-axis)
+        fig.add_trace(
+            go.Scatter(
+                x=quarterly_df['year_quarter'],
+                y=quarterly_df['federal_action_obligation'],
+                name="Total Spending ($)",
+                line=dict(color='blue')
+            )
+        )
+        
+        # Add line for number of award actions (right y-axis, unscaled)
+        fig.add_trace(
+            go.Scatter(
+                x=quarterly_df['year_quarter'],
+                y=quarterly_df['award_count'],
+                name="Number of Award Actions",
+                line=dict(color='orange'),
+                yaxis="y2"
+            )
+        )
+        
+        # Update layout for dual-axis
+        fig.update_layout(
+            title="Spending and Award Actions by Quarter",
+            xaxis=dict(title="Fiscal Quarter"),
+            yaxis=dict(
+                title="Total Spending ($)",
+                title_font=dict(color="blue", size=14),
+                tickfont=dict(color="blue", size=12),
+                gridcolor="lightgrey"
+            ),
+            yaxis2=dict(
+                title="Number of Award Actions",
+                title_font=dict(color="orange", size=14),
+                tickfont=dict(color="orange", size=12),
+                overlaying="y",
+                side="right",
+                showgrid=False,  # Hide the grid lines for the right y-axis
+                range=[0, max_awards * 1.1],  # Add some padding to the top
+                tickvals=award_ticks,  # Set tick values based on award count
+                ticktext=[f"{int(tick):,}" for tick in award_ticks]  # Show the actual award count values, formatted with commas
+            ),
+            legend=dict(x=0, y=1.1, orientation="h")
+        )
         st.plotly_chart(fig)
+        
+        # Visualize Top 20 Recipients by Total Awards Made
+        st.subheader("Top 20 Recipients by Total Awards Made")
+        top_recipients_awards = df[df['modification_number'] == '0'].groupby('recipient_name').size().reset_index(name='award_count')
+        top_recipients_awards = top_recipients_awards.sort_values(by='award_count', ascending=False).head(20)
+        
+        fig_recipients_awards = px.bar(
+            top_recipients_awards,
+            x='recipient_name',
+            y='award_count',
+            title="Top 20 Recipients by Total Awards Made",
+            labels={'recipient_name': 'Recipient Name', 'award_count': 'Number of Awards'}
+        )
+        fig_recipients_awards.update_layout(xaxis_tickangle=45)
+        st.plotly_chart(fig_recipients_awards)
+        
+        # Visualize Top 20 Recipients by Total Dollars Obligated
+        st.subheader("Top 20 Recipients by Total Dollars Obligated")
+        top_recipients_dollars = df.groupby('recipient_name')['total_dollars_obligated'].sum().reset_index()
+        top_recipients_dollars = top_recipients_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+        
+        fig_recipients_dollars = px.bar(
+            top_recipients_dollars,
+            x='recipient_name',
+            y='total_dollars_obligated',
+            title="Top 20 Recipients by Total Dollars Obligated",
+            labels={'recipient_name': 'Recipient Name', 'total_dollars_obligated': 'Total Dollars Obligated ($)'}
+        )
+        fig_recipients_dollars.update_layout(xaxis_tickangle=45)
+        st.plotly_chart(fig_recipients_dollars)
+        
     except Exception as e:
         st.error(f"Error executing query: {str(e)}")
 
