@@ -17,41 +17,62 @@ engine = create_engine(db_path)
 
 # Define the updated column mapping with human-readable names
 column_mapping = {
-    "award_id_piid": "Award ID",
+    "action_date_fiscal_year": "Award Fiscal Year",
+    "action_date": "Award Date",
     "parent_award_id_piid": "Parent Award ID",
-    "naics_code": "NAICS Code",
-    "product_or_service_code": "PSC Code",
-    "transaction_description": "Contract Description",
+    "award_id_piid": "Award ID",
+    "modification_number": "Modification Number",
     "federal_action_obligation": "Contract Award Amount",
     "total_dollars_obligated": "Total Obligated Amount",
-    "current_total_value_of_award": "Current Contract Value",
     "potential_total_value_of_award": "Potential Contract Value",
-    "action_date": "Award Date",
+    "total_outlayed_amount_for_overall_award": "Total Outlayed Amount",
     "period_of_performance_start_date": "Period of Performance Start Date",
     "period_of_performance_current_end_date": "Period of Performance End Date",
+    "period_of_performance_potential_end_date": "Period of Performance Potential End Date",
     "ordering_period_end_date": "Last Date to Order",
-    "awarding_agency_name": "Awarding Agency Name",
+    "primary_place_of_performance_city_name": "Principal Place of Performance",
+    "primary_place_of_performance_state_code": "Place of Performance State",
+    "prime_award_base_transaction_description": "Prime Award Transaction Description",
+    "transaction_description": "Contract Description",
+    "naics_code": "NAICS Code",
+    "naics_description": "NAICS Description",
+    "product_or_service_code": "PSC Code",
+    "product_or_service_code_description": "PSC Description",
+    "dod_acquisition_program_description": "DoD Acquisition Program Description",
+    "parent_award_agency_name": "Awarding Agency Name",
     "awarding_sub_agency_name": "Awarding Sub-Agency Name",
     "awarding_office_name": "Contracting Office Name",
     "funding_agency_name": "Funding Agency Name",
+    "funding_sub_agency_name": "Funding Sub-Agency Name",
+    "funding_office_name": "Funding Office Name",
     "recipient_name": "Contractor Name",
-    "recipient_duns": "Contractor DUNS Number",
+    "recipient_uei": "Contractor UEI",
     "recipient_parent_name": "Parent Company Name",
-    "recipient_address_line_1": "Contractor Address",
-    "type_of_contract_pricing": "Type of Contract",
-    "extent_competed": "Extent Competed",
-    "number_of_offers_received": "Number of Offers Received",
-    "type_of_set_aside": "Set-Aside Type",
+    "recipient_parent_uei": "Parent Company UEI",
+    "solicitation_date": "Solicitation Date",
     "solicitation_procedures": "Solicitation Procedures",
-    "primary_place_of_performance_state_name": "Place of Performance State",
-    "primary_place_of_performance_zip_4": "Place of Performance Zip Code",
-    "primary_place_of_performance_city_name": "Principal Place of Performance",
-    "award_type": "Contract Type"
+    "extent_competed": "Extent Competed",
+    "type_of_set_aside": "Set-Aside Type",
+    "fair_opportunity_limited_sources": "Fair Opportunity Limited Sources",
+    "other_than_full_and_open_competition": "Other Than Full and Open Competition",
+    "number_of_offers_received": "Number of Offers Received",
+    "subcontracting_plan": "Subcontracting Plan",
+    "government_furnished_property": "Government Furnished Property",
+    "type_of_contract_pricing": "Type of Contract",
+    "action_type": "Action Type",
+    "award_type": "Award Type",
+    "type_of_idc": "IDC Type",
+    "idv_type": "IDV Type",
+    "undefinitized_action": "Undefinitized Action",
+    "program_acronym": "Program Acronym",
+    "multi_year_contract": "Multi-Year Contract",
+    "multiple_or_single_award_idv": "Multiple or Single Award IDV",
+    "usaspending_permalink": "USAspending Permalink"
 }
 
 # Function to fetch unique values for dropdowns with cleaning
 @st.cache_data
-def get_unique_values(column_name, table_name='awards', filter_conditions=None):
+def get_unique_values(column_name, table_name='awards_slim', filter_conditions=None):
     # Special handling for naics_code to ensure it's treated as a string
     if column_name == 'naics_code':
         query = f"SELECT DISTINCT TRIM(CAST({column_name} AS TEXT)) AS {column_name} FROM {table_name} WHERE {column_name} IS NOT NULL"
@@ -107,7 +128,7 @@ st.subheader("Data Source")
 st.markdown(
     """
     <div style="background-color: #2E2E2E; padding: 10px; border-radius: 5px; border: 1px solid #555;">
-        <p style="color: #FFFFFF; margin: 0;">Table: <strong>Awards</strong></p>
+        <p style="color: #FFFFFF; margin: 0;">Table: <strong>awards_slim</strong></p>
     </div>
     """,
     unsafe_allow_html=True
@@ -117,66 +138,66 @@ st.markdown(
 with st.sidebar:
     st.header("Filters")
     
-    # Date range selection
-    start_date = st.date_input("Start Date", value=pd.to_datetime("2019-03-29"))
-    end_date = st.date_input("End Date", value=pd.to_datetime("2024-09-30"))
+    # Date range selection with updated default dates
+    start_date = st.date_input("Start Date", value=pd.to_datetime("2021-03-31"))
+    end_date = st.date_input("End Date", value=pd.to_datetime("2024-03-31"))
     
     # Convert dates to string format for SQLite
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
     
-    # Single-select dropdown for awarding agency
-    agencies = ["All"] + get_unique_values('awarding_agency_name', table_name='awards')
+    # Single-select dropdown for awarding agency (now using parent_award_agency_name)
+    agencies = ["All"] + get_unique_values('parent_award_agency_name', table_name='awards_slim')
     selected_agency = st.selectbox("Select Awarding Agency", agencies, index=0, key="agency")
     
     # Filter sub-agencies based on selected agency
     sub_agencies = ["All"]
     if selected_agency != "All":
-        sub_agencies.extend(get_unique_values('awarding_sub_agency_name', table_name='awards', 
-                                             filter_conditions=[{"column": "awarding_agency_name", "value": selected_agency}]))
+        sub_agencies.extend(get_unique_values('awarding_sub_agency_name', table_name='awards_slim', 
+                                             filter_conditions=[{"column": "parent_award_agency_name", "value": selected_agency}]))
         if len(sub_agencies) == 1:  # Only "All" is present
             st.warning(f"No sub-agencies found for {selected_agency}. Check the data or select a different agency.")
     selected_sub_agency = st.selectbox("Select Awarding Sub-Agency", sub_agencies, index=None, 
                                        placeholder="Select a sub-agency...", key="sub_agency")
     
     # Fetch contractors without dependencies
-    contractors = ["All"] + get_unique_values('recipient_name', table_name='awards')
+    contractors = ["All"] + get_unique_values('recipient_name', table_name='awards_slim')
     selected_contractor = st.selectbox("Select Contractor", contractors, index=None, 
                                        placeholder="Select a contractor...", key="contractor")
     
     # Fetch NAICS codes without dependencies
-    naics_codes = ["All"] + get_unique_values('naics_code', table_name='awards')
+    naics_codes = ["All"] + get_unique_values('naics_code', table_name='awards_slim')
     selected_naics = st.selectbox("Select NAICS Code", naics_codes, index=None, 
                                   placeholder="Select a NAICS code...", key="naics")
     
     # Fetch PSC codes without dependencies
-    psc_codes = ["All"] + get_unique_values('product_or_service_code', table_name='awards')
+    psc_codes = ["All"] + get_unique_values('product_or_service_code', table_name='awards_slim')
     selected_psc = st.selectbox("Select PSC Code", psc_codes, index=None, 
                                 placeholder="Select a PSC code...", key="psc")
     
     # Fetch contract types without dependencies
-    contract_types = ["All"] + get_unique_values('type_of_contract_pricing', table_name='awards')
+    contract_types = ["All"] + get_unique_values('type_of_contract_pricing', table_name='awards_slim')
     selected_contract_type = st.selectbox("Select Type of Contract", contract_types, index=None, 
                                           placeholder="Select a contract type...", key="contract_type")
     
     # Fetch extent competed without dependencies
-    extent_competeds = ["All"] + get_unique_values('extent_competed', table_name='awards')
+    extent_competeds = ["All"] + get_unique_values('extent_competed', table_name='awards_slim')
     selected_extent_competed = st.selectbox("Select Extent Competed", extent_competeds, index=None, 
                                             placeholder="Select an extent competed...", key="extent_competed")
     
     # Fetch set-aside types without dependencies
-    set_aside_types = ["All"] + get_unique_values('type_of_set_aside', table_name='awards')
+    set_aside_types = ["All"] + get_unique_values('type_of_set_aside', table_name='awards_slim')
     selected_set_aside = st.selectbox("Select Set-Aside Type", set_aside_types, index=None, 
                                       placeholder="Select a set-aside type...", key="set_aside")
 
 # Build the SQL query dynamically with named placeholders
 columns_to_select = list(column_mapping.keys())
-query = f"SELECT {', '.join(columns_to_select)} FROM awards WHERE action_date BETWEEN :start_date AND :end_date"
+query = f"SELECT {', '.join(columns_to_select)} FROM awards_slim WHERE action_date BETWEEN :start_date AND :end_date"
 params = {"start_date": start_date_str, "end_date": end_date_str}
 
 # Add filters to the query if selections are made
 if selected_agency != "All":
-    query += " AND UPPER(awarding_agency_name) = :agency"
+    query += " AND UPPER(parent_award_agency_name) = :agency"
     params["agency"] = str(selected_agency).upper()
 if selected_sub_agency not in ["All", None]:
     query += " AND UPPER(awarding_sub_agency_name) = :sub_agency"
@@ -208,7 +229,7 @@ if st.button("Run Query"):
         
         # Convert monetary columns to numeric for formatting
         monetary_columns = ['federal_action_obligation', 'total_dollars_obligated', 
-                           'current_total_value_of_award', 'potential_total_value_of_award']
+                           'potential_total_value_of_award', 'total_outlayed_amount_for_overall_award']
         for col in monetary_columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         
@@ -251,16 +272,16 @@ if st.button("Run Query"):
         all_quarters = generate_quarters(start_date, end_date)
         
         # Group by quarter and calculate total spending
-        quarterly_spending = df.groupby('year_quarter')['federal_action_obligation'].sum().reset_index()
+        quarterly_spending = df.groupby('year_quarter')['total_dollars_obligated'].sum().reset_index()
         
         # Create a DataFrame with all quarters and merge with spending data
         quarterly_df = pd.DataFrame({'year_quarter': all_quarters})
         quarterly_df = quarterly_df.merge(quarterly_spending, on='year_quarter', how='left')
-        quarterly_df['federal_action_obligation'] = quarterly_df['federal_action_obligation'].fillna(0)
+        quarterly_df['total_dollars_obligated'] = quarterly_df['total_dollars_obligated'].fillna(0)
         
         # Visualize spending trends by quarter
         st.subheader("Spending Trends")
-        fig = px.line(quarterly_df, x='year_quarter', y='federal_action_obligation', 
+        fig = px.line(quarterly_df, x='year_quarter', y='total_dollars_obligated', 
                       title="Total Spending by Quarter")
         fig.update_layout(xaxis_title="Quarter", yaxis_title="Total Spending ($)")
         st.plotly_chart(fig)
@@ -270,9 +291,10 @@ if st.button("Run Query"):
 # Note about database optimization
 st.markdown(
     """
-    **Performance Note**: To improve filter performance, consider adding indexes to the following columns in the `awards` table: 
-    `awarding_agency_name`, `awarding_sub_agency_name`, `recipient_name`, `naics_code`, `product_or_service_code`, 
-    `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`. 
-    Example SQL: `CREATE INDEX idx_awarding_agency_name ON awards(awarding_agency_name);`
+    **Performance Note**: The `awards_slim` table has been updated with fewer columns to improve query performance. 
+    To further optimize, consider adding indexes to the following columns: 
+    `parent_award_agency_name`, `awarding_sub_agency_name`, `recipient_name`, `naics_code`, `product_or_service_code`, 
+    `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`, `action_date`. 
+    Example SQL: `CREATE INDEX idx_parent_award_agency_name ON awards_slim(parent_award_agency_name);`
     """
 )
