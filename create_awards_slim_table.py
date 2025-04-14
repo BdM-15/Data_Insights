@@ -1,11 +1,21 @@
 from sqlalchemy import create_engine, text
+import time
 
 # Connect to the SQLite database
 db_path = r'sqlite:///C:\GitHub\Opp_Sem_Search\backend\data\usaspending_historical.db'
 engine = create_engine(db_path)
 
+# Get the row count from the awards table
+with engine.connect() as connection:
+    result = connection.execute(text("SELECT COUNT(*) FROM awards"))
+    total_rows = result.scalar()
+    print(f"Starting process to create awards_slim table from {total_rows:,} rows")
+
+# Create a timestamp for measuring performance
+start_time = time.time()
+
 # Create the awards_slim table
-# This table is a slimmed down version of the awards table, containing only the columns needed for the analysis.
+print("Creating awards_slim table...")
 with engine.connect() as connection:
     connection.execute(text("""
         CREATE TABLE awards_slim AS
@@ -62,6 +72,81 @@ with engine.connect() as connection:
             usaspending_permalink
         FROM awards;
     """))
+
+# Calculate elapsed time
+elapsed_time = time.time() - start_time
+print(f"Table creation completed in {elapsed_time:.2f} seconds")
+
+# Verify the row count in the new table
+with engine.connect() as connection:
+    result = connection.execute(text("SELECT COUNT(*) FROM awards_slim"))
+    new_table_rows = result.scalar()
+    print(f"Successfully created awards_slim table with {new_table_rows:,} rows")
+
+# from sqlalchemy import create_engine, text
+
+# # Connect to the SQLite database
+# db_path = r'sqlite:///C:\GitHub\Opp_Sem_Search\backend\data\usaspending_historical.db'
+# engine = create_engine(db_path)
+
+# # Create the awards_slim table
+# # This table is a slimmed down version of the awards table, containing only the columns needed for the analysis.
+# with engine.connect() as connection:
+#     connection.execute(text("""
+#         CREATE TABLE awards_slim AS
+#         SELECT action_date_fiscal_year,
+#             action_date,
+#             parent_award_id_piid,
+#             award_id_piid,
+#             modification_number,
+#             federal_action_obligation,
+#             total_dollars_obligated,
+#             potential_total_value_of_award,
+#             total_outlayed_amount_for_overall_award,
+#             period_of_performance_start_date,
+#             period_of_performance_current_end_date,
+#             period_of_performance_potential_end_date,
+#             ordering_period_end_date,
+#             primary_place_of_performance_city_name,
+#             primary_place_of_performance_state_code,
+#             prime_award_base_transaction_description,
+#             transaction_description,
+#             naics_code,
+#             naics_description,
+#             product_or_service_code,
+#             product_or_service_code_description,
+#             dod_acquisition_program_description,
+#             parent_award_agency_name,
+#             awarding_sub_agency_name,
+#             awarding_office_name,
+#             funding_agency_name,
+#             funding_sub_agency_name,
+#             funding_office_name,
+#             recipient_name,
+#             recipient_uei, 
+#             recipient_parent_name, 
+#             recipient_parent_uei, 
+#             solicitation_date,
+#             solicitation_procedures,
+#             extent_competed,
+#             type_of_set_aside,
+#             fair_opportunity_limited_sources,
+#             other_than_full_and_open_competition,
+#             number_of_offers_received,
+#             subcontracting_plan,
+#             government_furnished_property,
+#             type_of_contract_pricing,
+#             action_type,
+#             award_type,
+#             type_of_idc,
+#             idv_type,
+#             undefinitized_action,
+#             program_acronym,
+#             multi_year_contract,
+#             multiple_or_single_award_idv,
+#             usaspending_permalink
+#         FROM awards;
+#     """))
 
 # Create the awards_slim table
 # This table is a slimmed down version of the awards table, containing only the columns needed for the analysis.

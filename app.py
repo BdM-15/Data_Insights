@@ -101,9 +101,9 @@ def get_unique_values(column_name, table_name='awards_slim', filter_conditions=N
             df = pd.read_sql(text(query), connection, params=params)
         # Convert to uppercase and remove duplicates
         unique_values = df[column_name].str.upper().drop_duplicates().tolist()
-        # Clean up NAICS codes to remove .0 suffix using re.sub
+        # Clean up NAICS codes to remove .0 suffix and trim to a maximum of 6 characters
         if column_name == 'naics_code':
-            unique_values = [re.sub(r'\.0$', '', str(val)) for val in unique_values]
+            unique_values = [re.sub(r'\.0$', '', str(val))[:6] for val in unique_values]
         return unique_values
     except Exception as e:
         st.error(f"Error fetching unique values for {column_name}: {str(e)}")
@@ -181,26 +181,36 @@ with st.sidebar:
     st.header("Filters")
     
     # Date range selection with updated default dates
-    start_date = st.date_input("Start Date", value=pd.to_datetime("2021-03-31"))
-    end_date = st.date_input("End Date", value=pd.to_datetime("2024-03-31"))
+    start_date = st.date_input("Start Date", value=pd.to_datetime("2021-10-01"))
+    end_date = st.date_input("End Date", value=pd.to_datetime("2025-09-30"))
     
     # Convert dates to string format for SQLite
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
     
-    # Single-select dropdown for awarding agency (now using parent_award_agency_name)
+    # Single-select dropdown for awarding agency (using parent_award_agency_name)
     agencies = ["All"] + get_unique_values('parent_award_agency_name', table_name='awards_slim')
     selected_agency = st.selectbox("Select Awarding Agency", agencies, index=0, key="agency")
     
-    # Filter sub-agencies based on selected agency
-    sub_agencies = ["All"]
+    # Filter funding sub-agencies based on selected agency
+    funding_sub_agencies = ["All"]
     if selected_agency != "All":
-        sub_agencies.extend(get_unique_values('awarding_sub_agency_name', table_name='awards_slim', 
-                                             filter_conditions=[{"column": "parent_award_agency_name", "value": selected_agency}]))
-        if len(sub_agencies) == 1:  # Only "All" is present
-            st.warning(f"No sub-agencies found for {selected_agency}. Check the data or select a different agency.")
-    selected_sub_agency = st.selectbox("Select Awarding Sub-Agency", sub_agencies, index=None, 
-                                       placeholder="Select a sub-agency...", key="sub_agency")
+        funding_sub_agencies.extend(get_unique_values('funding_sub_agency_name', table_name='awards_slim', 
+                                                     filter_conditions=[{"column": "parent_award_agency_name", "value": selected_agency}]))
+        if len(funding_sub_agencies) == 1:  # Only "All" is present
+            st.warning(f"No funding sub-agencies found for {selected_agency}. Check the data or select a different agency.")
+    selected_funding_sub_agency = st.selectbox("Select Funding Sub-Agency", funding_sub_agencies, index=None, 
+                                               placeholder="Select a funding sub-agency...", key="funding_sub_agency")
+    
+    # Filter funding office names based on selected funding sub-agency
+    funding_office_names = ["All"]
+    if selected_funding_sub_agency not in ["All", None]:
+        funding_office_names.extend(get_unique_values('funding_office_name', table_name='awards_slim', 
+                                                     filter_conditions=[{"column": "funding_sub_agency_name", "value": selected_funding_sub_agency}]))
+        if len(funding_office_names) == 1:  # Only "All" is present
+            st.warning(f"No funding offices found for {selected_funding_sub_agency}. Check the data or select a different sub-agency.")
+    selected_funding_office = st.selectbox("Select Funding Office", funding_office_names, index=None, 
+                                           placeholder="Select a funding office...", key="funding_office")
     
     # Fetch contractors without dependencies
     contractors = ["All"] + get_unique_values('recipient_name', table_name='awards_slim')
@@ -222,10 +232,10 @@ with st.sidebar:
     selected_contract_type = st.selectbox("Select Type of Contract", contract_types, index=None, 
                                           placeholder="Select a contract type...", key="contract_type")
     
-    # Fetch extent competed without dependencies
-    extent_competeds = ["All"] + get_unique_values('extent_competed', table_name='awards_slim')
-    selected_extent_competed = st.selectbox("Select Extent Competed", extent_competeds, index=None, 
-                                            placeholder="Select an extent competed...", key="extent_competed")
+    # Fetch extent competed as a multi-select filter
+    extent_competeds = get_unique_values('extent_competed', table_name='awards_slim')
+    selected_extent_competeds = st.multiselect("Select Extent Competed", extent_competeds, 
+                                               placeholder="Select extent competed options...", key="extent_competed")
     
     # Fetch set-aside types without dependencies
     set_aside_types = ["All"] + get_unique_values('type_of_set_aside', table_name='awards_slim')
@@ -241,9 +251,12 @@ params = {"start_date": start_date_str, "end_date": end_date_str}
 if selected_agency != "All":
     query += " AND UPPER(parent_award_agency_name) = :agency"
     params["agency"] = str(selected_agency).upper()
-if selected_sub_agency not in ["All", None]:
-    query += " AND UPPER(awarding_sub_agency_name) = :sub_agency"
-    params["sub_agency"] = str(selected_sub_agency).upper()
+if selected_funding_sub_agency not in ["All", None]:
+    query += " AND UPPER(funding_sub_agency_name) = :funding_sub_agency"
+    params["funding_sub_agency"] = str(selected_funding_sub_agency).upper()
+if selected_funding_office not in ["All", None]:
+    query += " AND UPPER(funding_office_name) = :funding_office"
+    params["funding_office"] = str(selected_funding_office).upper()
 if selected_contractor not in ["All", None]:
     query += " AND UPPER(recipient_name) = :contractor"
     params["contractor"] = str(selected_contractor).upper()
@@ -256,9 +269,15 @@ if selected_psc not in ["All", None]:
 if selected_contract_type not in ["All", None]:
     query += " AND UPPER(type_of_contract_pricing) = :contract_type"
     params["contract_type"] = str(selected_contract_type).upper()
-if selected_extent_competed not in ["All", None]:
-    query += " AND UPPER(extent_competed) = :extent_competed"
-    params["extent_competed"] = str(selected_extent_competed).upper()
+if selected_extent_competeds:  # Multi-select filter
+    # Ensure the values are uppercase and create a tuple for the IN clause
+    extent_competeds_tuple = tuple(str(val).upper() for val in selected_extent_competeds)
+    # Use a placeholder for each value in the tuple
+    placeholders = ', '.join([f":extent_competed_{i}" for i in range(len(extent_competeds_tuple))])
+    query += f" AND UPPER(extent_competed) IN ({placeholders})"
+    # Add each value to the params dictionary
+    for i, val in enumerate(extent_competeds_tuple):
+        params[f"extent_competed_{i}"] = val
 if selected_set_aside not in ["All", None]:
     query += " AND UPPER(type_of_set_aside) = :set_aside"
     params["set_aside"] = str(selected_set_aside).upper()
@@ -275,8 +294,8 @@ if st.button("Run Query"):
         for col in monetary_columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         
-        # Clean up NAICS codes in the DataFrame
-        df['naics_code'] = df['naics_code'].astype(str).str.replace(r'\.0$', '', regex=True)
+        # Clean up NAICS codes in the DataFrame: ensure they are trimmed to a maximum of 6 characters
+        df['naics_code'] = df['naics_code'].astype(str).str.replace(r'\.0$', '', regex=True).str.slice(0, 6)
         
         # Rename columns for display
         df_display = df.rename(columns=column_mapping)
@@ -318,65 +337,73 @@ if st.button("Run Query"):
         # Award actions are counted where modification_number = '0' (as a string)
         quarterly_spending = df.groupby('year_quarter')['federal_action_obligation'].sum().reset_index()
         quarterly_awards = df[df['modification_number'] == '0'].groupby('year_quarter').size().reset_index(name='award_count')
-        
+
         # Create a DataFrame with all quarters and merge with spending and award count data
         quarterly_df = pd.DataFrame({'year_quarter': all_quarters})
         quarterly_df = quarterly_df.merge(quarterly_spending, on='year_quarter', how='left')
         quarterly_df = quarterly_df.merge(quarterly_awards, on='year_quarter', how='left')
         quarterly_df['federal_action_obligation'] = quarterly_df['federal_action_obligation'].fillna(0)
         quarterly_df['award_count'] = quarterly_df['award_count'].fillna(0)
-        
-        # Determine tick values for the right y-axis (Number of Award Actions)
-        max_awards = quarterly_df['award_count'].max()
+
+        # Extract fiscal year from year_quarter (e.g., "FY2023" from "FY2023 Q1")
+        quarterly_df['fiscal_year'] = quarterly_df['year_quarter'].str.extract(r'(FY\d{4})')[0]
+
+        # Calculate cumulative sums within each fiscal year
+        quarterly_df['cumulative_spending'] = quarterly_df.groupby('fiscal_year')['federal_action_obligation'].cumsum()
+        quarterly_df['cumulative_awards'] = quarterly_df.groupby('fiscal_year')['award_count'].cumsum()
+
+        # Determine tick values for the right y-axis (Number of Award Actions) using cumulative awards
+        max_cumulative_awards = quarterly_df['cumulative_awards'].max()
         num_ticks = 5  # Number of ticks to display on the right y-axis
-        award_step = max_awards / (num_ticks - 1) if max_awards > 0 else 1
+        award_step = max_cumulative_awards / (num_ticks - 1) if max_cumulative_awards > 0 else 1
         award_ticks = [i * award_step for i in range(num_ticks)]
-        
+
         # Visualize spending trends by quarter with award actions overlaid (dual-axis)
         st.subheader("Spending and Award Actions by Quarter")
         fig = go.Figure()
-        
-        # Add line for total spending (left y-axis)
+
+        # Add line for cumulative spending (left y-axis)
         fig.add_trace(
             go.Scatter(
                 x=quarterly_df['year_quarter'],
-                y=quarterly_df['federal_action_obligation'],
-                name="Total Spending ($)",
+                y=quarterly_df['cumulative_spending'],
+                name="Cumulative Spending ($)",
                 line=dict(color='blue')
             )
         )
-        
-        # Add line for number of award actions (right y-axis, unscaled)
+
+        # Add line for cumulative number of award actions (right y-axis)
         fig.add_trace(
             go.Scatter(
                 x=quarterly_df['year_quarter'],
-                y=quarterly_df['award_count'],
-                name="Number of Award Actions",
+                y=quarterly_df['cumulative_awards'],
+                name="Cumulative Award Actions",
                 line=dict(color='orange'),
                 yaxis="y2"
             )
         )
-        
+
         # Update layout for dual-axis
         fig.update_layout(
-            title="Spending and Award Actions by Quarter",
+            title="Spending and Award Actions by Quarter (Cumulative Within Fiscal Year)",
             xaxis=dict(title="Fiscal Quarter"),
             yaxis=dict(
-                title="Total Spending ($)",
+                title="Cumulative Spending ($)",
                 title_font=dict(color="blue", size=14),
                 tickfont=dict(color="blue", size=12),
-                gridcolor="lightgrey"
+                gridcolor="lightgrey",
+                range=[0, quarterly_df['cumulative_spending'].max() * 1.1]  # Adjust range for cumulative spending
             ),
             yaxis2=dict(
-                title="Number of Award Actions",
+                title="Cumulative Award Actions",
                 title_font=dict(color="orange", size=14),
                 tickfont=dict(color="orange", size=12),
                 overlaying="y",
                 side="right",
-                showgrid=False,  # Hide the grid lines for the right y-axis
-                range=[0, max_awards * 1.1],  # Add some padding to the top
-                tickvals=award_ticks,  # Set tick values based on award count
-                ticktext=[f"{int(tick):,}" for tick in award_ticks]  # Show the actual award count values, formatted with commas
+                showgrid=False,
+                range=[0, max_cumulative_awards * 1.1],  # Adjust range for cumulative awards
+                tickvals=award_ticks,
+                ticktext=[f"{int(tick):,}" for tick in award_ticks]
             ),
             legend=dict(x=0, y=1.1, orientation="h")
         )
@@ -412,6 +439,44 @@ if st.button("Run Query"):
         fig_recipients_dollars.update_layout(xaxis_tickangle=45)
         st.plotly_chart(fig_recipients_dollars)
         
+        # Only display NAICS visualizations if no specific NAICS code is selected
+        if selected_naics in ["All", None]:
+            # Visualize Top 20 NAICS by Award Actions
+            st.subheader("Top 20 NAICS by Award Actions")
+            top_naics_awards = df[df['modification_number'] == '0'].groupby('naics_code').size().reset_index(name='award_count')
+            top_naics_awards = top_naics_awards.sort_values(by='award_count', ascending=False).head(20)
+
+            fig_naics_awards = px.bar(
+                top_naics_awards,
+                x='naics_code',
+                y='award_count',
+                title="Top 20 NAICS by Award Actions",
+                labels={'naics_code': 'NAICS Code', 'award_count': 'Number of Awards'}
+            )
+            fig_naics_awards.update_layout(
+                xaxis_tickangle=45,
+                xaxis_type='category'  # Ensure NAICS codes are treated as categories, not numbers
+            )
+            st.plotly_chart(fig_naics_awards)
+
+            # Visualize Top 20 NAICS by Total Dollars Obligated
+            st.subheader("Top 20 NAICS by Total Dollars Obligated")
+            top_naics_dollars = df.groupby('naics_code')['total_dollars_obligated'].sum().reset_index()
+            top_naics_dollars = top_naics_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+
+            fig_naics_dollars = px.bar(
+                top_naics_dollars,
+                x='naics_code',
+                y='total_dollars_obligated',
+                title="Top 20 NAICS by Total Dollars Obligated",
+                labels={'naics_code': 'NAICS Code', 'total_dollars_obligated': 'Total Dollars Obligated ($)'}
+            )
+            fig_naics_dollars.update_layout(
+                xaxis_tickangle=45,
+                xaxis_type='category'  # Ensure NAICS codes are treated as categories, not numbers
+            )
+            st.plotly_chart(fig_naics_dollars)
+        
     except Exception as e:
         st.error(f"Error executing query: {str(e)}")
 
@@ -420,8 +485,8 @@ st.markdown(
     """
     **Performance Note**: The `awards_slim` table has been updated with fewer columns to improve query performance. 
     To further optimize, consider adding indexes to the following columns: 
-    `parent_award_agency_name`, `awarding_sub_agency_name`, `recipient_name`, `naics_code`, `product_or_service_code`, 
-    `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`, `action_date`. 
-    Example SQL: `CREATE INDEX idx_parent_award_agency_name ON awards_slim(parent_award_agency_name);`
+    `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, 
+    `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`, `action_date`. 
+    Example SQL: `CREATE INDEX idx_action_date ON awards_slim(action_date);`
     """
 )
