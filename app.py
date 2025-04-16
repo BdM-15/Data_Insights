@@ -4,7 +4,8 @@ from sqlalchemy import create_engine, text
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-import re
+import json
+from dateutil.relativedelta import relativedelta
 
 # Set page config FIRST
 st.set_page_config(page_title="USAspending.gov Dashboard", layout="wide")
@@ -18,7 +19,6 @@ engine = create_engine(db_path, connect_args={'timeout': 30})
 
 # Define the updated column mapping with human-readable names
 column_mapping = {
-    "action_date_fiscal_year": "Award Fiscal Year",
     "action_date": "Award Date",
     "parent_award_id_piid": "Parent Award ID",
     "award_id_piid": "Award ID",
@@ -26,11 +26,8 @@ column_mapping = {
     "federal_action_obligation": "Contract Award Amount",
     "total_dollars_obligated": "Total Obligated Amount",
     "potential_total_value_of_award": "Potential Contract Value",
-    "total_outlayed_amount_for_overall_award": "Total Outlayed Amount",
-    "period_of_performance_start_date": "Period of Performance Start Date",
+    "period_of_performance_start_date": "Period of Performance Start Date",  # Added
     "period_of_performance_current_end_date": "Period of Performance End Date",
-    "period_of_performance_potential_end_date": "Period of Performance Potential End Date",
-    "ordering_period_end_date": "Last Date to Order",
     "primary_place_of_performance_city_name": "Principal Place of Performance",
     "primary_place_of_performance_state_code": "Place of Performance State",
     "prime_award_base_transaction_description": "Prime Award Transaction Description",
@@ -39,11 +36,8 @@ column_mapping = {
     "naics_description": "NAICS Description",
     "product_or_service_code": "PSC Code",
     "product_or_service_code_description": "PSC Description",
-    "dod_acquisition_program_description": "DoD Acquisition Program Description",
     "parent_award_agency_name": "Awarding Agency Name",
-    "awarding_sub_agency_name": "Awarding Sub-Agency Name",
     "awarding_office_name": "Contracting Office Name",
-    "funding_agency_name": "Funding Agency Name",
     "funding_sub_agency_name": "Funding Sub-Agency Name",
     "funding_office_name": "Funding Office Name",
     "recipient_name": "Contractor Name",
@@ -60,49 +54,40 @@ column_mapping = {
     "subcontracting_plan": "Subcontracting Plan",
     "government_furnished_property": "Government Furnished Property",
     "type_of_contract_pricing": "Type of Contract",
-    "action_type": "Action Type",
-    "award_type": "Award Type",
-    "type_of_idc": "IDC Type",
-    "idv_type": "IDV Type",
-    "undefinitized_action": "Undefinitized Action",
-    "program_acronym": "Program Acronym",
-    "multi_year_contract": "Multi-Year Contract",
-    "multiple_or_single_award_idv": "Multiple or Single Award IDV",
     "usaspending_permalink": "USAspending Permalink"
 }
 
 # Define a color palette for all bar charts
 color_palette = px.colors.qualitative.Plotly * 2  # Repeat to ensure at least 20 colors
 
-# Cached function to fetch unique values for dropdowns
+# Define the minimal set of columns needed
+required_columns = list(column_mapping.keys())
+
 @st.cache_data
-def get_unique_values(column_name, table_name='awards_slim', filter_conditions=None):
-    if column_name == 'naics_code':
-        query = f"SELECT DISTINCT TRIM(CAST({column_name} AS TEXT)) AS {column_name} FROM {table_name} WHERE {column_name} IS NOT NULL"
+def get_unique_values(column_name, filter_conditions=None):
+    if not filter_conditions:
+        table_name = f"filter_values_{column_name}"
+        query = f"SELECT value FROM {table_name}"
+        params = {}
     else:
-        query = f"SELECT DISTINCT TRIM({column_name}) AS {column_name} FROM {table_name} WHERE {column_name} IS NOT NULL"
+        # Use filter_dependencies table for dependent filters
+        parent_value = filter_conditions[0]["value"]
+        child_column = filter_conditions[0]["child_column"]
+        query = "SELECT child_values FROM filter_dependencies WHERE parent_value = :parent_value AND child_column = :child_column"
+        params = {"parent_value": parent_value, "child_column": child_column}
     
-    params = {}
-    if filter_conditions:
-        conditions = []
-        for condition in filter_conditions:
-            if condition["value"] not in ["All", None]:
-                condition_value = str(condition["value"]).upper()
-                if isinstance(condition["value"], list):
-                    conditions.append(f"UPPER({condition['column']}) IN :{condition['column']}")
-                    params[condition["column"]] = tuple(condition_value)
-                else:
-                    conditions.append(f"UPPER({condition['column']}) = :{condition['column']}")
-                    params[condition["column"]] = condition_value
-        if conditions:
-            query += " AND " + " AND ".join(conditions)
-    query += f" ORDER BY {column_name}"
     try:
         with engine.connect() as connection:
             df = pd.read_sql(text(query), connection, params=params)
-        unique_values = df[column_name].str.upper().drop_duplicates().tolist()
-        if column_name == 'naics_code':
-            unique_values = [re.sub(r'\.0$', '', str(val))[:6] for val in unique_values]
+        if not filter_conditions:
+            unique_values = df['value'].drop_duplicates().tolist()
+        else:
+            # Deserialize JSON string back to list
+            if not df.empty:
+                child_values = json.loads(df['child_values'].iloc[0])
+                unique_values = sorted(set(child_values))
+            else:
+                unique_values = []
         return unique_values
     except Exception as e:
         st.error(f"Error fetching unique values for {column_name}: {str(e)}")
@@ -142,13 +127,6 @@ def generate_fiscal_quarters(start_date, end_date):
             current_fy += 1
     return quarters
 
-# Cached function to load data
-@st.cache_data
-def load_data(query, params):
-    with engine.connect() as connection:
-        df = pd.read_sql(text(query), connection, params=params)
-    return df
-
 # Main app title
 st.title("USAspending.gov Data Explorer")
 
@@ -157,11 +135,17 @@ st.subheader("Data Source")
 st.markdown(
     """
     <div style="background-color: #2E2E2E; padding: 10px; border-radius: 5px; border: 1px solid #555;">
-        <p style="color: #FFFFFF; margin: 0;">Table: <strong>awards_slim</strong></p>
+        <p style="color: #FFFFFF; margin: 0;">Table: <strong>awards_slim_cleaned</strong></p>
     </div>
     """,
     unsafe_allow_html=True
 )
+
+# Initialize session state for CSV data
+if 'full_results_csv' not in st.session_state:
+    st.session_state['full_results_csv'] = None
+if 'expiring_contracts_csv' not in st.session_state:
+    st.session_state['expiring_contracts_csv'] = None
 
 # Sidebar for filters with session state to force rerun on change
 with st.sidebar:
@@ -173,13 +157,14 @@ with st.sidebar:
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
     
-    agencies = ["All"] + get_unique_values('parent_award_agency_name', table_name='awards_slim')
-    selected_agency = st.selectbox("Select Awarding Agency", agencies, index=0, key="agency")
+    agencies = ["All"] + get_unique_values('parent_award_agency_name')
+    selected_agency = st.selectbox("Select Awarding Agency", agencies, index=None, 
+                                   placeholder="Select an awarding agency...", key="agency")
     
     funding_sub_agencies = ["All"]
-    if selected_agency != "All":
-        funding_sub_agencies.extend(get_unique_values('funding_sub_agency_name', table_name='awards_slim', 
-                                                     filter_conditions=[{"column": "parent_award_agency_name", "value": selected_agency}]))
+    if selected_agency not in ["All", None]:
+        funding_sub_agencies.extend(get_unique_values('funding_sub_agency_name', 
+                                                     filter_conditions=[{"child_column": "funding_sub_agency_name", "value": selected_agency}]))
         if len(funding_sub_agencies) == 1:
             st.warning(f"No funding sub-agencies found for {selected_agency}. Check the data or select a different agency.")
     selected_funding_sub_agency = st.selectbox("Select Funding Sub-Agency", funding_sub_agencies, index=None, 
@@ -187,179 +172,150 @@ with st.sidebar:
     
     funding_office_names = ["All"]
     if selected_funding_sub_agency not in ["All", None]:
-        funding_office_names.extend(get_unique_values('funding_office_name', table_name='awards_slim', 
-                                                     filter_conditions=[{"column": "funding_sub_agency_name", "value": selected_funding_sub_agency}]))
+        funding_office_names.extend(get_unique_values('funding_office_name', 
+                                                     filter_conditions=[{"child_column": "funding_office_name", "value": selected_funding_sub_agency}]))
         if len(funding_office_names) == 1:
             st.warning(f"No funding offices found for {selected_funding_sub_agency}. Check the data or select a different sub-agency.")
     selected_funding_office = st.selectbox("Select Funding Office", funding_office_names, index=None, 
                                            placeholder="Select a funding office...", key="funding_office")
     
-    contractors = ["All"] + get_unique_values('recipient_name', table_name='awards_slim')
+    contractors = ["All"] + get_unique_values('recipient_name')
     selected_contractor = st.selectbox("Select Contractor", contractors, index=None, 
                                        placeholder="Select a contractor...", key="contractor")
     
-    naics_codes = ["All"] + get_unique_values('naics_code', table_name='awards_slim')
+    naics_codes = ["All"] + get_unique_values('naics_code')
     selected_naics = st.selectbox("Select NAICS Code", naics_codes, index=None, 
                                   placeholder="Select a NAICS code...", key="naics")
     
-    psc_codes = ["All"] + get_unique_values('product_or_service_code', table_name='awards_slim')
+    psc_codes = ["All"] + get_unique_values('product_or_service_code')
     selected_psc = st.selectbox("Select PSC Code", psc_codes, index=None, 
                                 placeholder="Select a PSC code...", key="psc")
     
-    contract_types = ["All"] + get_unique_values('type_of_contract_pricing', table_name='awards_slim')
+    contract_types = ["All"] + get_unique_values('type_of_contract_pricing')
     selected_contract_type = st.selectbox("Select Type of Contract", contract_types, index=None, 
                                           placeholder="Select a contract type...", key="contract_type")
     
-    extent_competeds = get_unique_values('extent_competed', table_name='awards_slim')
+    extent_competeds = get_unique_values('extent_competed')
     selected_extent_competeds = st.multiselect("Select Extent Competed", extent_competeds, 
                                                placeholder="Select extent competed options...", key="extent_competed")
     
-    set_aside_types = ["All"] + get_unique_values('type_of_set_aside', table_name='awards_slim')
+    set_aside_types = ["All"] + get_unique_values('type_of_set_aside')
     selected_set_aside = st.selectbox("Select Set-Aside Type", set_aside_types, index=None, 
                                       placeholder="Select a set-aside type...", key="set_aside")
 
-# Define the minimal set of columns needed
-columns_needed = [
-    "action_date", "federal_action_obligation", "modification_number", "total_dollars_obligated",
-    "period_of_performance_current_end_date", "recipient_name", "naics_code",
-    "parent_award_agency_name", "funding_sub_agency_name", "funding_office_name",
-    "parent_award_id_piid", "award_id_piid", "potential_total_value_of_award",
-    "primary_place_of_performance_city_name", "primary_place_of_performance_state_code",
-    "prime_award_base_transaction_description", "transaction_description",
-    "naics_description", "product_or_service_code", "product_or_service_code_description",
-    "awarding_office_name", "recipient_uei", "recipient_parent_name", "recipient_parent_uei",
-    "solicitation_date", "solicitation_procedures", "extent_competed", "type_of_set_aside",
-    "fair_opportunity_limited_sources", "other_than_full_and_open_competition",
-    "number_of_offers_received", "subcontracting_plan", "government_furnished_property",
-    "type_of_contract_pricing", "usaspending_permalink"
-]
-
 # Build the SQL query dynamically with named placeholders
-query = f"SELECT {', '.join(columns_needed)} FROM awards_slim WHERE action_date BETWEEN :start_date AND :end_date"
+query = f"SELECT {', '.join(required_columns)} FROM awards_slim_cleaned WHERE action_date BETWEEN :start_date AND :end_date"
 # Add condition for period_of_performance_current_end_date
 query += " AND period_of_performance_current_end_date >= :start_date"
 query += " AND period_of_performance_current_end_date IS NOT NULL"
 params = {"start_date": start_date_str, "end_date": end_date_str}
 
-if selected_agency != "All":
-    query += " AND UPPER(parent_award_agency_name) = :agency"
+if selected_agency not in ["All", None]:
+    query += " AND parent_award_agency_name = :agency"
     params["agency"] = str(selected_agency).upper()
 if selected_funding_sub_agency not in ["All", None]:
-    query += " AND UPPER(funding_sub_agency_name) = :funding_sub_agency"
+    query += " AND funding_sub_agency_name = :funding_sub_agency"
     params["funding_sub_agency"] = str(selected_funding_sub_agency).upper()
 if selected_funding_office not in ["All", None]:
-    query += " AND UPPER(funding_office_name) = :funding_office"
+    query += " AND funding_office_name = :funding_office"
     params["funding_office"] = str(selected_funding_office).upper()
 if selected_contractor not in ["All", None]:
-    query += " AND UPPER(recipient_name) = :contractor"
+    query += " AND recipient_name = :contractor"
     params["contractor"] = str(selected_contractor).upper()
 if selected_naics not in ["All", None]:
-    query += " AND UPPER(naics_code) = :naics"
+    query += " AND naics_code = :naics"
     params["naics"] = str(selected_naics).upper()
 if selected_psc not in ["All", None]:
-    query += " AND UPPER(product_or_service_code) = :psc"
+    query += " AND product_or_service_code = :psc"
     params["psc"] = str(selected_psc).upper()
 if selected_contract_type not in ["All", None]:
-    query += " AND UPPER(type_of_contract_pricing) = :contract_type"
+    query += " AND type_of_contract_pricing = :contract_type"
     params["contract_type"] = str(selected_contract_type).upper()
 if selected_extent_competeds:
     extent_competeds_tuple = tuple(str(val).upper() for val in selected_extent_competeds)
     placeholders = ', '.join([f":extent_competed_{i}" for i in range(len(extent_competeds_tuple))])
-    query += f" AND UPPER(extent_competed) IN ({placeholders})"
+    query += f" AND extent_competed IN ({placeholders})"
     for i, val in enumerate(extent_competeds_tuple):
         params[f"extent_competed_{i}"] = val
 if selected_set_aside not in ["All", None]:
-    query += " AND UPPER(type_of_set_aside) = :set_aside"
+    query += " AND type_of_set_aside = :set_aside"
     params["set_aside"] = str(selected_set_aside).upper()
 
 # Display results with a spinner
 if st.button("Run Query"):
     with st.spinner("Running query..."):
         try:
-            # Load data using cached function
-            df = load_data(query, params)
+            with engine.connect() as connection:
+                df = pd.read_sql(text(query), connection, params=params)
             
-            # Convert only necessary columns to numeric
-            monetary_columns_to_convert = ['federal_action_obligation', 'total_dollars_obligated', 'potential_total_value_of_award']
-            for col in monetary_columns_to_convert:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-            # Convert period_of_performance_current_end_date to datetime
-            df['period_of_performance_current_end_date'] = pd.to_datetime(df['period_of_performance_current_end_date'], errors='coerce')
+            # Convert date columns to datetime and remove timestamps
+            df['action_date'] = pd.to_datetime(df['action_date'], errors='coerce').dt.date
+            df['period_of_performance_start_date'] = pd.to_datetime(df['period_of_performance_start_date'], errors='coerce').dt.date
+            df['period_of_performance_current_end_date'] = pd.to_datetime(df['period_of_performance_current_end_date'], errors='coerce').dt.date
             
             # Diagnostic: Check the filtered data
             st.write(f"Number of rows in filtered DataFrame: {len(df)}")
-            total_obligated = df['total_dollars_obligated'].sum()
+            total_obligated = df['federal_action_obligation'].sum()
             if pd.isna(total_obligated):
-                st.write("Total Dollars Obligated in filtered DataFrame: $0.00 (No valid numeric data)")
+                st.write("Total Contract Award Amount in filtered DataFrame: $0.00 (No valid numeric data)")
             else:
-                st.write(f"Total Dollars Obligated in filtered DataFrame: ${total_obligated:,.2f}")
+                st.write(f"Total Contract Award Amount in filtered DataFrame: ${total_obligated:,.2f}")
             
             # Diagnostic: Check the range of period_of_performance_current_end_date
             min_end_date = df['period_of_performance_current_end_date'].min()
             max_end_date = df['period_of_performance_current_end_date'].max()
             st.write(f"Range of Period of Performance Current End Date in filtered DataFrame: {min_end_date} to {max_end_date}")
             
-            # Clean up NAICS codes in the DataFrame: ensure they are trimmed to a maximum of 6 characters
-            df['naics_code'] = df['naics_code'].astype(str).str.replace(r'\.0$', '', regex=True).str.slice(0, 6)
-            
             # Rename columns for display
             df_display = df.rename(columns=column_mapping)
             
-            # Sort by federal_action_obligation (Contract Award Amount) in descending order
+            # Reorder columns to match column_mapping
+            display_columns = [column_mapping[col] for col in column_mapping.keys() if col in df.columns]
+            df_display = df_display[display_columns]
+            
+            # Sort by Contract Award Amount in descending order
             df_display = df_display.sort_values(by="Contract Award Amount", ascending=False)
             
-            # Limit to top 50 rows before styling
-            df_display_limited = df_display.head(50)
+            # Limit to top 100 rows for display
+            df_display_limited = df_display.head(100).copy()
             
-            # Format monetary columns as currency
-            format_dict = {col: "${:,.2f}" for col in [column_mapping[col] for col in monetary_columns_to_convert]}
-            styled_df = df_display_limited.style.format(format_dict)
+            # Format monetary columns as currency strings
+            monetary_columns = ['Contract Award Amount', 'Total Obligated Amount', 'Potential Contract Value']
+            for col in monetary_columns:
+                df_display_limited[col] = df_display_limited[col].apply(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A")
             
-            # Display the styled DataFrame (limited to top 50 rows)
-            st.subheader("Query Results (Top 50 Rows)")
-            st.dataframe(styled_df, use_container_width=True)
-            st.markdown("*Note: Only the top 50 rows are displayed. Download the full results using the button above.*")
+            # Display the DataFrame using st.dataframe (limited to top 100 rows)
+            st.subheader("Query Results (Top 100 Rows)")
+            st.dataframe(df_display_limited, use_container_width=True)
+            
+            # Store CSV data in session state
+            st.session_state['full_results_csv'] = df_display.to_csv(index=False)
             
             # Provide a download button for the full dataset
-            csv = df_display.to_csv(index=False)
             st.download_button(
                 label="Download Full Results as CSV",
-                data=csv,
+                data=st.session_state['full_results_csv'],
                 file_name="usaspending_query_results.csv",
                 mime="text/csv",
+                use_container_width=True
             )
             
-            # Precompute fiscal year and quarter for visualizations
-            df['action_date'] = pd.to_datetime(df['action_date'])
-            fiscal_years, fiscal_quarters = calculate_fiscal_year_quarter(df['action_date'])
-            df['fiscal_year'] = fiscal_years
-            df['fiscal_quarter'] = fiscal_quarters
-            df['year_quarter'] = df.apply(lambda x: f"FY{x['fiscal_year']} Q{x['fiscal_quarter']}", axis=1)
+            # Load pre-aggregated quarterly data
+            quarters = generate_fiscal_quarters(start_date, end_date)
+            if quarters:  # Check if quarters list is not empty
+                # Create placeholders for each quarter
+                placeholders = ', '.join([f":quarter_{i}" for i in range(len(quarters))])
+                query = f"SELECT * FROM quarterly_data WHERE year_quarter IN ({placeholders})"
+                # Create params dictionary with individual quarter values
+                quarter_params = {f"quarter_{i}": quarter for i, quarter in enumerate(quarters)}
+                with engine.connect() as connection:
+                    quarterly_df = pd.read_sql(text(query), connection, params=quarter_params)
+            else:
+                # If no quarters, return an empty DataFrame
+                quarterly_df = pd.DataFrame(columns=['year_quarter', 'federal_action_obligation', 'award_count', 'fiscal_year', 'cumulative_spending', 'cumulative_awards'])
             
-            # Generate all fiscal quarters between start and end dates
-            all_quarters = generate_fiscal_quarters(start_date, end_date)
-            
-            # Group by fiscal quarter and calculate total spending and number of award actions
-            quarterly_spending = df.groupby('year_quarter')['federal_action_obligation'].sum().reset_index()
-            quarterly_awards = df[df['modification_number'] == '0'].groupby('year_quarter').size().reset_index(name='award_count')
-
-            # Create a DataFrame with all quarters and merge with spending and award count data
-            quarterly_df = pd.DataFrame({'year_quarter': all_quarters})
-            quarterly_df = quarterly_df.merge(quarterly_spending, on='year_quarter', how='left')
-            quarterly_df = quarterly_df.merge(quarterly_awards, on='year_quarter', how='left')
-            quarterly_df['federal_action_obligation'] = quarterly_df['federal_action_obligation'].fillna(0)
-            quarterly_df['award_count'] = quarterly_df['award_count'].fillna(0)
-
-            # Extract fiscal year from year_quarter (e.g., "FY2023" from "FY2023 Q1")
-            quarterly_df['fiscal_year'] = quarterly_df['year_quarter'].str.extract(r'(FY\d{4})')[0]
-
-            # Calculate cumulative sums within each fiscal year
-            quarterly_df['cumulative_spending'] = quarterly_df.groupby('fiscal_year')['federal_action_obligation'].cumsum()
-            quarterly_df['cumulative_awards'] = quarterly_df.groupby('fiscal_year')['award_count'].cumsum()
-
             # Determine tick values for the right y-axis (Number of Award Actions) using cumulative awards
-            max_cumulative_awards = quarterly_df['cumulative_awards'].max()
+            max_cumulative_awards = quarterly_df['cumulative_awards'].max() if not quarterly_df.empty else 0
             num_ticks = 5
             award_step = max_cumulative_awards / (num_ticks - 1) if max_cumulative_awards > 0 else 1
             award_ticks = [i * award_step for i in range(num_ticks)]
@@ -371,97 +327,100 @@ if st.button("Run Query"):
             with col1:
                 st.subheader("Spending and Award Actions by Quarter")
                 fig = go.Figure()
-                # Add Cumulative Spending trace (bottom layer)
+                # Add Cumulative Spending trace (vibrant cyan)
                 fig.add_trace(go.Scatter(
-                    x=quarterly_df['year_quarter'],
-                    y=quarterly_df['cumulative_spending'],
-                    name="Cumulative Spending ($)",
-                    line=dict(color='#00FFFF')  # Bright cyan
+                    x=quarterly_df['year_quarter'], 
+                    y=quarterly_df['cumulative_spending'], 
+                    name="Cumulative Spending ($)", 
+                    line=dict(color='#00CED1', width=2)
                 ))
-                # Add Cumulative Award Actions trace (top layer)
+                # Add Cumulative Award Actions trace (vibrant orange)
                 fig.add_trace(go.Scatter(
-                    x=quarterly_df['year_quarter'],
-                    y=quarterly_df['cumulative_awards'],
-                    name="Cumulative Award Actions",
-                    line=dict(color='#FFFF00'),  # Bright yellow
+                    x=quarterly_df['year_quarter'], 
+                    y=quarterly_df['cumulative_awards'], 
+                    name="Cumulative Award Actions", 
+                    line=dict(color='#FF4500', width=2),
                     yaxis="y2"
                 ))
                 fig.update_layout(
                     title="Spending and Award Actions by Quarter (Cumulative Within Fiscal Year)",
                     xaxis=dict(title="Fiscal Quarter"),
                     yaxis=dict(
-                        title="Cumulative Spending ($)",
-                        title_font=dict(color="#00FFFF", size=14),
-                        tickfont=dict(color="#00FFFF", size=12),
-                        gridcolor="lightgrey",
-                        range=[0, quarterly_df['cumulative_spending'].max() * 1.1]
+                        title="Cumulative Spending ($)", 
+                        title_font=dict(color="#00CED1", size=14), 
+                        tickfont=dict(color="#00CED1", size=12), 
+                        gridcolor="lightgrey", 
+                        range=[0, quarterly_df['cumulative_spending'].max() * 1.1 if not quarterly_df.empty else 1]
                     ),
                     yaxis2=dict(
-                        title="Cumulative Award Actions",
-                        title_font=dict(color="#FFFF00", size=14),
-                        tickfont=dict(color="#FFFF00", size=12),
-                        overlaying="y",
-                        side="right",
-                        showgrid=False,
-                        range=[0, max_cumulative_awards * 1.1],
-                        tickvals=award_ticks,
+                        title="Cumulative Award Actions", 
+                        title_font=dict(color="#FF4500", size=14), 
+                        tickfont=dict(color="#FF4500", size=12), 
+                        overlaying="y", 
+                        side="right", 
+                        showgrid=False, 
+                        range=[0, max_cumulative_awards * 1.1 if max_cumulative_awards > 0 else 1], 
+                        tickvals=award_ticks, 
                         ticktext=[f"{int(tick):,}" for tick in award_ticks]
                     ),
                     legend=dict(x=0, y=1.1, orientation="h")
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
-            # Right column: Contracts Expiring in the Next 24 Months
+            # Right column: Contracts Expiring Between 6 and 24 Months
             with col2:
-                st.subheader("Contracts Expiring in the Next 24 Months")
+                st.subheader("Contracts Expiring Between 6 and 24 Months")
                 # Define date range for expiring contracts
-                today = pd.to_datetime("2025-04-14")  # Current date
-                end_date_expiring = today + pd.DateOffset(months=24)  # 24 months from today
+                today = pd.to_datetime("2025-04-14").date()
+                start_date_expiring = (pd.to_datetime(today) + pd.DateOffset(months=6)).date()
+                end_date_expiring = (pd.to_datetime(today) + pd.DateOffset(months=24)).date()
                 
-                # Filter for base awards (modification_number = '0') and contracts expiring between today and 24 months from today
+                # Filter for contracts expiring between 6 and 24 months from today, and exclude modifications
                 expiring_contracts = df[
-                    (df['modification_number'] == '0') &
-                    (df['period_of_performance_current_end_date'] >= today) &
-                    (df['period_of_performance_current_end_date'] <= end_date_expiring)
+                    (df['period_of_performance_current_end_date'] >= start_date_expiring) &
+                    (df['period_of_performance_current_end_date'] <= end_date_expiring) &
+                    (df['modification_number'] == '0')  # Exclude modifications
                 ]
                 
-                # Select only the specified columns
-                expiring_columns = [
-                    "parent_award_id_piid", "award_id_piid", "modification_number",
-                    "federal_action_obligation", "total_dollars_obligated", "potential_total_value_of_award",
-                    "period_of_performance_current_end_date", "primary_place_of_performance_city_name",
-                    "primary_place_of_performance_state_code", "prime_award_base_transaction_description",
-                    "transaction_description", "naics_code", "naics_description", "product_or_service_code",
-                    "product_or_service_code_description", "awarding_office_name", "funding_office_name",
-                    "recipient_name", "recipient_uei", "recipient_parent_name", "recipient_parent_uei",
-                    "solicitation_date", "solicitation_procedures", "extent_competed", "type_of_set_aside",
-                    "fair_opportunity_limited_sources", "other_than_full_and_open_competition",
-                    "number_of_offers_received", "subcontracting_plan", "government_furnished_property",
-                    "type_of_contract_pricing", "usaspending_permalink"
-                ]
+                # Select only the specified columns in the order of column_mapping
+                expiring_columns = [col for col in column_mapping.keys() if col in expiring_contracts.columns]
                 expiring_df = expiring_contracts[expiring_columns].copy()
                 
                 # Sort by total_dollars_obligated in descending order
                 expiring_df = expiring_df.sort_values(by='total_dollars_obligated', ascending=False)
                 
+                # Calculate months remaining
+                expiring_df['months_remaining'] = expiring_df['period_of_performance_current_end_date'].apply(
+                    lambda x: relativedelta(x, today).years * 12 + relativedelta(x, today).months
+                )
+                
                 # Rename columns for display
                 expiring_df_display = expiring_df.rename(columns=column_mapping)
                 
-                # Format monetary columns
-                expiring_monetary_columns = ["Contract Award Amount", "Total Obligated Amount", "Potential Contract Value"]
-                format_dict = {col: "${:,.2f}" for col in expiring_monetary_columns}
-                styled_expiring_df = expiring_df_display.style.format(format_dict)
+                # Add "Months Remaining" to the display columns
+                expiring_df_display['Months Remaining'] = expiring_df['months_remaining']
                 
-                # Display the DataFrame
-                st.dataframe(styled_expiring_df, use_container_width=True)
+                # Reorder columns to match column_mapping and include "Months Remaining"
+                expiring_columns = [column_mapping[col] for col in expiring_columns] + ['Months Remaining']
+                expiring_df_display = expiring_df_display[expiring_columns]
+                
+                # Format monetary columns as currency strings
+                for col in monetary_columns:
+                    expiring_df_display[col] = expiring_df_display[col].apply(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A")
+                
+                # Display the DataFrame using st.dataframe
+                st.dataframe(expiring_df_display, use_container_width=True)
+                
+                # Store CSV data in session state
+                st.session_state['expiring_contracts_csv'] = expiring_df_display.to_csv(index=False)
                 
                 # Provide a download button for the expiring contracts
-                csv_expiring = expiring_df_display.to_csv(index=False)
                 st.download_button(
                     label="Download Expiring Contracts as CSV",
-                    data=csv_expiring,
+                    data=st.session_state['expiring_contracts_csv'],
                     file_name="expiring_contracts.csv",
                     mime="text/csv",
+                    use_container_width=True
                 )
             
             # Visualize Top Recipients by Total Awards Made (only base awards)
@@ -481,17 +440,17 @@ if st.button("Run Query"):
             fig_recipients_awards.update_layout(xaxis_tickangle=45, showlegend=False)
             st.plotly_chart(fig_recipients_awards)
             
-            # Visualize Top Recipients by Total Dollars Obligated (include modifications)
-            top_recipients_dollars = df.groupby('recipient_name')['total_dollars_obligated'].sum().reset_index()
-            top_recipients_dollars = top_recipients_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+            # Visualize Top Recipients by Total Contract Award Amount (include modifications)
+            top_recipients_dollars = df.groupby('recipient_name')['federal_action_obligation'].sum().reset_index()
+            top_recipients_dollars = top_recipients_dollars.sort_values(by='federal_action_obligation', ascending=False).head(20)
             num_recipients_dollars = len(top_recipients_dollars)
-            st.subheader(f"Top {num_recipients_dollars} Recipients by Total Dollars Obligated")
+            st.subheader(f"Top {num_recipients_dollars} Recipients by Total Contract Award Amount")
             fig_recipients_dollars = px.bar(
                 top_recipients_dollars,
                 x='recipient_name',
-                y='total_dollars_obligated',
-                title=f"Top {num_recipients_dollars} Recipients by Total Dollars Obligated",
-                labels={'recipient_name': 'Recipient Name', 'total_dollars_obligated': 'Total Dollars Obligated ($)'},
+                y='federal_action_obligation',
+                title=f"Top {num_recipients_dollars} Recipients by Total Contract Award Amount",
+                labels={'recipient_name': 'Recipient Name', 'federal_action_obligation': 'Total Contract Award Amount ($)'},
                 color='recipient_name',
                 color_discrete_sequence=color_palette
             )
@@ -517,17 +476,17 @@ if st.button("Run Query"):
                 fig_naics_awards.update_layout(xaxis_tickangle=45, xaxis_type='category', showlegend=False)
                 st.plotly_chart(fig_naics_awards)
 
-                # Visualize Top NAICS by Total Dollars Obligated (include modifications)
-                top_naics_dollars = df.groupby('naics_code')['total_dollars_obligated'].sum().reset_index()
-                top_naics_dollars = top_naics_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+                # Visualize Top NAICS by Total Contract Award Amount (include modifications)
+                top_naics_dollars = df.groupby('naics_code')['federal_action_obligation'].sum().reset_index()
+                top_naics_dollars = top_naics_dollars.sort_values(by='federal_action_obligation', ascending=False).head(20)
                 num_naics_dollars = len(top_naics_dollars)
-                st.subheader(f"Top {num_naics_dollars} NAICS by Total Dollars Obligated")
+                st.subheader(f"Top {num_naics_dollars} NAICS by Total Contract Award Amount")
                 fig_naics_dollars = px.bar(
                     top_naics_dollars,
                     x='naics_code',
-                    y='total_dollars_obligated',
-                    title=f"Top {num_naics_dollars} NAICS by Total Dollars Obligated",
-                    labels={'naics_code': 'NAICS Code', 'total_dollars_obligated': 'Total Dollars Obligated ($)'},
+                    y='federal_action_obligation',
+                    title=f"Top {num_naics_dollars} NAICS by Total Contract Award Amount",
+                    labels={'naics_code': 'NAICS Code', 'federal_action_obligation': 'Total Contract Award Amount ($)'},
                     color='naics_code',
                     color_discrete_sequence=color_palette
                 )
@@ -555,22 +514,22 @@ if st.button("Run Query"):
                 fig_offices_awards.update_layout(xaxis_tickangle=45, showlegend=False)
                 st.plotly_chart(fig_offices_awards)
 
-                top_offices_dollars = df.groupby('funding_office_name')['total_dollars_obligated'].sum().reset_index()
-                top_offices_dollars = top_offices_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+                top_offices_dollars = df.groupby('funding_office_name')['federal_action_obligation'].sum().reset_index()
+                top_offices_dollars = top_offices_dollars.sort_values(by='federal_action_obligation', ascending=False).head(20)
                 num_offices_dollars = len(top_offices_dollars)
-                st.subheader(f"Top {num_offices_dollars} Funding Offices by Total Dollars Obligated")
+                st.subheader(f"Top {num_offices_dollars} Funding Offices by Total Contract Award Amount")
                 fig_offices_dollars = px.bar(
                     top_offices_dollars,
                     x='funding_office_name',
-                    y='total_dollars_obligated',
-                    title=f"Top {num_offices_dollars} Funding Offices by Total Dollars Obligated",
-                    labels={'funding_office_name': 'Funding Office Name', 'total_dollars_obligated': 'Total Dollars Obligated ($)'},
+                    y='federal_action_obligation',
+                    title=f"Top {num_offices_dollars} Funding Offices by Total Contract Award Amount",
+                    labels={'funding_office_name': 'Funding Office Name', 'federal_action_obligation': 'Total Contract Award Amount ($)'},
                     color='funding_office_name',
                     color_discrete_sequence=color_palette
                 )
                 fig_offices_dollars.update_layout(xaxis_tickangle=45, showlegend=False)
                 st.plotly_chart(fig_offices_dollars)
-            elif selected_agency != "All":
+            elif selected_agency not in ["All", None]:
                 # Parent agency selected: Show Top Funding Sub-Agencies
                 top_sub_agencies_awards = df[df['modification_number'] == '0'].groupby('funding_sub_agency_name').size().reset_index(name='award_count')
                 top_sub_agencies_awards = top_sub_agencies_awards.sort_values(by='award_count', ascending=False).head(20)
@@ -588,16 +547,16 @@ if st.button("Run Query"):
                 fig_sub_agencies_awards.update_layout(xaxis_tickangle=45, showlegend=False)
                 st.plotly_chart(fig_sub_agencies_awards)
 
-                top_sub_agencies_dollars = df.groupby('funding_sub_agency_name')['total_dollars_obligated'].sum().reset_index()
-                top_sub_agencies_dollars = top_sub_agencies_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+                top_sub_agencies_dollars = df.groupby('funding_sub_agency_name')['federal_action_obligation'].sum().reset_index()
+                top_sub_agencies_dollars = top_sub_agencies_dollars.sort_values(by='federal_action_obligation', ascending=False).head(20)
                 num_sub_agencies_dollars = len(top_sub_agencies_dollars)
-                st.subheader(f"Top {num_sub_agencies_dollars} Funding Sub-Agencies by Total Dollars Obligated")
+                st.subheader(f"Top {num_sub_agencies_dollars} Funding Sub-Agencies by Total Contract Award Amount")
                 fig_sub_agencies_dollars = px.bar(
                     top_sub_agencies_dollars,
                     x='funding_sub_agency_name',
-                    y='total_dollars_obligated',
-                    title=f"Top {num_sub_agencies_dollars} Funding Sub-Agencies by Total Dollars Obligated",
-                    labels={'funding_sub_agency_name': 'Funding Sub-Agency Name', 'total_dollars_obligated': 'Total Dollars Obligated ($)'},
+                    y='federal_action_obligation',
+                    title=f"Top {num_sub_agencies_dollars} Funding Sub-Agencies by Total Contract Award Amount",
+                    labels={'funding_sub_agency_name': 'Funding Sub-Agency Name', 'federal_action_obligation': 'Total Contract Award Amount ($)'},
                     color='funding_sub_agency_name',
                     color_discrete_sequence=color_palette
                 )
@@ -621,16 +580,16 @@ if st.button("Run Query"):
                 fig_agencies_awards.update_layout(xaxis_tickangle=45, showlegend=False)
                 st.plotly_chart(fig_agencies_awards)
 
-                top_agencies_dollars = df.groupby('parent_award_agency_name')['total_dollars_obligated'].sum().reset_index()
-                top_agencies_dollars = top_agencies_dollars.sort_values(by='total_dollars_obligated', ascending=False).head(20)
+                top_agencies_dollars = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().reset_index()
+                top_agencies_dollars = top_agencies_dollars.sort_values(by='federal_action_obligation', ascending=False).head(20)
                 num_agencies_dollars = len(top_agencies_dollars)
-                st.subheader(f"Top {num_agencies_dollars} Awarding Agencies by Total Dollars Obligated")
+                st.subheader(f"Top {num_agencies_dollars} Awarding Agencies by Total Contract Award Amount")
                 fig_agencies_dollars = px.bar(
                     top_agencies_dollars,
                     x='parent_award_agency_name',
-                    y='total_dollars_obligated',
-                    title=f"Top {num_agencies_dollars} Awarding Agencies by Total Dollars Obligated",
-                    labels={'parent_award_agency_name': 'Awarding Agency Name', 'total_dollars_obligated': 'Total Dollars Obligated ($)'},
+                    y='federal_action_obligation',
+                    title=f"Top {num_agencies_dollars} Awarding Agencies by Total Contract Award Amount",
+                    labels={'parent_award_agency_name': 'Awarding Agency Name', 'federal_action_obligation': 'Total Contract Award Amount ($)'},
                     color='parent_award_agency_name',
                     color_discrete_sequence=color_palette
                 )
@@ -643,18 +602,12 @@ if st.button("Run Query"):
 # Note about database optimization
 st.markdown(
     """
-    **Performance Note**: Indexes have been added to improve query performance. The following indexes were created:
-    - idx_action_date
-    - idx_period_of_performance_current_end_date
-    - idx_parent_award_agency_name
-    - idx_funding_sub_agency_name
-    - idx_funding_office_name
-    - idx_recipient_name
-    - idx_naics_code
-    - idx_product_or_service_code
-    - idx_type_of_contract_pricing
-    - idx_extent_competed
-    - idx_type_of_set_aside
-    - idx_modification_number
+    **Performance Note**: The `awards_slim_cleaned` table has been optimized by selecting only necessary columns and adding indexes. 
+    Filter values and dependencies are precomputed in separate tables for faster loading.
+    Quarterly data for visualizations is pre-aggregated in the `quarterly_data` table.
+    Ensure indexes are created on columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, 
+    `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, 
+    `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`.
+    A composite index `idx_filter_composite` is also created for frequently filtered columns.
     """
 )
