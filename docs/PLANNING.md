@@ -8,21 +8,23 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Visual Insights**: Provide visualizations to understand spending trends, identify top recipients/NAICS codes/agencies, and highlight expiring contracts.
 - **Capture Profile Generation**: Allow users to select a contract and generate a capture profile (Word document) with details, analysis, and AI-generated narratives for proposal support.
 - **Performance and Usability**: Ensure fast query performance and a clean, intuitive UI with proper formatting and interactivity.
+- **No cost and open source**: Ensure we are keeping this effort to a no cost framework.
 
 ## Architecture
-- **Frontend**: Streamlit for the web interface, providing a sidebar for filters, DataFrame displays, and Plotly visualizations.
+- **Frontend**: Streamlit for the web interface, providing a sidebar for filters, DataFrame displays, and Plotly visualizations.  However, open to other suggestions for better performance and user experience.
 - **Backend**:
   - SQLite database (`usaspending_historical.db`) storing the `awards_slim_cleaned` table with contract data.
   - Precomputed tables (`filter_values_*`, `filter_dependencies`) for filter values and dependencies.
   - Pre-aggregated `quarterly_data` table for visualizations.
+  - Open to other database
 - **Data Processing**: Pandas for data manipulation, SQLAlchemy for database queries.
 - **Visualizations**: Plotly for interactive charts (e.g., line charts, bar charts).
 - **AI Integration**: Ollama for local LLM inference to generate capture profile narratives, leveraging the user’s GTX 4060 with CUDA.
 
 ## Constraints
 - **Privacy**: All processing must be local to handle private information securely. No external API calls for AI or data processing.
-- **Hardware**: The app must run on the user’s system with a GTX 4060 GPU and CUDA installed for local LLM inference.
-- **Performance**: Optimize database queries and data loading to handle large datasets and create visuals efficiently.
+- **Hardware**: The app must run on the user’s system with 64GB RAM, a NVIDIA GTX 4060 GPU, and CUDA installed for local LLM inference.
+- **Performance**: Optimize database queries and data loading to handle large datasets and create visuals efficiently.  Please feel free to recommend other libraries, UIs, databases, that can be used to increase performance.
 
 ## Tech Stack
 - **Python Libraries** (as per `requirements.txt`):
@@ -40,6 +42,24 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Version Control**: Git (repository at `C:\GitHub\Opp_Sem_Search`).
 - **AI**: Ollama for local LLM inference, with models like `llama2` or `mistral` for narrative generation.
 - **Claude Desktop**: Claude Desktop can be used to assist with natural language processing tasks, such as summarizing large datasets, generating insights, or drafting narratives for the capture profile generation. It complements the local LLM inference by providing an additional layer of AI-driven analysis and content creation.
+- **Model Context Protocol**: Plan to incorporate Model Context Protocol (MCP) into the project to enhance advanced data analysis and predictive insights. Details of MCP integration are pending user clarification.
+
+## Planned Features
+- **Generate Capture Profile**:
+  - Allow users to select a row in the DataFrame and generate a Word document ("Capture Profile") with contract details, analysis, and AI-generated narratives (e.g., win strategies for proposals).
+  - Use `python-docx` for document generation.
+  - Integrate Ollama for local LLM inference, leveraging the user’s GTX 4060 with CUDA for performance.
+  - Ensure all processing remains local to protect private information.
+
+- **Incorporate Model Context Protocol (MCP)**:
+  - Integrate MCP and AI tools (as discussed previously) to enhance the app’s capabilities, potentially for advanced data analysis or predictive insights.
+  - Details of MCP integration are pending user clarification.
+
+## Potential Improvements
+- Add pagination or lazy loading to the DataFrame to handle large datasets more efficiently.
+- Enhance visualizations with interactive features (e.g., tooltips, drill-downs).
+- Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
+- Optimize database queries further if performance issues arise with larger datasets.
 
 ## Database Optimization
 - **Tables**:

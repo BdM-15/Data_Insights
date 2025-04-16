@@ -69,5 +69,25 @@ def main():
     print("\nExtracted Insights from CAPTUREINTEL.md:")
     print(captureintel_insights)
 
+# Updated to include WORKSPACERULES.md in the review process
+
+def review_files():
+    files_to_review = {
+        "docs/PLANNING.md": extract_rules_from_planning,
+        "docs/TASKS.md": extract_tasks_from_tasks,
+        "docs/WORKSPACERULES.md": lambda content: {"rules": content.splitlines()},
+        "docs/CAPTUREINTEL.md": extract_insights_from_captureintel,
+    }
+
+    for file, parser in files_to_review.items():
+        print(f"Reviewing {file}...")
+        content = read_file(file)
+        if content:
+            parsed_data = parser(content)
+            print(f"Extracted data from {file}:")
+            print(parsed_data)
+        else:
+            print(f"Could not read {file} or file is empty.")
+
 if __name__ == "__main__":
-    main()
+    review_files()
