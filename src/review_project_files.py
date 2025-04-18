@@ -1,4 +1,5 @@
 import os
+import json
 
 def read_file(file_path):
     """Reads the content of a file and returns it as a string."""
@@ -71,6 +72,11 @@ def main():
 
 # Updated to include WORKSPACERULES.md in the review process
 
+def save_parsed_context(parsed_data, output_file="context.json"):
+    """Saves parsed data into a JSON file for persistent context."""
+    with open(output_file, "w", encoding="utf-8") as json_file:
+        json.dump(parsed_data, json_file, indent=4)
+
 def review_files():
     files_to_review = {
         "docs/PLANNING.md": extract_rules_from_planning,
@@ -79,15 +85,22 @@ def review_files():
         "docs/CAPTUREINTEL.md": extract_insights_from_captureintel,
     }
 
+    parsed_context = {}
+
     for file, parser in files_to_review.items():
         print(f"Reviewing {file}...")
         content = read_file(file)
         if content:
             parsed_data = parser(content)
+            parsed_context[file] = parsed_data
             print(f"Extracted data from {file}:")
             print(parsed_data)
         else:
             print(f"Could not read {file} or file is empty.")
+
+    # Save the parsed context to a JSON file
+    save_parsed_context(parsed_context)
+    print("\nParsed context saved to 'context.json'.")
 
 if __name__ == "__main__":
     review_files()
