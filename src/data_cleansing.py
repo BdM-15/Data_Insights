@@ -6,10 +6,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import time
 import numpy as np
+import sys
+import os
 
-# Connect to the SQLite database
-db_path = r'sqlite:///C:\GitHub\Data_Insights\data\usaspending_historical.db?timeout=30'
-engine = create_engine(db_path, connect_args={'timeout': 30})
+# Add parent directory to path to import db_config
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.db_config import get_db_engine
 
 def cleanse_data():
     """
@@ -23,6 +25,9 @@ def cleanse_data():
     """
     start_time = time.time()
     print("Starting data cleansing process...")
+    
+    # Get database engine from centralized config
+    engine = get_db_engine()
 
     # Step 1: Get all required columns from the raw awards table
     print("Extracting data from awards table...")

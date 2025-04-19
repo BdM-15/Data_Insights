@@ -9,11 +9,16 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import json
 import time
+import sys
+import os
 from data_cleansing import cleanse_data
 
-# Connect to the SQLite database
-db_path = r'sqlite:///C:\GitHub\Data_Insights\data\usaspending_historical.db?timeout=30'
-engine = create_engine(db_path, connect_args={'timeout': 30})
+# Add parent directory to path to import db_config
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.db_config import get_db_engine
+
+# Get database engine from centralized config
+engine = get_db_engine()
 
 def preprocess_data(df=None):
     """

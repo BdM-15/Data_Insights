@@ -57,6 +57,37 @@
       - Build integration with VS Code to enable quick reference during document creation
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
 
+- **Implement SAM.gov and SBA SUBNet Integration**:
+  - Sub-tasks:
+    - **SAM.gov API Integration**:
+      - Implement authentication system for SAM.gov API using existing API key
+      - Create ETL pipeline to fetch and process current contract opportunities
+      - Develop data model to link historical awards with future opportunities
+      - Create matching algorithms to identify relevant opportunities based on historical success patterns
+      - Implement daily/weekly update system to keep opportunities current
+      - Build custom filters for targeted opportunity searches
+    - **SBA SUBNet Integration**:
+      - Develop crawler for SBA's SUBNet to extract subcontracting opportunities
+      - Create data processing pipeline to standardize SUBNet data with our existing schema
+      - Implement capability matching to flag relevant subcontracting opportunities
+      - Build competitor analysis tools to identify potential teaming partners or competitors from subcontracting data
+      - Design visualization components for subcontracting patterns and relationships
+    - **Extended Data Source Integration**:
+      - Create connectors for commercial data platforms (when available):
+        - Develop GovWin IQ API integration for enhanced opportunity tracking
+        - Implement Bloomberg Government data integration for market insights
+      - Set up pipeline for SBA's Directory of Federal Government Prime Contractors with Subcontracting Plans
+      - Develop USASpending.gov API integration focused on subaward data extraction
+      - Create unified schema to standardize data across multiple sources
+      - Implement data quality checks and deduplication processes
+    - **Unified Opportunity Dashboard**:
+      - Create integrated view of historical data, SAM.gov opportunities, and SUBNet subcontracting options
+      - Develop opportunity scoring system based on historical win data
+      - Implement timeline views for upcoming solicitations and proposal deadlines
+      - Build notification system for new relevant opportunities
+      - Create data visualizations for subcontracting networks and relationships
+  - Status: Planned, high priority to enhance business development capabilities with forward-looking opportunity data
+
 - **Implement "Enhanced Capture Profile Generator"**:
 
   - Sub-tasks:

@@ -48,18 +48,31 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Generate Capture Profile**:
   - Allow users to select a row in the DataFrame and generate a Word document ("Capture Profile") with contract details, analysis, and AI-generated narratives (e.g., win strategies for proposals).
   - Use `python-docx` for document generation.
-  - Integrate Ollama for local LLM inference, leveraging the user’s GTX 4060 with CUDA for performance.
+  - Integrate Ollama for local LLM inference, leveraging the user's GTX 4060 with CUDA for performance.
   - Ensure all processing remains local to protect private information.
 
 - **Incorporate Model Context Protocol (MCP)**:
-  - Integrate MCP and AI tools (as discussed previously) to enhance the app’s capabilities, potentially for advanced data analysis or predictive insights.
+  - Integrate MCP and AI tools (as discussed previously) to enhance the app's capabilities, potentially for advanced data analysis or predictive insights.
   - Details of MCP integration are pending user clarification.
+
+- **Opportunity Data Integration**:
+  - Combine historical contract data with current opportunity data from SAM.gov using their API.
+  - Implement API connectivity to fetch live contract opportunities for a complete view of past and future business potential.
+  - Include SBA's SUBNet data (https://subnet.sba.gov/) to identify subcontracting opportunities that can support capability identification and competitor analysis.
+  - Create a unified data model that links historical performance with current opportunities to enable better strategic decision-making.
+  - Use AI tools to analyze patterns between historical awards and new opportunities to identify high-probability targets.
+  - Integrate with additional commercial data sources when available:
+    - GovWin IQ (Deltek) for enhanced market intelligence and opportunity tracking
+    - Bloomberg Government for additional contract insights and analytics
+  - Leverage data from the SBA's Directory of Federal Government Prime Contractors with Subcontracting Plans to identify prime contractors obligated to subcontract with small businesses.
+  - Utilize the USASpending.gov API to access subaward data and identify active subcontracting relationships and networks.
 
 ## Potential Improvements
 - Add pagination or lazy loading to the DataFrame to handle large datasets more efficiently.
 - Enhance visualizations with interactive features (e.g., tooltips, drill-downs).
 - Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
 - Optimize database queries further if performance issues arise with larger datasets.
+- Expand opportunity data sources to include other government procurement portals for comprehensive coverage.
 
 ## Database Optimization
 - **Tables**:

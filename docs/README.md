@@ -4,7 +4,7 @@
 
 ### Overview
 
-The **USAspending.gov Data Explorer** is a Streamlit-based web application designed to analyze and visualize federal spending data from the `awards_slim_cleaned` table in a SQLite database. The app provides users with the ability to filter, query, and visualize federal contract data, enabling actionable insights for business development and capture management.
+The **USAspending.gov Data Explorer** is a Streamlit-based web application designed to analyze and visualize federal spending data from the `awards_slim_cleaned` table in a PostgreSQL database (migrated from SQLite). The app provides users with the ability to filter, query, and visualize federal contract data, enabling actionable insights for business development and capture management. The ultimate goal is to combine historical contract data with current opportunity data from sources like SAM.gov and SBA's SUBNet to provide a comprehensive view for strategic business development.
 
 ### Features
 
@@ -18,6 +18,7 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Top NAICS codes by award actions and obligation amount
   - Top funding offices, sub-agencies, and awarding agencies statistics
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations.
+- **Planned Opportunity Data Integration**: Future integration with SAM.gov API and SBA's SUBNet to combine historical contract data with current opportunities for comprehensive business intelligence.
 
 ### Scripts and Their Purpose
 
@@ -27,15 +28,19 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 #### **Data Preparation and Transformation**
 
-- **`create_awards_slim_table.py`**: Creates the `awards_slim` table by extracting and transforming relevant data from the source database.
-- **`data_transformation.py`**: Cleans and transforms the data in the `awards_slim` table, creating the `awards_slim_cleaned` table. Includes precomputing filter values and aggregating quarterly data for visualizations.
-- **`data_cleansing_in_db.py`**: Cleans specific columns in the database, such as replacing blanks with default values and applying title case transformations.
-- **`remove_duplicates_db.py`**: Removes duplicate rows from the `awards_slim` table and recreates indexes for optimized performance.
+- **`data_cleansing.py`**: Cleans and transforms the raw data, creating the `awards_slim_cleaned` table with proper data types and formatting.
+- **`data_preprocessing_for_app_performance.py`**: Prepares data for optimal app performance by creating filter values tables, precomputing dependencies, and aggregating data for visualizations.
 
 #### **Database Management**
 
-- **`create_sql_indexes.py`**: Creates indexes on frequently filtered columns and a composite index for improved query performance.
+- **`db_config.py`**: Centralized database configuration that manages connections to PostgreSQL with SQLite fallback.
 - **`db_check.py`**: Provides utilities to inspect the database schema and verify the presence of specific tables or columns.
+
+#### **Data Migration**
+
+- **`migrate_to_postgres.py`**: Migrates data from SQLite to PostgreSQL database with proper schema conversion.
+- **`simplified_migrate_to_postgres.py`**: Simplified version focusing on migrating just the raw awards table.
+- **`reset_postgres_database.py`**: Utility to reset the PostgreSQL database for a clean migration.
 
 #### **Data Loading**
 
@@ -58,7 +63,9 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   ```bash
   pip install -r requirements.txt
   ```
-- **Database**: SQLite database (`usaspending_historical.db`) with preloaded data.
+- **Databases**: 
+  - PostgreSQL database for primary storage and query performance
+  - SQLite database (`usaspending_historical.db`) as fallback if PostgreSQL is unavailable
 
 ### How to Run
 
@@ -79,12 +86,15 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 2. **Prepare the Database**:
 
-   - Run the data preparation scripts in the following order:
-     1. `create_awards_slim_table.py`
-     2. `data_cleansing_in_db.py`
-     3. `remove_duplicates_db.py`
-     4. `data_transformation.py`
-     5. `create_sql_indexes.py`
+   - Set up PostgreSQL database (recommended for performance):
+     1. Create a PostgreSQL database named 'usaspending'
+     2. Run `simplified_migrate_to_postgres.py` to transfer raw data
+     3. Run `data_cleansing.py` to clean data in PostgreSQL
+     4. Run `data_preprocessing_for_app_performance.py` to create optimized tables
+   
+   - Alternatively, use the existing SQLite database:
+     1. Ensure `usaspending_historical.db` is in the correct location
+     2. The application will fall back to SQLite if PostgreSQL is unavailable
 
 3. **Start the Application**:
 
@@ -98,6 +108,11 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 ### Future Enhancements
 
+- **Opportunity Data Integration**: 
+  - Connect to SAM.gov API for live contract opportunities
+  - Integrate SBA's SUBNet data for subcontracting opportunities
+  - Create unified view of historical and future opportunities
+  
 - **Capture Profile Generation**: Generate Word documents with contract details and AI-generated narratives.
 - **Model Context Protocol (MCP) Integration**: Enhance the app with advanced data analysis and predictive insights.
 - **Improved Visualizations**: Add interactive features like tooltips and drill-downs.
