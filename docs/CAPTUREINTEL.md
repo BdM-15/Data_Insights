@@ -1,7 +1,7 @@
 # CAPTUREINTEL.md
 
 ## Purpose
-To maximize the value of the 297 data elements, this document outlines a structured approach tailored to the needs of business development (identifying opportunities and building customer relationships) and capture management (winning specific contracts).
+To maximize the value of the 297 data elements, this document outlines a structured approach tailored to the needs of business development (identifying opportunities and building customer relationships) and capture management (winning specific contracts). The ultimate goal is to create comprehensive, AI-powered Capture Profiles that synthesize intelligence from multiple sources to support strategic decision-making and proposal development.
 
 ## High-Level Vision
 - **Data Filtering and Segmentation**: 

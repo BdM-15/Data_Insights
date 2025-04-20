@@ -4,7 +4,7 @@
 
 ### Overview
 
-The **USAspending.gov Data Explorer** is a Streamlit-based web application designed to analyze and visualize federal spending data from the `awards_slim_cleaned` table in a SQLite database. The app provides users with the ability to filter, query, and visualize federal contract data, enabling actionable insights for business development and capture management.
+The **USAspending.gov Data Explorer** is a Streamlit-based web application designed to analyze and visualize federal spending data from PostgreSQL (migrated from SQLite for improved performance). The app provides users with the ability to filter, query, and visualize federal contract data, enabling actionable insights for business development and capture management. The ultimate goal is to create comprehensive Capture Profiles that synthesize data from multiple sources and leverage AI tools to support strategic decision-making in federal contracting.
 
 ### Features
 
@@ -18,6 +18,8 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Top NAICS codes by award actions and obligation amount
   - Top funding offices, sub-agencies, and awarding agencies statistics
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations.
+- **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights.
+- **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making.
 
 ### Scripts and Their Purpose
 
@@ -36,6 +38,7 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 - **`create_sql_indexes.py`**: Creates indexes on frequently filtered columns and a composite index for improved query performance.
 - **`db_check.py`**: Provides utilities to inspect the database schema and verify the presence of specific tables or columns.
+- **`sqlite_to_postgresql_migration.py`**: Migrates data from SQLite to PostgreSQL for improved performance with large datasets.
 
 #### **Data Loading**
 
@@ -58,7 +61,8 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   ```bash
   pip install -r requirements.txt
   ```
-- **Database**: SQLite database (`usaspending_historical.db`) with preloaded data.
+- **Database**: PostgreSQL database (migrated from SQLite) with preloaded data.
+- **PostgreSQL**: PostgreSQL 14 or higher must be installed and configured.
 
 ### How to Run
 
@@ -79,12 +83,14 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 2. **Prepare the Database**:
 
+   - Ensure PostgreSQL is installed and running
    - Run the data preparation scripts in the following order:
-     1. `create_awards_slim_table.py`
-     2. `data_cleansing_in_db.py`
-     3. `remove_duplicates_db.py`
-     4. `data_transformation.py`
-     5. `create_sql_indexes.py`
+     1. `sqlite_to_postgresql_migration.py` (if migrating from an existing SQLite database)
+     2. `create_awards_slim_table.py`
+     3. `data_cleansing_in_db.py`
+     4. `remove_duplicates_db.py`
+     5. `data_transformation.py`
+     6. `create_sql_indexes.py`
 
 3. **Start the Application**:
 
@@ -98,10 +104,28 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 ### Future Enhancements
 
-- **Capture Profile Generation**: Generate Word documents with contract details and AI-generated narratives.
-- **Model Context Protocol (MCP) Integration**: Enhance the app with advanced data analysis and predictive insights.
-- **Improved Visualizations**: Add interactive features like tooltips and drill-downs.
-- **Pagination**: Implement lazy loading for large datasets.
+- **Comprehensive Capture Profile Generation**:
+  - Create polished, strategic Capture Profiles that synthesize all AI tool outputs
+  - Include executive summaries, competitive positioning, PWin calculations, and strategic recommendations
+  - Generate visual aids and proposal support materials automatically
+  - Implement ghosting strategies based on competitor intelligence
+- **Model Context Protocol (MCP) Integration**:
+  - Build AI tools for web intelligence gathering, document creation, visualization, and strategic analysis
+  - Integrate all AI capabilities through Microsoft VSCode Toolkit for local deployment
+- **External Data Source Integration**:
+  - Connect SAM.gov for future opportunity data
+  - Integrate SBA SubNet for subcontracting opportunities
+  - Implement GovWin IQ and Bloomberg Government APIs for market intelligence
+  - Create Salesforce REST API integration for CRM and capture management
+- **Enhanced Capture Management Workflows**:
+  - Automate opportunity feeds for pipeline building
+  - Develop sophisticated PWin scoring models
+  - Create teaming partner identification tools
+  - Build automated proposal development support
+- **UI/UX Improvements**:
+  - Add interactive visualization features
+  - Implement advanced filtering options
+  - Optimize for large datasets with pagination
 
 ### Contact
 

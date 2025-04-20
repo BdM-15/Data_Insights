@@ -19,6 +19,12 @@
 - **Fix fiscal quarter calculation for government fiscal year**:
   - ✅ Updated fiscal year and quarter calculation to correctly align with government fiscal year (Oct 1 - Sep 30)
   - ✅ Fixed NaN handling in quarterly data visualization
+- ~~**Database Migration to PostgreSQL**~~:
+  - ✅ Successfully migrated data from SQLite to PostgreSQL for improved performance with large datasets
+  - ✅ Updated connection strings and database queries in application code
+  - ✅ Optimized PostgreSQL configuration for high-performance operation
+  - ✅ Verified all functionality works correctly with the new database
+  - Status: ✅ Completed, with significant performance improvements observed
 
 ## Backlog
 
@@ -55,6 +61,12 @@
       - Add document storage for historical analysis and trend identification
       - Implement privacy-preserving measures to ensure compliance with terms of service
       - Build integration with VS Code to enable quick reference during document creation
+    - **Document Creator/Editor Agent**:
+      - Build AI agent to create and update multiple document types (Word, Excel, CSV, PowerPoint)
+      - Implement template library for different document types (capture profiles, briefings, proposals)
+      - Develop context-aware document generation based on analyzed data
+      - Create export capabilities for different formats and styling options
+      - Build integration with other AI agents for seamless workflow
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
 
 - **Implement "Enhanced Capture Profile Generator"**:
@@ -68,7 +80,40 @@
     - Use `python-docx` to assemble the complete document with proper formatting and branding
     - Add export capabilities for different formats (DOCX, PDF)
     - Ensure all processing remains local for privacy
-  - Status: Planned, to be developed after MCP tools are functional, as it represents the end-state deliverable
+    - Create executive summary section that synthesizes key findings from all AI tools
+    - Implement competitive positioning analysis based on Web Intelligence tool outputs
+    - Build probability of win calculation using multi-factor scoring from all sources
+    - Add strategic recommendation section generated from Analysis and Reasoning tool
+    - Include automated generation of visual aids and supporting materials for proposal teams
+  - Status: Planned, to be developed after MCP tools are functional, as it represents the end-state deliverable that consolidates all AI capabilities
+
+- **External Data Source Integration**:
+
+  - Sub-tasks:
+    - **SAM.gov Integration**:
+      - Develop API connector for SAM.gov to access future opportunity data
+      - Create data pipeline for combining historical with future opportunity data
+      - Implement filtering and search capabilities for SAM.gov opportunities
+    - **SBA SubNet Integration**:
+      - Build connector for SBA's SubNet to access subcontracting opportunities
+      - Implement data processing for potential teaming partner identification
+      - Create visualization of subcontracting opportunities by industry and agency
+    - **GovWin IQ API Integration**:
+      - Develop secure API key management for GovWin IQ access
+      - Create data pipeline for pre-RFP intelligence and teaming partners
+      - Build integration with opportunity qualification workflows
+      - Implement agency insights visualization from GovWin data
+    - **Bloomberg Government API Integration**:
+      - Develop secure API key management for BGov access
+      - Create data pipeline for financial insights and legislative tracking
+      - Build subcontractor data integration for teaming opportunities
+      - Implement visualization of agency spending trends from BGov data
+    - **Salesforce REST API Integration**:
+      - Create bidirectional sync between data platform and Salesforce CRM
+      - Develop automated opportunity feeds into Salesforce
+      - Build contact intelligence integration for relationship management
+      - Implement capture management workflow automation
+  - Status: Planned, to be developed in parallel with MCP tools for comprehensive data solution
 
 - **Add advanced filtering**:
   - Implement keyword search for contract descriptions.
@@ -94,13 +139,33 @@
   - Develop and integrate Visualization Tool with the main application
   - Create VS Code integrated Chatbot for award data analysis
   - Build Capability Identifier for competitive analysis
+  - Implement Web Intelligence Scraper for market research
+  - Develop Document Creator/Editor Agent for multi-format outputs
   - Status: Planned, first priority to establish the foundation for advanced features.
-- **Milestone 3: Enhanced Capture Profile Generator**:
+- **Milestone 3: External Data Source Integration**:
+  - Integrate SAM.gov API for future opportunity data
+  - Connect SBA SubNet for subcontracting opportunities
+  - Implement GovWin IQ and Bloomberg Government API integrations
+  - Create Salesforce REST API connector for CRM integration
+  - Status: Planned, to be developed in parallel with MCP tools.
+- **Milestone 4: Enhanced Capture Management**:
+  - Implement pipeline building with automated opportunity feeds
+  - Develop opportunity qualification with PWin scoring models
+  - Create teaming partner identification and management
+  - Build competitive analysis with visualization dashboards
+  - Implement proposal development automation
+  - Status: Planned, to be developed after data source integration.
+- **Milestone 5: Enhanced Capture Profile Generator**:
   - Implement a comprehensive profile generator that leverages all MCP tools
   - Create document generation with AI-assisted narratives and integrated visualizations
   - Build export capabilities for proposal and business development teams
-  - Status: Planned, to be developed after MCP tools as the end-state deliverable.
-- **Milestone 4: Advanced Features and Optimization**:
+  - Develop executive summary with synthesized intelligence from all sources
+  - Implement PWin calculation using multi-factor analysis from all tools
+  - Create strategic recommendation sections from Analysis and Reasoning tool
+  - Build automated visual aids generation for proposal support
+  - Generate ghosting strategies based on competitor intelligence
+  - Status: Planned, to be developed after MCP tools as the true end-state deliverable.
+- **Milestone 6: Advanced Features and Optimization**:
   - Add advanced filtering and enhanced visualizations.
   - Optimize performance for large datasets.
   - Status: Planned.
