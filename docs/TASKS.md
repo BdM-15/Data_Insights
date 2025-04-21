@@ -25,6 +25,19 @@
   - ✅ Optimized PostgreSQL configuration for high-performance operation
   - ✅ Verified all functionality works correctly with the new database
   - Status: ✅ Completed, with significant performance improvements observed
+- ~~**Optimize Data Cleansing Process**~~:
+  - ✅ Completely redesigned data_cleansing.py using direct SQL transformations
+  - ✅ Reduced processing time from 3.5+ hours to under 12 minutes for 22 million records
+  - ✅ Achieved processing speeds of ~29,000 rows per second
+  - ✅ Removed 3.6 million duplicate records (16.58% of the original data)
+  - ✅ Fixed data type handling issues for proper data normalization
+  - Status: ✅ Completed with dramatic performance improvements
+- ~~**Fix filter dependencies JSON handling**~~:
+  - ✅ Fixed JSON handling in the `get_unique_values` function to properly handle both string JSON and parsed list types
+  - ✅ Resolved error: "the JSON object must be str, bytes or bytearray, not list" when selecting parent filter values
+  - ✅ Added robust error handling for JSON parse failures
+  - ✅ Improved sorting and deduplication of filter values
+  - Status: ✅ Completed, dependent filters now working correctly
 
 ## Backlog
 
@@ -68,6 +81,39 @@
       - Create export capabilities for different formats and styling options
       - Build integration with other AI agents for seamless workflow
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
+
+- **Implement Shipley Capture Milestone Mapping**:
+
+  - Sub-tasks:
+    - Create data model for Shipley milestone framework (0-3) in the database
+    - Develop milestone tracking dashboard with milestone-specific KPIs
+    - Implement automated data collection for milestone decision requirements
+    - Build milestone progression tracking and notification system
+    - Create milestone decision documentation tools
+    - Integrate advanced pricing analysis components:
+      - Historical price range analysis
+      - Pricing strategy percentile analysis
+      - Agency-specific pricing patterns analysis
+      - Competitor pricing analysis
+      - Price-to-win predictive modeling
+      - Cost structure analysis
+      - Best Value vs. LPTA prediction
+    - Design comparison views for competitive assessment at each milestone
+  - Status: Planned, high priority to enhance capture management capabilities
+
+- **Create Robust Data Dictionary**:
+
+  - Sub-tasks:
+    - Document all database tables, views, and their relationships
+    - Define each data field with descriptions, data types, and business context
+    - Map data fields to their source systems and transformation logic
+    - Create metadata documentation for calculated fields and KPIs
+    - Document data refresh cycles and update processes
+    - Build searchable data dictionary interface within the application
+    - Implement data lineage tracking for complex derived fields
+    - Create user-friendly documentation for business users
+    - Establish data governance procedures for maintaining the dictionary
+  - Status: Planned, important foundational task for system documentation and user adoption
 
 - **Implement "Enhanced Capture Profile Generator"**:
 
