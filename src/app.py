@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 from datetime import datetime
 import json
 from dateutil.relativedelta import relativedelta
+import os
+from dotenv import load_dotenv
 
 # Set page config FIRST
 st.set_page_config(page_title="USAspending.gov Dashboard", layout="wide")
@@ -13,9 +15,19 @@ st.set_page_config(page_title="USAspending.gov Dashboard", layout="wide")
 # Increase the maximum number of cells for Pandas Styler
 pd.set_option('styler.render.max_elements', 1000000)
 
-# Connect to the SQLite database with a timeout
-db_path = r'sqlite:///C:\GitHub\Data_Insights\data\usaspending_historical.db?timeout=30'
-engine = create_engine(db_path, connect_args={'timeout': 30})
+# Load environment variables from .env file
+load_dotenv()
+
+# Get PostgreSQL connection details from environment variables
+pg_user = os.getenv('PG_USER')
+pg_password = os.getenv('PG_PASSWORD')
+pg_host = os.getenv('PG_HOST')
+pg_port = os.getenv('PG_PORT')
+pg_dbname = os.getenv('PG_DBNAME')
+
+# Connect to PostgreSQL database
+db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_dbname}"
+engine = create_engine(db_url)
 
 # Define the updated column mapping with human-readable names
 column_mapping = {
@@ -99,7 +111,14 @@ def get_unique_values(column_name, filter_conditions=None):
         else:
             # Deserialize JSON string back to list
             if not df.empty:
-                child_values = json.loads(df['child_values'].iloc[0])
+                # Handle both cases: string JSON and already parsed list
+                child_values = df['child_values'].iloc[0]
+                if isinstance(child_values, str):
+                    try:
+                        child_values = json.loads(child_values)
+                    except json.JSONDecodeError:
+                        st.error(f"Invalid JSON format for {child_column}")
+                        return []
                 unique_values = sorted(set(child_values))
             else:
                 unique_values = []
@@ -161,7 +180,7 @@ st.subheader("Data Source")
 st.markdown(
     """
     <div style="background-color: #2E2E2E; padding: 10px; border-radius: 5px; border: 1px solid #555;">
-        <p style="color: #FFFFFF; margin: 0;">Table: <strong>awards_slim_cleaned</strong></p>
+        <p style="color: #FFFFFF; margin: 0;">Table: <strong>usaprime_cleaned</strong></p>
     </div>
     """,
     unsafe_allow_html=True
@@ -232,8 +251,8 @@ with st.sidebar:
 # Build the SQL query dynamically with named placeholders
 # First check which columns actually exist in the database
 with engine.connect() as connection:
-    # Get the list of columns that actually exist in the awards_slim_cleaned table
-    existing_columns = pd.read_sql(text("PRAGMA table_info(awards_slim_cleaned)"), connection)['name'].tolist()
+    # Get the list of columns that actually exist in the usaprime_cleaned table
+    existing_columns = pd.read_sql(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'usaprime_cleaned'"), connection)['column_name'].tolist()
     
     # Filter required_columns to only include columns that exist in the table
     available_columns = [col for col in required_columns if col in existing_columns]
@@ -247,7 +266,7 @@ with engine.connect() as connection:
         print(f"Warning: The following columns were requested but don't exist in the database: {missing_columns}")
 
 # Use only the columns that exist in the database
-query = f"SELECT {', '.join(available_columns)} FROM awards_slim_cleaned WHERE action_date BETWEEN :start_date AND :end_date"
+query = f"SELECT {', '.join(available_columns)} FROM usaprime_cleaned WHERE action_date BETWEEN :start_date AND :end_date"
 # Add condition for period_of_performance_current_end_date
 query += " AND period_of_performance_current_end_date >= :start_date"
 query += " AND period_of_performance_current_end_date IS NOT NULL"
@@ -695,7 +714,7 @@ if st.button("Run Query"):
 # Note about database optimization
 st.markdown(
     """
-    **Performance Note**: The `awards_slim_cleaned` table has been optimized by selecting only necessary columns and adding indexes. 
+    **Performance Note**: The `usaprime_cleaned` table has been optimized by selecting only necessary columns and adding indexes. 
     Filter values and dependencies are precomputed in separate tables for faster loading.
     Quarterly data for visualizations is pre-aggregated in the `quarterly_data` table.
     Ensure indexes are created on columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, 
