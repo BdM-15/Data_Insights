@@ -1,195 +1,188 @@
 # CAPTUREINTEL.md
 
 ## Purpose
+
 To maximize the value of the 297 data elements, this document outlines a structured approach tailored to the needs of business development (identifying opportunities and building customer relationships) and capture management (winning specific contracts). The ultimate goal is to create comprehensive, AI-powered Capture Profiles that synthesize intelligence from multiple sources to support strategic decision-making and proposal development.
 
 ## High-Level Vision
-- **Data Filtering and Segmentation**: 
+
+- **Data Filtering and Segmentation**:
+
   - **Description**: Filter contracts by awarding agency (e.g., DoD and its sub-agencies like Army, Navy, Air Force). Narrow the scope using NAICS (North American Industry Classification System) and PSC (Product Service Code) codes relevant to logistics, operations, and technology solutions.
   - **Impact**: Ensures focus on relevant opportunities aligned with core competencies.
   - **Utility**: Helps prioritize contracts that match the contractor’s expertise.
 
-- **Trend Analysis**: 
+- **Trend Analysis**:
+
   - **Description**: Examine historical spending patterns to identify growth or decline in key areas. Assess shifts in competition levels and contracting strategies.
   - **Impact**: Provides insights into market dynamics and procurement trends.
   - **Utility**: Guides strategic planning and resource allocation.
 
-- **Competitor Analysis**: 
+- **Competitor Analysis**:
+
   - **Description**: Identify incumbent contractors, their contract wins, and market share. Analyze competitor strengths based on contract size, type, and geographic focus.
   - **Impact**: Highlights competitive positioning and potential gaps.
   - **Utility**: Informs differentiation strategies and teaming opportunities.
 
-- **Opportunity Identification**: 
+- **Opportunity Identification**:
+
   - **Description**: Pinpoint contracts nearing their end dates for recompete opportunities. Highlight sole-source or low-competition contracts that may open to broader bidding in the future.
   - **Impact**: Enables proactive capture planning.
   - **Utility**: Increases chances of winning recompetes and new opportunities.
 
-- **Geographic and Socioeconomic Analysis**: 
+- **Geographic and Socioeconomic Analysis**:
+
   - **Description**: Map contract performance locations to target high-activity regions. Evaluate set-aside contracts to identify niche opportunities or teaming possibilities.
   - **Impact**: Focuses efforts on high-value regions and socio-economic niches.
   - **Utility**: Enhances regional strategies and small business partnerships.
 
-- **Technology and Innovation Focus**: 
+- **Technology and Innovation Focus**:
   - **Description**: Analyze data elements related to emerging technologies to align with DoD investment trends.
   - **Impact**: Positions offerings in line with future priorities.
   - **Utility**: Drives innovation and R&D alignment.
 
 ## Competitive Edge
+
 These data elements give the contractor an edge by enabling:
+
 - **Proactive Opportunity Pursuit**: Early identification of recompetes and low-competition contracts.
 - **Data-Driven Proposals**: Tailored bids reflecting customer history and competitor weaknesses.
 - **Strategic Resource Allocation**: Focused efforts on high-value customers and regions.
 - **Market Differentiation**: Insights into trends (e.g., technology adoption) to outpace competitors.
 
 ## How They Create Insights and Drive Decisions
+
 Using these elements, the contractor can:
-- **Identify High-Value Opportunities**: 
+
+- **Identify High-Value Opportunities**:
+
   - **Description**: Filter by NAICS/PSC codes and award amounts to target lucrative contracts in logistics or technology solutions.
   - **Example**: A $50M contract for base operations maintenance expiring in 2025 becomes a priority target.
 
-- **Understand Customer Preferences**: 
+- **Understand Customer Preferences**:
+
   - **Description**: Analyze awarding offices and contract types to tailor proposals to DoD preferences (e.g., fixed-price vs. cost-reimbursement).
   - **Example**: Navy contracting offices favoring IDIQs prompt a focus on vehicle-based strategies.
 
-- **Anticipate Recompetes**: 
+- **Anticipate Recompetes**:
+
   - **Description**: Track end dates to position early for renewals.
   - **Example**: A logistics contract ending in 18 months triggers capture planning now.
 
-- **Analyze Competitors**: 
+- **Analyze Competitors**:
+
   - **Description**: Use contractor names and win patterns to benchmark against rivals.
   - **Example**: Competitor X dominates maintenance contracts at Fort Bragg, signaling a need for differentiation.
 
-- **Optimize Geography**: 
+- **Optimize Geography**:
+
   - **Description**: Map performance locations to concentrate efforts in high-activity areas.
   - **Example**: Heavy contract concentration in Virginia suggests a regional office expansion.
 
-- **Leverage Technology Trends**: 
+- **Leverage Technology Trends**:
   - **Description**: If keywords exist, align offerings with DoD tech priorities (e.g., cloud computing).
   - **Example**: Increased spending on cybersecurity contracts drives R&D investment in that area.
 
-## Top Data Elements and Rationale
-Below are the top 30 data elements from USAspending.gov’s historical data, grouped by category, with explanations of their impact and utility for business development and capture management. These elements were selected for their ability to provide comprehensive, actionable insights into contracts, customers, competitors, and market dynamics.
+## Call Plan Feature
 
-### Contract Identification and Description
-- **Award ID**: 
-  - **Impact**: Uniquely identifies each contract, enabling tracking and cross-referencing with other data sources.
-  - **Utility**: Ensures accurate contract identification and management.
-- **Parent Award ID**: 
-  - **Impact**: Links task orders to master contracts (e.g., IDIQs), revealing broader procurement frameworks.
-  - **Utility**: Provides context for task orders within larger contracts.
-- **NAICS Code**: 
-  - **Impact**: Classifies the industry (e.g., 5415 for IT services), allowing market segmentation.
-  - **Utility**: Focuses efforts on relevant industries.
-- **PSC Code**: 
-  - **Impact**: Specifies the service/product (e.g., J998 for maintenance), pinpointing relevant opportunities.
-  - **Utility**: Aligns offerings with specific procurement needs.
-- **Contract Description**: 
-  - **Impact**: Offers textual details about the work, searchable for keywords like “logistics” or “cybersecurity.”
-  - **Utility**: Enhances understanding of contract scope and requirements.
+A separate and distinct "Call Plan" feature will be developed to complement the Capture Profile, providing capture managers with structured planning tools for customer engagement. This feature will:
 
-### Financial Information
-- **Contract Award Amount**: 
-  - **Impact**: Shows the total contract value, indicating opportunity size.
-  - **Utility**: Prioritizes high-value contracts.
-- **Total Obligated Amount**: 
-  - **Impact**: Reflects committed funds, highlighting actual spending trends.
-  - **Utility**: Guides financial planning and forecasting.
-- **Current Contract Value**: 
-  - **Impact**: Accounts for modifications, showing real-time value.
-  - **Utility**: Ensures up-to-date financial insights.
-- **Potential Contract Value**: 
-  - **Impact**: For IDIQs, reveals maximum possible value, critical for long-term planning.
-  - **Utility**: Supports strategic decision-making.
+### Purpose
 
-### Timeline Information
-- **Award Date**: 
-  - **Impact**: Tracks when contracts are awarded, useful for trend analysis.
-  - **Utility**: Aligns with planning cycles.
-- **Period of Performance Start Date**: 
-  - **Impact**: Marks the work’s beginning, aligning with planning cycles.
-  - **Utility**: Ensures timely resource allocation.
-- **Period of Performance End Date**: 
-  - **Impact**: Signals recompete timing, key for capture preparation.
-  - **Utility**: Enables proactive pursuit of expiring contracts.
-- **Last Date to Order**: 
-  - **Impact**: For IDIQs, indicates the final order date, aiding opportunity forecasting.
-  - **Utility**: Guides long-term planning.
+To provide capture managers with comprehensive preparation materials before engaging with potential customers, ensuring productive and targeted discussions.
 
-### Contracting Agency Information
-- **Awarding Agency Code**: 
-  - **Impact**: Identifies the agency (e.g., DoD), focusing efforts on key customers.
-  - **Utility**: Directs business development to specific decision-makers.
-- **Awarding Sub-Agency Code**: 
-  - **Impact**: Specifies DoD components (e.g., Navy), refining targeting.
-  - **Utility**: Enhances customer segmentation.
-- **Contracting Office Code**: 
-  - **Impact**: Pinpoints the procuring office, critical for relationship-building.
-  - **Utility**: Strengthens customer engagement.
-- **Funding Agency Code**: 
-  - **Impact**: Reveals budget sources, offering insight into funding stability.
-  - **Utility**: Supports financial risk assessment.
+### Key Components
 
-### Contractor Information
-- **Contractor Name**: 
-  - **Impact**: Identifies competitors or potential partners.
-  - **Utility**: Aids in competitor analysis and teaming decisions.
-- **Contractor DUNS Number**: 
-  - **Impact**: Tracks contractor activity uniquely across contracts.
-  - **Utility**: Ensures accurate contractor identification.
-- **Parent Company Name**: 
-  - **Impact**: Shows corporate affiliations, revealing market consolidation.
-  - **Utility**: Informs market analysis.
-- **Contractor Address**: 
-  - **Impact**: Indicates competitor locations, informing geographic strategies.
-  - **Utility**: Guides regional planning.
+- **Stakeholder Identification**:
 
-### Competition and Procurement Information
-- **Type of Contract**: 
-  - **Impact**: Indicates pricing structure (e.g., fixed-price), guiding proposal strategies.
-  - **Utility**: Shapes pricing and bidding approaches.
-- **Extent Competed**: 
-  - **Impact**: Shows competition level (e.g., full and open), assessing market entry barriers.
-  - **Utility**: Identifies less contested opportunities.
-- **Number of Offers Received**: 
-  - **Impact**: Gauges bidder interest, indicating competitiveness.
-  - **Utility**: Refines competitive strategies.
-- **Set-Aside Type**: 
-  - **Impact**: Highlights reserved contracts (e.g., small business), identifying niche opportunities.
-  - **Utility**: Supports socio-economic partnerships.
-- **Solicitation Procedures**: 
-  - **Impact**: Reveals procurement methods (e.g., negotiated), shaping capture approaches.
-  - **Utility**: Guides proposal development.
+  - **Description**: Automatically extract key personnel from contracts, including contracting officers, technical representatives, and program managers.
+  - **Impact**: Ensures outreach to decision-makers and influencers.
+  - **Utility**: Creates a contact map for effective relationship management.
 
-### Performance Information
-- **Place of Performance State**: 
-  - **Impact**: Shows work location, guiding regional focus.
-  - **Utility**: Aligns business efforts with contract activity hubs.
-- **Place of Performance Zip Code**: 
-  - **Impact**: Provides granular location data (e.g., specific bases), enhancing targeting.
-  - **Utility**: Refines geographic strategies.
-- **Principal Place of Performance**: 
-  - **Impact**: Specifies primary site, vital for logistics planning.
-  - **Utility**: Supports operational planning.
+- **Agency/Office Intelligence**:
 
-### Additional Insights
-- **Contract Type**: 
-  - **Impact**: Indicates vehicle type, affecting competition dynamics.
-  - **Utility**: Shapes capture strategies.
-- **Award Type**: 
-  - **Impact**: Clarifies if it’s a standalone or vehicle-based award, refining pursuit tactics.
-  - **Utility**: Guides opportunity assessment.
-- **Subcontracting Plan Requirements**: 
-  - **Impact**: Signals subcontracting needs, opening teaming possibilities.
-  - **Utility**: Enhances partnership opportunities.
-- **Small Business Credit**: 
-  - **Impact**: Tracks socio-economic goals, relevant for partnerships.
-  - **Utility**: Supports compliance and teaming.
-- **Technology Keywords or Categories**: 
-  - **Impact**: Highlights tech focus (e.g., AI), aligning with innovation trends.
-  - **Utility**: Drives R&D and proposal alignment.
+  - **Description**: Compile recent news, budget information, and strategic priorities for the target agency or office.
+  - **Impact**: Provides context for conversations and demonstrates understanding of customer challenges.
+  - **Utility**: Enables more informed and relevant discussions.
 
-## Why These Elements Are the Most Impactful
+- **Pain Points Analysis**:
+
+  - **Description**: Identify potential challenges based on contract history, modifications, and performance patterns.
+  - **Impact**: Positions the contractor as a problem-solver rather than just a service provider.
+  - **Utility**: Guides conversation toward value-added solutions.
+
+- **Relationship History**:
+
+  - **Description**: Document past interactions, contract performance, and relationship status with the agency.
+  - **Impact**: Provides continuity in customer engagement.
+  - **Utility**: Prevents repetitive conversations and builds on previous interactions.
+
+- **Talking Points and Questions**:
+
+  - **Description**: Suggest targeted discussion topics and questions based on contract history and agency priorities.
+  - **Impact**: Ensures productive meetings with clear objectives.
+  - **Utility**: Increases likelihood of gathering valuable information.
+
+- **Competitive Intelligence**:
+
+  - **Description**: Summarize incumbent and competitor relationships with the target agency.
+  - **Impact**: Helps position against competitors.
+  - **Utility**: Informs differentiation strategies.
+
+- **Follow-up Actions**:
+  - **Description**: Template for documenting agreed actions, new information, and next steps.
+  - **Impact**: Ensures accountability and continuity.
+  - **Utility**: Supports systematic relationship development.
+
+### Integration with Data Sources
+
+The Call Plan will leverage both USAspending.gov data and external sources:
+
+- Contract data will provide factual information about procurement history and key stakeholders
+- News APIs will gather recent agency developments and announcements
+- Congressional budget information will offer insights into funding priorities
+- Agency strategic plans will align conversations with customer objectives
+
+### Implementation Approach
+
+The Call Plan feature will be implemented as a separate workflow that can be initiated after a Capture Profile is generated, allowing capture managers to prepare for specific customer engagements with targeted intelligence.
+
+## Subaward Data Integration
+
+### Purpose
+
+To enhance competitive intelligence and relationship mapping by incorporating subaward data from USAspending.gov, providing visibility into prime-sub relationships across the federal contracting landscape.
+
+### Implementation Approach
+
+- **Data Source**: Subaward data will be extracted from USAspending.gov's API or bulk download files
+- **Data Integration**: Subaward records will be joined with prime award data using award IDs as the linking field
+- **Database Design**: A new `subawards` table will be created and related to the existing awards data
+
+### Key Benefits
+
+- **Relationship Mapping**: Identify which primes frequently partner with which subcontractors
+- **Capability Gap Analysis**: Detect potential capability gaps by analyzing subcontracted work
+- **Teaming Opportunity Identification**: Discover potential teaming partners based on complementary capabilities
+- **Competitive Intelligence**: Understand competitor relationships and partnership strategies
+- **Small Business Compliance**: Track small business subcontracting patterns and compliance with goals
+
+### Impact on Existing Features
+
+The integration of subaward data will enhance several existing components:
+
+- **Competitor Analysis**: Will now include subcontractor relationships
+- **Opportunity Identification**: Will consider teaming potential based on subcontracting patterns
+- **Market Differentiation**: Will leverage insights into how competitors structure their teams
+
+## Data Dictionary
+
+The following data dictionary provides detailed information about key data elements used in the Data Insights platform. This comprehensive reference is designed to help both new and experienced users understand the data elements, their sources, typical values, and their strategic significance for business development and capture management.
+
+## Data Elements for Business Intelligence and Why These Elements Are the Most Impactful
+
 These data elements are the most impactful because they collectively provide a holistic view of the federal contracting landscape:
+
 - **Customer Insights**: Agency and office codes reveal who is spending and where, enabling targeted outreach.
 - **Market Dynamics**: Financial, competition, and timeline data uncover spending trends and opportunity timing.
 - **Competitor Positioning**: Contractor details expose rival strengths and weaknesses.
@@ -198,4 +191,574 @@ These data elements are the most impactful because they collectively provide a h
 
 Their historical nature amplifies their value, allowing trend analysis over time—e.g., rising DoD investments in cybersecurity or shifts toward competitive procurements.
 
+### Contract Identification Elements
 
+- **Award ID (award_id_piid)**:
+
+  - **Description**: Unique contract identifier assigned by the awarding agency.
+  - **Impact**: Enables precise tracking of specific contracts across systems.
+  - **Utility**: Serves as primary reference for connecting related contract documents and activities.
+
+- **Parent Award ID (parent_award_id_piid)**:
+
+  - **Description**: ID of the parent contract for task/delivery orders.
+  - **Impact**: Reveals relationships between master contracts and task orders.
+  - **Utility**: Identifies master contracts (IDIQs, BPAs) to understand broader procurement vehicles.
+
+- **NAICS Code (naics_code)**:
+
+  - **Description**: North American Industry Classification System code categorizing the industry.
+  - **Impact**: Classifies contracts by industrial sector and business activity.
+  - **Utility**: Filters opportunities by relevant industries aligned with core capabilities.
+
+- **NAICS Description (naics_description)**:
+
+  - **Description**: Text description of the NAICS code.
+  - **Impact**: Provides clear understanding of the industrial categorization.
+  - **Utility**: Helps understand the nature of work without having to look up NAICS codes.
+
+- **PSC Code (product_or_service_code)**:
+
+  - **Description**: Product or Service Code categorizing the contract.
+  - **Impact**: Classifies contracts by specific products or services.
+  - **Utility**: Narrows focus to specific types of services or products of interest.
+
+- **PSC Description (product_or_service_code_description)**:
+
+  - **Description**: Text description of the PSC code.
+  - **Impact**: Clarifies the exact nature of contracted products/services.
+  - **Utility**: Enables understanding of specific products/services without having to look up PSC codes.
+
+- **Contract Description (transaction_description)**:
+
+  - **Description**: Narrative description of the contracted work.
+  - **Impact**: Provides insight into the specific work being performed.
+  - **Utility**: Allows evaluation of relevance and scope of contracts for capture targeting.
+
+- **Prime Award Description (prime_award_base_transaction_description)**:
+  - **Description**: Description of the base award for task orders.
+  - **Impact**: Contextualizes individual task orders within their parent vehicle.
+  - **Utility**: Helps understand the broader scope of the parent vehicle.
+
+### Financial Information Elements
+
+- **Obligation Amount (federal_action_obligation)**:
+
+  - **Description**: Funds obligated by the specific action.
+  - **Impact**: Shows immediate funding commitments for specific actions.
+  - **Utility**: Helps assess the value of individual contract actions.
+
+- **Total Obligated Amount (total_dollars_obligated)**:
+
+  - **Description**: Cumulative funds obligated to date.
+  - **Impact**: Reveals actual spending against potential contract value.
+  - **Utility**: Allows evaluation of total spending on contracts to date.
+
+- **Potential Value (potential_total_value_of_award)**:
+
+  - **Description**: Maximum potential value including all options.
+  - **Impact**: Indicates the full financial scope of an opportunity.
+  - **Utility**: Helps understand total opportunity size including all option periods.
+
+- **Total Disbursed (total_outlayed_amount_for_overall_award)**:
+  - **Description**: Actual funds paid to contractor.
+  - **Impact**: Shows execution rate of contracts.
+  - **Utility**: Enables comparison of spending rate to obligations to identify slow-moving contracts.
+
+### Timeline Information Elements
+
+- **Award Date (action_date)**:
+
+  - **Description**: Date the contract action was signed.
+  - **Impact**: Establishes the official start of contract obligations.
+  - **Utility**: Helps track award timing patterns by agency.
+
+- **Start Date (period_of_performance_start_date)**:
+
+  - **Description**: Date work begins.
+  - **Impact**: Marks the beginning of performance obligations.
+  - **Utility**: Aids in planning resource allocation and tracking contract timelines.
+
+- **End Date (period_of_performance_current_end_date)**:
+
+  - **Description**: Current scheduled completion date.
+  - **Impact**: Defines the current contractual end date.
+  - **Utility**: Helps identify recompete opportunities and track contract durations.
+
+- **Potential End Date (period_of_performance_potential_end_date)**:
+
+  - **Description**: Final end date if all options exercised.
+  - **Impact**: Shows the maximum possible contract duration.
+  - **Utility**: Enables understanding of full potential duration of contracts.
+
+- **Ordering End Date (ordering_period_end_date)**:
+
+  - **Description**: Last date orders can be placed on IDIQs.
+  - **Impact**: Defines the window of opportunity for task orders.
+  - **Utility**: Helps track remaining ordering period on ID/IQ contracts.
+
+- **Fiscal Year (action_date_fiscal_year)**:
+  - **Description**: Federal fiscal year of the action.
+  - **Impact**: Connects contract actions to budget cycles.
+  - **Utility**: Allows alignment of analysis with government budget cycles.
+
+### Contracting Agency Elements
+
+- **Awarding Agency (parent_award_agency_name)**:
+
+  - **Description**: Top-level agency awarding the contract.
+  - **Impact**: Identifies the primary customer organization.
+  - **Utility**: Helps target business development efforts by agency.
+
+- **Awarding Sub-Agency (awarding_sub_agency_name)**:
+
+  - **Description**: Component of the awarding agency.
+  - **Impact**: Provides greater specificity about the customer organization.
+  - **Utility**: Enables focus of BD efforts on specific components with best fit.
+
+- **Contracting Office (awarding_office_name)**:
+
+  - **Description**: Office that executed the contract.
+  - **Impact**: Pinpoints the specific buying office.
+  - **Utility**: Facilitates building relationships with specific contracting offices.
+
+- **Funding Agency (funding_agency_name)**:
+
+  - **Description**: Agency providing the funds.
+  - **Impact**: Reveals the source of budget authority.
+  - **Utility**: Helps identify actual budget holders which may differ from awarding agency.
+
+- **Funding Sub-Agency (funding_sub_agency_name)**:
+
+  - **Description**: Component providing the funds.
+  - **Impact**: Identifies specific budget-holding components.
+  - **Utility**: Allows tracking of which components are spending on relevant services.
+
+- **Funding Office (funding_office_name)**:
+  - **Description**: Office controlling the budget.
+  - **Impact**: Pinpoints program offices with spending authority.
+  - **Utility**: Helps target relationship-building with program offices controlling budgets.
+
+### Contractor Information Elements
+
+- **Awardee (recipient_name)**:
+
+  - **Description**: Name of the contract recipient.
+  - **Impact**: Identifies the primary contractor.
+  - **Utility**: Helps identify competitors and potential partners.
+
+- **Awardee UEI (recipient_uei)**:
+
+  - **Description**: Unique Entity Identifier of awardee.
+  - **Impact**: Provides consistent identification across contracts.
+  - **Utility**: Enables tracking of contractor activity across contracts with consistent identifier.
+
+- **Awardee Parent Name (recipient_parent_name)**:
+
+  - **Description**: Ultimate parent company of awardee.
+  - **Impact**: Reveals corporate ownership structures.
+  - **Utility**: Helps understand corporate relationships and market consolidation.
+
+- **Awardee Parent UEI (recipient_parent_uei)**:
+  - **Description**: UEI of ultimate parent company.
+  - **Impact**: Links subsidiaries to parent organizations.
+  - **Utility**: Enables tracking of all subsidiaries of major competitors.
+
+### Competition and Procurement Elements
+
+- **Solicitation Date (solicitation_date)**:
+
+  - **Description**: Date RFP was issued.
+  - **Impact**: Marks the start of the competitive process.
+  - **Utility**: Helps analyze procurement timelines by agency.
+
+- **Solicitation Procedures (solicitation_procedures)**:
+
+  - **Description**: Method used to solicit offers.
+  - **Impact**: Reveals contracting office's approach to competition.
+  - **Utility**: Enables understanding of agency procurement preferences.
+
+- **Extent Competed (extent_competed)**:
+
+  - **Description**: Level of competition.
+  - **Impact**: Indicates the competitive landscape.
+  - **Utility**: Helps identify competitive landscape and sole-source opportunities.
+
+- **Set-Aside Type (type_of_set_aside)**:
+
+  - **Description**: Socioeconomic reservation.
+  - **Impact**: Shows small business priorities.
+  - **Utility**: Enables identification of set-aside opportunities and potential partners.
+
+- **Fair Opportunity Limited Sources (fair_opportunity_limited_sources)**:
+
+  - **Description**: Reason for limiting competition on IDIQs.
+  - **Impact**: Explains exceptions to full competition.
+  - **Utility**: Helps understand patterns in limited competition.
+
+- **Other Than Full and Open Competition (other_than_full_and_open_competition)**:
+
+  - **Description**: Reason for not competing fully.
+  - **Impact**: Justifies sole-source or limited competition.
+  - **Utility**: Enables identification of non-competitive award patterns.
+
+- **Offers Received (number_of_offers_received)**:
+
+  - **Description**: Number of bids received.
+  - **Impact**: Quantifies competitive interest.
+  - **Utility**: Helps gauge competitive interest and identify less contested opportunities.
+
+- **Subcontracting Plan (subcontracting_plan)**:
+  - **Description**: Type of subcontracting plan.
+  - **Impact**: Indicates small business participation requirements.
+  - **Utility**: Helps identify teaming opportunities and small business requirements.
+
+### Contract Terms and Types Elements
+
+- **Contract Type (type_of_contract_pricing)**:
+
+  - **Description**: Pricing structure of the contract.
+  - **Impact**: Defines financial risk allocation.
+  - **Utility**: Enables understanding of pricing preferences by agency and program.
+
+- **Action Type (action_type)**:
+
+  - **Description**: Nature of the transaction.
+  - **Impact**: Distinguishes new awards from modifications.
+  - **Utility**: Helps distinguish between new awards and modifications.
+
+- **Award Type (award_type)**:
+
+  - **Description**: Contract vehicle type.
+  - **Impact**: Indicates preferred procurement methods.
+  - **Utility**: Enables understanding of agency preferences for contract vehicles.
+
+- **IDC Type (type_of_idc)**:
+
+  - **Description**: Type of indefinite delivery contract.
+  - **Impact**: Defines the structure of indefinite delivery contracts.
+  - **Utility**: Helps identify patterns in IDIQ structures by agency.
+
+- **IDV Type (idv_type)**:
+
+  - **Description**: Type of indefinite delivery vehicle.
+  - **Impact**: Categorizes contract vehicles.
+  - **Utility**: Enables understanding of which contract vehicles agencies prefer.
+
+- **Undefinitized Action (undefinitized_action)**:
+
+  - **Description**: Whether action is undefinitized.
+  - **Impact**: Indicates contracts with terms still being negotiated.
+  - **Utility**: Helps identify UCAs which may indicate urgent requirements.
+
+- **Multiple or Single Award (multiple_or_single_award_idv)**:
+
+  - **Description**: Whether IDIQ is single or multiple award.
+  - **Impact**: Defines competitive landscape for task orders.
+  - **Utility**: Enables assessment of competitive landscape of IDIQ vehicles.
+
+- **Multi-Year Contract (multi_year_contract)**:
+  - **Description**: Whether contract spans multiple years.
+  - **Impact**: Indicates long-term commitments.
+  - **Utility**: Helps identify stable, long-term funding commitments.
+
+### Performance Information Elements
+
+- **Place of Performance City (primary_place_of_performance_city_name)**:
+
+  - **Description**: City where work is performed.
+  - **Impact**: Locates contract activities geographically.
+  - **Utility**: Helps identify geographic patterns and facility requirements.
+
+- **Place of Performance State (primary_place_of_performance_state_code)**:
+
+  - **Description**: State where work is performed.
+  - **Impact**: Identifies regions with contract activity.
+  - **Utility**: Enables focus of BD efforts in high-activity regions.
+
+- **Government Furnished Property (government_furnished_property)**:
+
+  - **Description**: Whether GFP/GFE is provided.
+  - **Impact**: Indicates government resource contributions.
+  - **Utility**: Helps understand resource requirements and constraints.
+
+- **DoD Program Description (dod_acquisition_program_description)**:
+
+  - **Description**: Associated DoD program.
+  - **Impact**: Links contracts to major initiatives.
+  - **Utility**: Enables linking of contracts to major programs for strategic targeting.
+
+- **Program Acronym (program_acronym)**:
+  - **Description**: Acronym of the program.
+  - **Impact**: Provides shorthand reference for programs.
+  - **Utility**: Helps quickly identify associated programs.
+
+### Reference Information Elements
+
+- **Modification No (modification_number)**:
+
+  - **Description**: Modification identifier.
+  - **Impact**: Uniquely identifies contract changes.
+  - **Utility**: Enables tracking of contract changes and history.
+
+- **USAspending Permalink (usaspending_permalink)**:
+  - **Description**: Direct link to award on USAspending.gov.
+  - **Impact**: Provides access to official source data.
+  - **Utility**: Enables access to full contract details for deeper research.
+
+### Subaward Elements (Planned Addition)
+
+- **Subaward ID**:
+
+  - **Description**: Unique identifier for the subaward.
+  - **Impact**: Enables tracking of subcontracts.
+  - **Utility**: Helps track specific subcontracts across contracts.
+
+- **Subaward Amount**:
+
+  - **Description**: Dollar value of the subaward.
+  - **Impact**: Quantifies work allocation to subcontractors.
+  - **Utility**: Enables assessment of size and scope of subcontracted work.
+
+- **Subawardee Name**:
+
+  - **Description**: Name of the subcontractor.
+  - **Impact**: Identifies companies in supporting roles.
+  - **Utility**: Helps identify potential teaming partners or competitors at sub level.
+
+- **Subawardee UEI**:
+
+  - **Description**: Unique Entity Identifier of subcontractor.
+  - **Impact**: Provides consistent identification of subcontractors.
+  - **Utility**: Enables tracking of subcontractor participation across multiple primes.
+
+- **Subaward Description**:
+
+  - **Description**: Description of subcontracted work.
+  - **Impact**: Explains division of labor on contracts.
+  - **Utility**: Helps understand work division between prime and subs.
+
+- **Subaward Date**:
+
+  - **Description**: Date subaward was issued.
+  - **Impact**: Establishes timeline of team formation.
+  - **Utility**: Enables tracking of timing of subcontract awards relative to prime award.
+
+- **Principal Place of Performance**:
+
+  - **Description**: Location where subcontracted work is performed.
+  - **Impact**: Maps geographical distribution of contract work.
+  - **Utility**: Helps map geographic distribution of work across team.
+
+- **Subcontractor Size**:
+
+  - **Description**: Business size of subcontractor.
+  - **Impact**: Indicates small business utilization.
+  - **Utility**: Enables analysis of small business utilization patterns.
+
+- **Subcontractor Type**:
+  - **Description**: Socioeconomic category of subcontractor.
+  - **Impact**: Shows diversity in teaming arrangements.
+  - **Utility**: Helps identify diversity in teaming arrangements.
+
+## Shipley Capture Milestone Mapping
+
+### Purpose
+
+To integrate Shipley capture process methodology (milestones 0, 1, 2, 3) into the Data Insights platform, automating the collection and analysis of key data points required at each milestone to accelerate the decision-making process and improve win rates.
+
+### Capture Milestone Framework
+
+The Shipley process defines four key milestone decision points in the capture process:
+
+- **Milestone 0 - Opportunity Identification**:
+
+  - **Description**: Initial identification and qualification of potential opportunities.
+  - **Decision Point**: Determine whether to invest resources in pursuing the opportunity.
+  - **Data Automation Potential**: 70-80% of required information can be automated.
+
+- **Milestone 1 - Opportunity Assessment/Validation**:
+
+  - **Description**: Detailed opportunity analysis and initial capture strategy development.
+  - **Decision Point**: Commit resources to pursue the opportunity.
+  - **Data Automation Potential**: 50-60% of required information can be automated.
+
+- **Milestone 2 - Bid/No-Bid Decision**:
+
+  - **Description**: Comprehensive competitive assessment and capture plan execution.
+  - **Decision Point**: Final decision to bid and allocate proposal resources.
+  - **Data Automation Potential**: 30-40% of required information can be automated.
+
+- **Milestone 3 - Proposal Strategy Validation**:
+  - **Description**: Review of proposal strategy against capture intelligence.
+  - **Decision Point**: Confirm alignment of proposal with capture strategy.
+  - **Data Automation Potential**: 20-30% of required information can be automated.
+
+### Key Data Points by Milestone
+
+#### Milestone 0 (Opportunity Identification) Data Points
+
+- **Automated Data Elements**:
+
+  - Contract value range (estimated from historical data)
+  - Agency and sub-agency identification
+  - NAICS/PSC classification
+  - Set-aside status
+  - Incumbent identification (when available)
+  - Anticipated competition level
+  - Estimated release timeline
+  - Historical spending patterns
+  - Geographic requirements
+
+- **Manual Assessment Elements**:
+  - Strategic alignment with company goals
+  - Initial resource availability assessment
+  - Preliminary customer relationship status
+
+#### Milestone 1 (Opportunity Assessment) Data Points
+
+- **Automated Data Elements**:
+
+  - Historical award values for similar contracts
+  - Customer budget analysis
+  - Incumbent performance metrics
+  - Agency spending trends
+  - Contract vehicle analysis
+  - Competitive landscape assessment
+  - Teaming partner suggestions based on historical partnerships
+  - Price-to-win range analysis
+  - Historical evaluation criteria analysis
+
+- **Manual Assessment Elements**:
+  - Solution approach feasibility
+  - Customer relationship strength
+  - Initial differentiation strategy
+  - Risk assessment
+
+#### Milestone 2 (Bid/No-Bid Decision) Data Points
+
+- **Automated Data Elements**:
+
+  - Detailed competitor analysis
+  - Price-to-win refined model
+  - Historical win patterns at target agency
+  - Customer preference analysis (contract types, evaluation criteria)
+  - Small business utilization patterns
+  - Technical requirement categorization
+  - Similar opportunity outcome analysis
+
+- **Manual Assessment Elements**:
+  - Solution differentiation finalization
+  - Win strategy development
+  - Competitive positioning
+  - Teaming agreements status
+  - Price-to-win strategy
+
+#### Milestone 3 (Proposal Strategy Validation) Data Points
+
+- **Automated Data Elements**:
+
+  - Final price-to-win analysis
+  - Latest competitive intelligence
+  - Agency recent award patterns
+  - Final compliance checklist
+  - Evaluation criteria weighting analysis
+
+- **Manual Assessment Elements**:
+  - Solution approach final review
+  - Theme and discriminator alignment
+  - Proposal resource allocation
+  - Senior management review inputs
+
+### Advanced Pricing Analysis Integration
+
+#### Purpose
+
+To provide data-driven pricing intelligence that moves beyond simple historical price analysis to predictive modeling that supports strategic pricing decisions at each capture milestone.
+
+#### Key Components
+
+- **Historical Price Range Analysis**:
+
+  - **Description**: Automated analysis of historical contract values for similar work (by NAICS, PSC, agency, and size).
+  - **Implementation**: Statistical analysis of contract award values in target segments.
+  - **Milestone Utility**: Provides baseline price ranges for Milestone 0 and 1 decisions.
+
+- **Pricing Strategy Percentile Analysis**:
+
+  - **Description**: Places potential contract pricing strategies on a percentile scale based on historical awards.
+  - **Implementation**: Distribution analysis of contract values with percentile mapping.
+  - **Milestone Utility**: Supports Milestone 1 and 2 pricing strategy development.
+
+- **Agency-Specific Pricing Patterns**:
+
+  - **Description**: Analyzes pricing trends specific to target agencies and contracting offices.
+  - **Implementation**: Comparative analysis of award values across agencies for similar work.
+  - **Milestone Utility**: Refines pricing strategy for Milestone 2 decisions.
+
+- **Competitor Pricing Analysis**:
+
+  - **Description**: Examines pricing patterns of specific competitors in target market segments.
+  - **Implementation**: Competitor-focused historical price analysis.
+  - **Milestone Utility**: Enhances competitive positioning for Milestone 2 and 3.
+
+- **Price-to-Win Predictive Model**:
+
+  - **Description**: Combines multiple data factors to predict optimal pricing range.
+  - **Implementation**: Machine learning model incorporating historical wins, competition levels, and agency preferences.
+  - **Milestone Utility**: Provides sophisticated pricing guidance for Milestone 2 and 3.
+
+- **Cost Structure Analysis**:
+
+  - **Description**: Estimates likely cost structures based on contract requirements.
+  - **Implementation**: Pattern recognition of cost elements across similar contracts.
+  - **Milestone Utility**: Supports pricing strategy development at Milestone 2.
+
+- **Best Value vs. LPTA Prediction**:
+  - **Description**: Predicts agency's likely source selection approach based on historical patterns.
+  - **Implementation**: Classification algorithm for source selection method prediction.
+  - **Milestone Utility**: Guides pricing strategy for Milestone 1 and 2.
+
+### Implementation Approach
+
+The Shipley Capture Milestone Mapping will be implemented as a structured workflow within the Data Insights platform:
+
+1. **Milestone Framework Definition**:
+
+   - Configure system to recognize and track opportunities by Shipley milestone stage
+   - Define data requirements for each milestone
+
+2. **Data Integration and Automation**:
+
+   - Map existing data elements to milestone decision requirements
+   - Develop new data collection capabilities for milestone-specific needs
+   - Create automated data acquisition pathways for each milestone
+
+3. **Decision Support Dashboards**:
+
+   - Design milestone-specific dashboards with relevant KPIs
+   - Create visualization tools for critical decision factors
+   - Develop comparison views for competitive assessment
+
+4. **Pricing Intelligence Engine**:
+
+   - Implement statistical models for pricing analysis
+   - Develop machine learning algorithms for predictive pricing
+   - Create visualization tools for pricing strategy development
+
+5. **Milestone Progression Tracking**:
+   - Develop capability to track opportunities through milestone progression
+   - Create notification system for milestone review triggers
+   - Implement milestone decision documentation tools
+
+### Expected Impact on Win Rates
+
+By implementing the Shipley Capture Milestone Mapping with advanced pricing intelligence:
+
+- **Opportunity Qualification**: 20% reduction in pursuit of non-winnable opportunities
+- **Decision Velocity**: 30% reduction in time required for milestone decisions
+- **Pricing Optimization**: 15% improvement in pricing strategy effectiveness
+- **Resource Allocation**: 25% more efficient allocation of capture and proposal resources
+- **Win Rate Improvement**: 10-15% overall improvement in contract win rates
+
+The system will enable a more data-driven, consistent approach to capture management while reducing the manual effort required to compile decision-making information at each milestone.
