@@ -82,6 +82,40 @@
       - Build integration with other AI agents for seamless workflow
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
 
+## Model Context Protocol (MCP) Tools Integration for Streamlit App
+
+- **Add MCP Integration to Streamlit Interface**:
+
+  - Sub-tasks:
+    - **Create MCP Tools Tab in Streamlit**:
+      - Implement a multi-tab interface in the Streamlit app
+      - Create a dedicated "AI Tools" tab for MCP integration
+      - Design a clean UI for tool selection and interaction
+      - Implement authentication/security for AI tool access
+    - **Chatbot Interface Integration**:
+      - Embed a conversational interface in the Streamlit sidebar
+      - Connect the interface to local Ollama runtime
+      - Implement context-aware prompting with active filters and selected data
+      - Add conversation history management
+      - Create specialized prompts for contract analysis questions
+    - **Capture Profile Generator UI**:
+      - Add "Generate Capture Profile" button to query results
+      - Create a form for capture profile customization options
+      - Implement progress indicator for document generation
+      - Add preview capability for generated profiles
+      - Include download options for different formats (DOCX, PDF)
+    - **Web Intelligence Integration**:
+      - Create a search interface for market intelligence gathering
+      - Implement entity selection (agencies, companies, technologies)
+      - Add visualization for intelligence mapping
+      - Create a digest generator for web intelligence findings
+    - **Visualization Tool Enhancement**:
+      - Add AI-assisted visualization recommendation engine
+      - Implement natural language query-to-visualization converter
+      - Create custom visualization templates for federal contracting
+      - Add annotation and sharing capabilities
+  - Status: Planned, to be implemented after core MCP tools are developed
+
 - **Implement Shipley Capture Milestone Mapping**:
 
   - Sub-tasks:
@@ -173,6 +207,26 @@
   - Explore lazy loading or pagination for large datasets.
   - Review database indexes for further optimization.
   - Status: Planned.
+
+## GitHub Copilot Integration
+
+- **Implement GitHub Copilot Custom Tools**:
+  - ✅ Created a `.copilot` directory structure for custom tool definitions
+  - ✅ Developed eight specialized tool configurations for project-specific assistance:
+    - Contract Analysis Tool: For analyzing federal contracts from USAspending.gov data
+    - Capture Management Tool: For capture management and business development code
+    - PostgreSQL Query Generator: For optimized database queries
+    - Streamlit Visualization Helper: For advanced Streamlit/Plotly visualizations
+    - MCP Integration Tool: For Model Context Protocol integration templates
+    - Shipley Milestone Framework Helper: For implementing capture milestone tracking
+    - Data Pipeline Integration Tool: For external data source integration
+    - Capture Profile Generator Tool: For AI-assisted capture profile creation
+  - Sub-tasks:
+    - Implement supporting Python functions referenced by the Copilot tools
+    - Create test cases to validate tool functionality
+    - Document usage patterns for each tool
+    - Refine tool definitions based on usage feedback
+  - Status: ✅ Tool framework created, supporting functions pending implementation
 
 ## Milestones
 
