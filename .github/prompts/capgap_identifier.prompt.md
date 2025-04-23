@@ -22,4 +22,4 @@ Ensure your response is thorough, well-organized, and actionable.
 - **Supports Teaming Decisions**: Provides insights for forming strategic partnerships.
 - **Actionable Insights**: Encourages recommendations to enhance capability alignment.
 
-This prompt can be integrated into workflows for business development, proposal preparation, and strategic planning to ensure a robust capability assessment process.Add prompt contents...
+This prompt can be integrated into workflows for business development, proposal preparation, and strategic planning to ensure a robust capability assessment process.

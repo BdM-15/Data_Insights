@@ -19,6 +19,23 @@
 - **Fix fiscal quarter calculation for government fiscal year**:
   - ✅ Updated fiscal year and quarter calculation to correctly align with government fiscal year (Oct 1 - Sep 30)
   - ✅ Fixed NaN handling in quarterly data visualization
+- **Improve SAM.gov API Integration**:
+  - ✅ Implemented robust rate limiting with exponential backoff to handle API rate limits
+  - ✅ Added automatic retry mechanism with configurable maximum retries
+  - ✅ Enhanced error handling with specific error types (rate limit, connection, general)
+  - ✅ Implemented detailed logging with timestamps for debugging
+  - ✅ Created a daily request quota tracking system
+  - ✅ Added cache invalidation and session refresh mechanisms
+  - ✅ Enabled fetching of future opportunity data to align with project vision of combining historical contract data with upcoming opportunities
+  - Status: ✅ Completed. Script now works reliably with SAM.gov API rate limitations.
+- **Implement Automated Schema Migration for Data Sources**:
+  - ✅ Created dynamic schema detection and adaptation system for external data sources
+  - ✅ Implemented automatic column addition when source data formats change
+  - ✅ Added case-insensitive column matching to prevent duplication
+  - ✅ Fixed NATO NSPA data import to preserve original XML field names and formats
+  - ✅ Eliminated need for manual table recreation when data sources evolve
+  - ✅ Added detailed logging for schema changes to track format evolution
+  - Status: ✅ Completed. NATO NSPA importer now handles schema changes gracefully.
 - ~~**Database Migration to PostgreSQL**~~:
   - ✅ Successfully migrated data from SQLite to PostgreSQL for improved performance with large datasets
   - ✅ Updated connection strings and database queries in application code
@@ -194,6 +211,57 @@
       - Build contact intelligence integration for relationship management
       - Implement capture management workflow automation
   - Status: Planned, to be developed in parallel with MCP tools for comprehensive data solution
+
+- **Add Admin-Only Data Fetch Interface**:
+
+  - Sub-tasks:
+    - **Create Admin Authentication System**:
+      - Implement user identification via environment variable (ADMIN_USER_IDS)
+      - Add session-based authentication mechanism to Streamlit interface
+      - Create secure admin verification function
+    - **Build Admin Data Fetch Interface**:
+      - Add admin-only data fetch button to sidebar for authenticated users
+      - Create modal dialog with source selection options (SAM.gov, NATO, USAspending)
+      - Implement progress indicators for ongoing fetches
+      - Display fetch status and results summary
+    - **Add Logging and Monitoring**:
+      - Create detailed logs of data fetch operations
+      - Implement notification system for completed fetches
+      - Add error reporting with diagnostics
+  - Status: Planned, medium priority to provide convenient data refresh without exposing to all users
+
+- **Implement Strategic Default Dashboard**:
+
+  - Sub-tasks:
+    - **Create Multi-Tab Interface**:
+      - Develop a default "Strategic Overview" tab that loads automatically
+      - Implement dynamic visualization updates based on sidebar filters
+      - Create a professional, clean UI with expandable sections and tooltips
+    - **Develop Historical Contract Summary**:
+      - Visualize contract spending trends by fiscal quarter and year
+      - Create agency/sub-agency/office hierarchical drill-down visualizations
+      - Add top NAICS code analysis with descriptions and spending patterns
+    - **Build Contract Vehicle Analysis**:
+      - Implement pie charts for contract vehicle types (IDV, single/multiple award)
+      - Create distribution visualizations by agency and NAICS code
+      - Add timeline view of IDV expiration dates and remaining ceiling values
+    - **Create Geographic Visualization**:
+      - Implement interactive heat map of contract place of performance
+      - Show award density by state with drill-down capabilities
+      - Include filtering by NAICS, PSC, and agency
+    - **Add Competitive Landscape Analysis**:
+      - Create market share visualization for top contractors
+      - Show small business participation metrics
+      - Visualize competitor performance by NAICS code and agency
+    - **Implement Projected Spend Forecast**:
+      - Develop ML-based projection model for future spending
+      - Create 24-36 month forecast visualization with confidence intervals
+      - Show projected obligations by agency and NAICS code
+    - **Expiring Contracts Timeline**:
+      - Build interactive timeline of contracts expiring in next 6-24 months
+      - Include filtering by value threshold, NAICS, and agency
+      - Provide strategic opportunity assessment for each expiring contract
+  - Status: Planned, high priority to enhance business intelligence capabilities and provide immediate value on application launch
 
 - **Add advanced filtering**:
   - Implement keyword search for contract descriptions.

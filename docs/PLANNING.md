@@ -61,6 +61,23 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 ## Planned Features
 
+- **Strategic Default Dashboard**:
+
+  - Provide automatic strategic-level insights dashboard on app startup
+  - Display historical contract data summary and projected spend for next 24-36 months
+  - Include interactive visualizations including heatmaps, bar charts, and pie charts for:
+    - Top agencies, sub-agencies, and offices by award actions and obligations
+    - Top NAICS codes by award actions and obligations
+    - Contract vehicles distribution (IDV, single/multiple award) by agency
+    - Geographic distribution of contract awards (heatmap)
+    - Expiring contracts in the next 6-24 months (timeline view)
+    - Projected spend forecast based on historical trends
+    - Competitive landscape analysis
+    - Small business participation metrics
+  - Implement dynamic filtering with real-time visualization updates
+  - Add market share analysis for contractors within selected NAICS codes
+  - Include opportunity timeline showing contract expirations and projected solicitations
+
 - **Generate Capture Profile**:
 
   - Allow users to select a row in the DataFrame and generate a Word document ("Capture Profile") with contract details, analysis, and AI-generated narratives (e.g., win strategies for proposals).
@@ -111,6 +128,26 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Eliminated Python overhead by performing transformations directly in PostgreSQL
   - Removed 3.6 million duplicate records (16.58% of the original data)
   - Implemented proper type handling and data normalization in a single SQL operation
+- **SAM.gov Integration Improvements**:
+  - Implemented robust rate limiting with exponential backoff for API requests
+  - Added automatic retry mechanism with configurable maximum retries
+  - Enhanced error handling for rate limit, connection, and general errors
+  - Created detailed logging system with timestamps for troubleshooting
+  - Implemented daily request quota tracking to manage API usage limits
+  - Added cache invalidation and session refresh mechanisms
+  - Successfully enabled fetching of future opportunity data from SAM.gov, a critical step toward our vision of combining historical contract data with upcoming opportunities
+  - Established a foundation for the integrated data environment that will power capture management workflows
+  - Resolved HTTP 429 "Too Many Requests" errors with intelligent backoff strategy
+- **External Data Source Schema Handling Improvements**:
+  - Implemented automated schema migration system for external data sources
+  - Created dynamic schema detection that identifies new fields in data sources
+  - Added ability to automatically evolve database tables when source data formats change
+  - Preserved exact field names and formats from original data sources (XML, CSV, JSON)
+  - Implemented case-insensitive column matching to prevent field duplication
+  - Eliminated need for manual table deletion when data formats change
+  - Added automated logging of schema changes for tracking source data evolution
+  - Applied to NATO NSPA data source with immediate reliability improvements
+  - Prepared foundation for seamless integration of future data sources
 - **Tables**:
   - `awards_slim_cleaned`: Main table with contract data.
   - `filter_values_*`: Precomputed filter values for each column.
