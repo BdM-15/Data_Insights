@@ -16,6 +16,48 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 ## Architecture
 
+### Updated Modular Architecture
+
+The codebase has been restructured to follow a clean, modular approach with improved organization:
+
+```
+Data_Insights/
+├── config.py                     # Configuration settings (root level)
+├── app.py                        # Main Streamlit application entry point
+├── requirements.txt              # Dependencies
+├── .env                          # Environment variables (not in git)
+├── .env.example                  # Example environment variables
+├── data/                         # Data files
+├── docs/                         # Documentation
+├── logs/                         # Log files
+├── tests/                        # Unit tests
+└── src/                          # Source code
+    ├── backend/                  # Backend functionality
+    │   ├── core/                 # Core backend functionality
+    │   │   ├── database.py       # Database connection and utilities
+    │   │   ├── maintenance.py    # Database maintenance utilities
+    │   │   └── utils.py          # Common utilities
+    │   ├── data_processing/      # Data processing modules
+    │   │   ├── cleansing.py      # Data cleaning functions
+    │   │   ├── transformation.py # Data transformation
+    │   │   ├── import.py         # Data import utilities
+    │   │   └── migration.py      # Database migration utilities
+    │   ├── data_acquisition/     # Data acquisition modules
+    │   │   ├── sam_gov.py        # SAM.gov API integration
+    │   │   ├── nato_nspa.py      # NATO NSPA data acquisition
+    │   │   ├── usaspending.py    # USAspending.gov current data
+    │   │   └── usaspending_historical.py # USAspending.gov historical data
+    │   └── ai/                   # AI integration
+    │       └── mcp/              # Model Context Protocol integration
+    └── frontend/                 # Frontend UI functionality
+        ├── pages/                # Streamlit multipage components
+        ├── components/           # Reusable UI components
+        ├── visualizations/       # Visualization components
+        └── capture/              # Capture management features
+```
+
+### Component Architecture
+
 - **Frontend**: Streamlit for the web interface, providing a sidebar for filters, DataFrame displays, and Plotly visualizations. However, open to other suggestions for better performance and user experience.
 - **Backend**:
   - PostgreSQL database migrated from the original SQLite (`usaspending_historical.db`) for enhanced performance with large datasets
@@ -93,6 +135,36 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Create visualization and analytics tools for data-driven insights
   - Implement reasoning tool for strategic analysis of government contract data
 
+- **MCP Tools Integration for Streamlit App**:
+
+  - Create dedicated "AI Tools" tab with multi-tab interface in Streamlit
+  - Add conversational AI assistant embedded in the Streamlit sidebar
+  - Implement capture profile generation UI with customization options
+  - Create web intelligence dashboard for market intelligence gathering
+  - Add AI-assisted visualization recommendation engine
+  - Implement natural language query-to-visualization converter
+
+- **Implement Shipley Capture Milestone Mapping**:
+
+  - Create data model for Shipley milestone framework (0-3) in the database
+  - Develop milestone tracking dashboard with milestone-specific KPIs
+  - Implement automated data collection for milestone decision requirements
+  - Integrate advanced pricing analysis components:
+    - Historical price range analysis
+    - Pricing strategy percentile analysis
+    - Agency-specific pricing patterns analysis
+    - Competitor pricing analysis
+    - Price-to-win predictive modeling
+  - Design comparison views for competitive assessment at each milestone
+
+- **Create Robust Data Dictionary**:
+
+  - Document all database tables, views, and their relationships
+  - Define each data field with descriptions, data types, and business context
+  - Map data fields to their source systems and transformation logic
+  - Build searchable data dictionary interface within the application
+  - Implement data lineage tracking for complex derived fields
+
 - **External Data Source Integration**:
 
   - SAM.gov API integration for future opportunity data
@@ -100,6 +172,13 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - GovWin IQ API integration (with API key) for pre-RFP intelligence and teaming partners
   - Bloomberg Government API integration (with API key) for financial insights and subcontractor data
   - Salesforce REST API integration for capture management and CRM functionality
+
+- **Admin-Only Data Fetch Interface**:
+
+  - Create admin authentication system using environment variables
+  - Build data fetch interface with source selection options
+  - Implement progress indicators and status monitoring
+  - Add detailed logging and notification system
 
 - **Capture Management Enhancement**:
   - Pipeline building with automatic opportunity feeds into CRM systems
@@ -115,11 +194,68 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
 - Optimize database queries further if performance issues arise with larger datasets.
 
+## User Interface Enhancements
+
+### Multipage Application Structure
+
+- **Implement Streamlit Multipage Framework**:
+
+  - Leverage Streamlit's built-in multipage functionality by organizing content into distinct pages
+  - Create a dedicated `pages/` directory to house separate Python scripts for each section
+  - Support automatic sidebar navigation between application sections
+  - Ensure consistent styling and navigation experience across pages
+
+- **Logical Page Organization**:
+  - **Home/Dashboard**: Strategic overview dashboard with key metrics and insights
+  - **Data Explorer**: Advanced filtering and detailed contract data exploration
+  - **Visualizations**: Comprehensive visualization library with interactive elements
+  - **Capture Profiles**: Interface for generating and customizing capture profiles
+  - **AI Tools**: Access to AI-powered features via Model Context Protocol integration
+  - **Admin**: Administrative tools for data refresh and system maintenance (restricted access)
+
+### Tabbed Interface Components
+
+- **Implement Tabbed Content Organization**:
+
+  - Use `st.tabs` to organize related content within each page
+  - Apply consistent tab naming and organization patterns across the application
+  - Maintain optimal number of tabs per page (3-5) to prevent overwhelming users
+
+- **Strategic Tab Implementation**:
+  - **Visualization Tabs**: Separate different visualization types (timelines, charts, maps)
+  - **Analysis Tabs**: Group different analytical perspectives (financial, competitive, historical)
+  - **Configuration Tabs**: Organize advanced settings and customization options
+  - **Results Tabs**: Present query results in different formats (table, summary, dashboard)
+
+### Advanced Streamlit Features
+
+- **Session State Management**:
+
+  - Implement `st.session_state` to persist user selections between interactions
+  - Create memory-efficient caching for expensive data operations
+  - Enable cross-page data sharing while maintaining clean code separation
+
+- **Interactive Elements**:
+
+  - Add interactive callbacks for dynamic content updates without full page refreshes
+  - Implement progressive disclosure patterns for complex functionality
+  - Use tooltips and contextual help elements to improve usability
+
+- **Performance Optimizations**:
+
+  - Apply `@st.cache_data` and `@st.cache_resource` decorators for efficient data loading
+  - Implement lazy loading patterns for computationally expensive visualizations
+  - Optimize layout to minimize recomputation during user interaction
+
+- **Visual Enhancements**:
+  - Create custom header and footer components for consistent branding
+  - Implement animations for state changes and transitions
+  - Use consistent color schemes and visual hierarchy to improve information processing
+
 ## Database Optimization
 
 - **Database Migration**:
   - Migrated from SQLite to PostgreSQL for improved performance with large datasets
-  - Implemented using the `sqlite_to_postgresql_migration.py` script
   - Optimized PostgreSQL configuration for high-performance queries
 - **Data Cleansing Optimizations**:
   - Dramatically improved data cleansing performance using direct SQL transformations
@@ -148,12 +284,70 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Added automated logging of schema changes for tracking source data evolution
   - Applied to NATO NSPA data source with immediate reliability improvements
   - Prepared foundation for seamless integration of future data sources
-- **Tables**:
-  - `awards_slim_cleaned`: Main table with contract data.
-  - `filter_values_*`: Precomputed filter values for each column.
-  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency).
-  - `quarterly_data`: Pre-aggregated data for visualizations.
+- **PostgreSQL Tables**:
+  - `usaprime_cleaned`: Main table with contract data
+  - `filter_values_*`: Precomputed filter values for each column
+  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency)
+  - `quarterly_data`: Pre-aggregated data for visualizations
 - **Indexes**:
-  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`.
-  - Composite index: `idx_filter_composite` on frequently filtered columns.
+  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`
+  - Composite index: `idx_filter_composite` on frequently filtered columns
   - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+
+## Implementation Status
+
+### Completed Features
+- ✅ **Application Architecture**: Modular structure with clear separation of concerns
+- ✅ **PostgreSQL Integration**: Connection, queries, and data management
+- ✅ **Basic UI**: Streamlit interface with filtering and visualization
+- ✅ **Dashboard**: Strategic overview with metrics and charts
+- ✅ **Tabbed Interface**: Content organization with tabs for different views
+- ✅ **Multipage Structure**: Navigation between dedicated application pages
+
+### In Progress
+- 🔄 **Advanced Filtering**: Enhanced data filtering capabilities
+- 🔄 **Export Functionality**: CSV and Excel export for data tables
+
+### Pending
+- ⏱️ **AI Integration**: Local LLM inference with Ollama
+- ⏱️ **Capture Profile Generation**: AI-assisted document creation
+- ⏱️ **External Data Integration**: SAM.gov and other data sources
+
+## Architecture Updates
+
+### Streamlit Multipage Implementation
+The application now follows a modular structure with:
+- **Root Level**:
+  - `app.py`: Main entry point and home dashboard
+  - `config.py`: Centralized configuration management
+  - `.env`: Environment-specific configuration
+
+- **Source Code Structure**:
+  - `src/backend/core`: Core utilities for database and processing
+  - `src/frontend/pages`: Individual page implementations
+  - `src/frontend/components`: Reusable UI components
+  - `src/frontend/visualizations`: Chart generation functions
+
+### Component Organization
+- **Database Layer**: Abstracted through utility functions in `database.py`
+- **Configuration**: Environment variables centralized in `config.py`
+- **UI Components**: Modular components for filters, charts, and data display
+- **Visualization**: Dedicated functions for creating different chart types
+
+## Next Steps
+
+### Short Term
+1. Complete the filter implementation in the sidebar
+2. Implement the Data Explorer page with advanced filtering
+3. Create the Visualizations page with interactive charts
+
+### Medium Term
+1. Implement state persistence between pages
+2. Add export functionality for all data views
+3. Enhance visualizations with interactive features
+
+### Long Term
+1. Integrate local LLM inference with Ollama
+2. Implement capture profile generation
+3. Add external data integration (SAM.gov, etc.)
+4. Create AI agents using Model Context Protocol

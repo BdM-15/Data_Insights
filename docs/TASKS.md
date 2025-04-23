@@ -36,6 +36,22 @@
   - ✅ Eliminated need for manual table recreation when data sources evolve
   - ✅ Added detailed logging for schema changes to track format evolution
   - Status: ✅ Completed. NATO NSPA importer now handles schema changes gracefully.
+- **Reorganize Codebase Structure**:
+  - ✅ Implemented a clean, modular folder structure for better organization
+  - ✅ Created proper Python package hierarchy with **init**.py files
+  - ✅ Restructured backend functionality into logical modules:
+    - ✅ core: Database utilities and common functions
+    - ✅ data_processing: Data transformation and cleansing
+    - ✅ data_acquisition: Data fetching from external sources
+    - ✅ ai: AI integration components
+  - ✅ Organized frontend code into specialized directories:
+    - ✅ pages: Streamlit multipage components
+    - ✅ components: Reusable UI elements
+    - ✅ visualizations: Data visualization components
+    - ✅ capture: Capture management features
+  - ✅ Moved config.py to the root directory for easier access
+  - ✅ Updated documentation to reflect the new structure
+  - Status: ✅ Completed. Codebase now follows a clean, modular architecture.
 - ~~**Database Migration to PostgreSQL**~~:
   - ✅ Successfully migrated data from SQLite to PostgreSQL for improved performance with large datasets
   - ✅ Updated connection strings and database queries in application code
@@ -55,6 +71,18 @@
   - ✅ Added robust error handling for JSON parse failures
   - ✅ Improved sorting and deduplication of filter values
   - Status: ✅ Completed, dependent filters now working correctly
+- **Implement Streamlit Multipage Application Structure**:
+  - ✅ Redesigned application architecture with modular structure
+  - ✅ Created app.py as main entry point with dashboard functionality
+  - ✅ Implemented proper import structure for modules
+  - ✅ Set up navigation in sidebar with page references
+  - ✅ Established component organization (filters, charts, export)
+  - Status: **COMPLETE**
+- **Implement Tabbed Interface Components**:
+  - ✅ Added tabbed layouts to Strategic Dashboard (Overview, Trends, Opportunities)
+  - ✅ Created consistent styling across all tabs
+  - ✅ Implemented placeholders for content within tabs
+  - Status: **COMPLETE**
 
 ## Backlog
 
@@ -98,6 +126,106 @@
       - Create export capabilities for different formats and styling options
       - Build integration with other AI agents for seamless workflow
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
+
+- **Enhance User Interface**:
+  - Sub-tasks:
+    - Implement filter state persistence between sessions
+    - Add custom CSS for improved branding
+    - Create dynamic help tooltips for filters and charts
+  - Status: Planned, medium priority
+
+- **Complete Data Explorer Page**:
+  - Sub-tasks:
+    - Implement advanced filtering functionality
+    - Create detailed data table view with sorting/filtering
+    - Add export functionality for filtered data
+  - Status: Planned, high priority
+
+- **Implement Visualizations Page**:
+  - Sub-tasks:
+    - Create comprehensive visualization library
+    - Implement user customization options for charts
+    - Add interactive features (drill-down, tooltips)
+  - Status: Planned, medium priority
+
+- **Add AI Tools Integration**:
+  - Sub-tasks:
+    - Connect to Ollama API for local LLM inference
+    - Implement contract analysis features
+    - Create capture profile generation capability
+  - Status: Planned, medium priority
+
+## User Interface Enhancement Tasks
+
+- **Implement Streamlit Multipage Application Structure**:
+
+  - Sub-tasks:
+    - **Redesign Application Architecture**:
+      - Convert existing monolithic app.py into modular multipage structure
+      - Create a `pages/` directory with individual page scripts
+      - Implement homepage (app.py) as the strategic dashboard
+      - Create consistent navigation and state management across pages
+    - **Develop Page Components**:
+      - Create `data_explorer.py` for advanced filtering and query functionality
+      - Develop `visualizations.py` for comprehensive visualization library
+      - Implement `capture_profiles.py` for profile generation interface
+      - Build `ai_tools.py` for AI-powered features access
+      - Create `admin.py` for administrative functions (restricted access)
+    - **Create Shared Component Library**:
+      - Develop reusable filter components for consistent filtering across pages
+      - Create standardized visualization components
+      - Implement shared state management utilities
+      - Build consistent header/footer components
+    - **Ensure Cross-Page State Persistence**:
+      - Implement session state management for filter selections
+      - Create data caching strategy for query results
+      - Ensure visualization settings persist between page navigations
+  - Status: Planned, high priority to improve application organization and user experience
+
+- **Implement Tabbed Interface Components**:
+
+  - Sub-tasks:
+    - **Add Tabbed Layouts to Strategic Dashboard**:
+      - Create "Overview", "Trends", "Opportunities", and "Competitive Analysis" tabs
+      - Implement consistent styling across all tabs
+      - Ensure efficient data loading to minimize tab switching delays
+    - **Implement Tabbed Results View**:
+      - Create "Table View", "Summary View", and "Visual View" tabs for query results
+      - Ensure data is shared efficiently between tabs
+      - Implement consistent interaction patterns across tabs
+    - **Add Tabbed Visualization Library**:
+      - Organize visualizations by category (timeline, geographic, comparative, etc.)
+      - Create consistent control patterns across visualization tabs
+      - Implement cross-tab data sharing for consistent filtering
+    - **Develop Tabbed Configuration Interfaces**:
+      - Create logical groupings for configuration options
+      - Implement "Basic", "Advanced", and "Expert" settings tabs
+      - Add help content and guidance in each settings tab
+  - Status: Planned, medium priority to organize content within pages
+
+- **Implement Advanced Streamlit Features**:
+  - Sub-tasks:
+    - **Enhance Performance with Caching**:
+      - Implement `@st.cache_data` for database query results
+      - Add `@st.cache_resource` for database connections and model loading
+      - Create invalidation strategy for cached data
+    - **Add Interactive Callbacks**:
+      - Replace full-page refreshes with targeted component updates
+      - Implement progressive disclosure for complex forms
+      - Create dynamic filtering with instant feedback
+    - **Improve User Experience**:
+      - Add loading animations for long-running operations
+      - Implement tooltips and contextual help throughout the application
+      - Create guided workflows for complex tasks
+    - **Customize Visual Design**:
+      - Implement custom CSS for consistent branding
+      - Create dark/light mode toggle
+      - Add responsive design elements for different screen sizes
+    - **Implement Session State Management**:
+      - Create utilities for managing complex state across the application
+      - Implement state persistence between sessions
+      - Add user preference storage
+  - Status: Planned, medium priority to enhance overall application experience
 
 ## Model Context Protocol (MCP) Tools Integration for Streamlit App
 
@@ -337,3 +465,8 @@
   - Add advanced filtering and enhanced visualizations.
   - Optimize performance for large datasets.
   - Status: Planned.
+- **Milestone 7: UI/UX Enhancement**:
+  - Implement multipage application structure
+  - Add tabbed interfaces for content organization
+  - Integrate advanced Streamlit features for improved user experience
+  - Status: Planned, to be implemented after core functionality is stable.

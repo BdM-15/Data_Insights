@@ -3,29 +3,56 @@ Database utility module for PostgreSQL operations.
 Provides connection management and common database operations.
 """
 
+import os
+import sys
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 from sqlalchemy import create_engine, Table, Column, MetaData, String, text
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
-import config
+# Add the project root to the path to ensure imports work correctly
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
+
+# Import from project config
+from config import get_db_config
 
 logger = logging.getLogger(__name__)
 
-def get_engine():
+def get_db_engine():
     """
     Create and return a SQLAlchemy engine for PostgreSQL connection.
+    Uses the configuration from config.py.
+    
+    Returns:
+        SQLAlchemy engine instance for database connection
+    """
+    try:
+        # Get PostgreSQL connection details from config
+        pg_config = get_db_config()
+        pg_user = pg_config.get("PG_USER")
+        pg_password = pg_config.get("PG_PASSWORD")
+        pg_host = pg_config.get("PG_HOST")
+        pg_port = pg_config.get("PG_PORT")
+        pg_dbname = pg_config.get("PG_DBNAME")
+        
+        # Create connection string and engine
+        db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_dbname}"
+        engine = create_engine(db_url)
+        
+        return engine
+    except Exception as e:
+        logger.error(f"Failed to create database engine: {str(e)}")
+        raise
+
+def get_engine():
+    """
+    Legacy function for backward compatibility.
     
     Returns:
         SQLAlchemy engine object
     """
-    try:
-        engine = create_engine(config.DATABASE_URL)
-        return engine
-    except SQLAlchemyError as e:
-        logger.error(f"Failed to create database engine: {str(e)}")
-        raise
+    return get_db_engine()
 
 def ensure_table_exists(table_name: str, df: Optional[pd.DataFrame] = None) -> bool:
     """
@@ -372,4 +399,80 @@ def handle_schema_changes(df: pd.DataFrame, table_name: str) -> bool:
     except SQLAlchemyError as e:
         logger.error(f"Database error during schema change detection: {str(e)}")
         print(f"Database error during schema change detection: {str(e)}")
+        return False
+
+def execute_query(query: str, params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
+    """
+    Execute a SQL query and return the results as a pandas DataFrame.
+    
+    Args:
+        query: SQL query to execute
+        params: Query parameters (optional)
+        
+    Returns:
+        pandas DataFrame with query results
+    """
+    engine = get_db_engine()
+    try:
+        with engine.connect() as connection:
+            return pd.read_sql(text(query), connection, params=params)
+    except Exception as e:
+        logger.error(f"Query execution failed: {str(e)}")
+        logger.error(f"Query: {query}")
+        logger.error(f"Params: {params}")
+        raise
+
+def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
+    """
+    Get the schema information for a table.
+    
+    Args:
+        table_name: Name of the table
+        
+    Returns:
+        List of dictionaries with column information
+    """
+    query = """
+    SELECT 
+        column_name, 
+        data_type, 
+        character_maximum_length, 
+        is_nullable
+    FROM 
+        information_schema.columns
+    WHERE 
+        table_name = :table_name
+    ORDER BY 
+        ordinal_position
+    """
+    
+    try:
+        df = execute_query(query, {'table_name': table_name})
+        return df.to_dict('records')
+    except Exception as e:
+        logger.error(f"Failed to get schema for table {table_name}: {str(e)}")
+        return []
+
+def table_exists(table_name: str) -> bool:
+    """
+    Check if a table exists in the database.
+    
+    Args:
+        table_name: Name of the table to check
+        
+    Returns:
+        True if the table exists, False otherwise
+    """
+    query = """
+    SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = :table_name
+    )
+    """
+    
+    try:
+        result = execute_query(query, {'table_name': table_name})
+        return result.iloc[0, 0]
+    except Exception as e:
+        logger.error(f"Failed to check if table {table_name} exists: {str(e)}")
         return False
