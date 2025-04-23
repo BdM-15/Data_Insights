@@ -762,3 +762,260 @@ By implementing the Shipley Capture Milestone Mapping with advanced pricing inte
 - **Win Rate Improvement**: 10-15% overall improvement in contract win rates
 
 The system will enable a more data-driven, consistent approach to capture management while reducing the manual effort required to compile decision-making information at each milestone.
+
+## Strategic Default Dashboard Specification
+
+### Purpose
+
+To provide users with immediate, actionable business intelligence upon application launch, presenting a comprehensive view of historical contract data and projected spending over the next 24-36 months without requiring manual query execution.
+
+### Key Components
+
+#### 1. Dashboard Layout and Organization
+
+- **Multi-Tab Interface**:
+  - Strategic Overview tab (loads by default)
+  - Detailed Analysis tab (accessible after overview)
+  - Expiring Contracts tab (focused on recompete opportunities)
+  - Interactive Exploration tab (for custom visualization creation)
+
+- **Dynamic Layout**:
+  - Responsive design that adapts to screen size
+  - Expandable/collapsible sections for each visualization group
+  - Information hierarchy with most critical insights displayed prominently
+
+#### 2. Historical Spending Analysis
+
+- **Agency Hierarchy Visualizations**:
+  - **Top Agencies by Award Actions and Obligations**:
+    - Bar charts showing top 10-15 awarding agencies by both award count and total obligation amount
+    - Year-over-year comparison option
+    - Tooltips providing additional context (% change, average award size)
+  
+  - **Sub-Agency Breakdown**:
+    - Hierarchical treemap displaying sub-agency spending within parent agencies
+    - Color intensity indicating spending concentration
+    - Click-through capability to drill down to individual sub-agencies
+  
+  - **Funding Office Analysis**:
+    - Bar charts of top funding offices by award count and obligation amount
+    - Office growth/decline indicators showing trend direction
+    - Filtering capability by parent agency and sub-agency
+
+- **NAICS and PSC Code Analysis**:
+  - **Top NAICS Codes**:
+    - Bar charts of top 20 NAICS codes by award actions and obligations
+    - NAICS description inclusion for immediate understanding
+    - Sparkline trend indicators showing spending trajectory
+  
+  - **NAICS Code Clustering**:
+    - Group visualization of related NAICS codes to identify broader industry trends
+    - Year-over-year growth indicators for industry segments
+    - Filtering by first 2-3 digits for broader category analysis
+  
+  - **PSC Code Spending**:
+    - Bar/pie charts showing product vs. service distribution
+    - Top PSC categories by obligation
+    - PSC trend analysis over selected timeframe
+
+#### 3. Contract Vehicle Analysis
+
+- **Vehicle Type Distribution**:
+  - **Award Type Breakdown**:
+    - Pie chart showing distribution of contract types (Definitive Contracts, Purchase Orders, IDVs, etc.)
+    - Trend charts showing shifts in vehicle usage over time
+    - Agency preference analysis for vehicle types
+  
+  - **IDV Analysis**:
+    - Pie charts for single vs. multiple award IDVs
+    - Bar charts of top IDVs by total obligations
+    - Remaining ceiling visualization for active IDVs
+  
+  - **Contract Type Analysis**:
+    - Distribution of pricing types (Firm-Fixed Price, Cost-Plus, T&M, etc.)
+    - Agency preferences for contract types
+    - Correlation between contract type and award size
+
+#### 4. Competitive Landscape Analysis
+
+- **Contractor Market Share**:
+  - **Top Contractors**:
+    - Bar charts of top 20 contractors by award actions and obligations
+    - Market share pie chart with focus on top 10 contractors
+    - Year-over-year change indicators
+  
+  - **Small Business Participation**:
+    - Small vs. large business award distribution
+    - Set-aside category breakdown (8(a), SDVOSB, HUBZone, etc.)
+    - Small business participation trends over time
+  
+  - **Competitive Landscape by NAICS**:
+    - Heatmap of contractor activity across top NAICS codes
+    - Market concentration analysis by NAICS
+    - Identification of dominant players in each NAICS segment
+
+#### 5. Geographic Distribution Analysis
+
+- **Performance Location Heatmap**:
+  - **National Map**:
+    - Heatmap of award actions and obligations by state
+    - Color intensity reflecting concentration of contract activity
+    - Tooltips showing state-specific metrics (total awards, obligations, top contractors)
+  
+  - **Regional Breakdown**:
+    - Bar charts of top metropolitan areas by contract activity
+    - Regional concentration analysis
+    - Military installation overlay for defense contracts
+
+#### 6. Future Opportunity Analysis
+
+- **Expiring Contract Timeline**:
+  - **6-24 Month Expiration View**:
+    - Timeline visualization of contracts expiring in next 6-24 months
+    - Size indicators reflecting contract value
+    - Color coding by agency/NAICS
+    - Filtering by minimum value threshold
+  
+  - **Recompete Opportunity Table**:
+    - Sortable table of expiring high-value contracts
+    - Incumbent information and performance history
+    - Estimated recompete dates and projected values
+  
+  - **Incumbent Performance**:
+    - Performance metrics for expiring contracts where available
+    - Modification frequency analysis as performance indicator
+    - Contract growth analysis (original vs. current value)
+
+- **Projected Spending Forecast**:
+  - **24-36 Month Projection**:
+    - Line graph showing projected spending based on historical patterns
+    - Agency-specific forecasts
+    - NAICS-specific spending projections
+    - Confidence intervals for projections
+
+#### 7. SAM.gov Opportunity Insights
+
+- **Current Opportunity Analysis**:
+  - **Open Solicitations Overview**:
+    - Real-time tracking of open solicitations, RFIs, and Sources Sought notices from SAM.gov
+    - Agency-based distribution visualization using vibrant blue heatmaps
+    - Timeline view of upcoming deadlines with urgency indicators
+  
+  - **Opportunity Trend Analysis**:
+    - Bar charts showing procurement trends by agency and NAICS code
+    - Growth indicators for emerging procurement categories
+    - Seasonal patterns visualization with electric blue highlight for peak periods
+  
+  - **Capability Alignment Assessment**:
+    - AI-powered matching of opportunity requirements with historical contract performance
+    - Capability gap analysis showing strengths and improvement areas 
+    - Heat-scored visualization of capability alignment with color intensity indicating match level
+  
+  - **Competitive Positioning**:
+    - Market analysis for targeted opportunities based on historical contract data
+    - Identification of potential competitors for specific opportunities
+    - Visualization of competitive landscape with blue-toned positioning map
+
+- **Opportunity Pipeline**:
+  - **Procurement Forecast Integration**:
+    - Long-range view of anticipated solicitations from agency procurement forecasts
+    - Timeline visualization with confidence scoring for likelihood and timing
+    - Estimated value projections based on historical similar procurements
+  
+  - **Opportunity Qualification Dashboard**:
+    - Automated scoring of opportunities against company capabilities
+    - Probability of win assessment based on historical performance in similar contracts
+    - Strategic fit indicators with vibrant blue highlighting for ideal matches
+
+#### 8. Enhanced Visualizations
+
+- **Heatmaps**:
+  - Contract award density by month/year
+  - Agency/NAICS code correlations
+  - Competitive density across contract vehicles
+
+- **Interactive Bubble Charts**:
+  - Contract distribution by size, competition level, and agency
+  - Multi-dimensional analysis of market segments
+  - Dynamic filtering capabilities
+
+- **Animated Time Series**:
+  - Spending pattern evolution over multiple years
+  - Market share shifts among top contractors
+  - Agency priority changes visualized over time
+
+- **Network Graphs**:
+  - Prime-subcontractor relationship mapping
+  - Agency-contractor network visualization
+  - Contract vehicle relationship mapping
+
+#### 9. Filter Integration and Dynamic Updates
+
+- **Sidebar Filter Application**:
+  - All dashboard visualizations should update dynamically based on sidebar filters
+  - Filter state should persist across dashboard tabs
+  - Quick filter presets for common scenarios (e.g., DoD Only, Civilian Only, IT Contracts)
+
+- **Cross-Filtering**:
+  - Enable filtering by clicking elements within visualizations
+  - Synchronized filtering across all dashboard components
+  - Clear indication of active filters with one-click reset option
+
+#### 10. Advanced Analytics Integration
+
+- **Trend Indicators**:
+  - Growth/decline arrows on key metrics
+  - Statistical significance indicators for trends
+  - Anomaly highlighting for unusual patterns
+
+- **Benchmark Comparisons**:
+  - Agency spending vs. government-wide averages
+  - Contract size comparisons to industry benchmarks
+  - Competition level comparisons across segments
+
+- **Predictive Insights**:
+  - Opportunity forecast confidence levels
+  - Market saturation analysis
+  - Competitive intensity predictions
+
+### Implementation Priorities
+
+1. **Core Visualizations**: Agency hierarchy, NAICS analysis, expiring contracts
+2. **Interactive Filtering**: Dynamic dashboard updates based on filter selection
+3. **Timeline View**: Expiring contracts visualization
+4. **Enhanced Visualizations**: Heatmaps, geographic distribution
+5. **Advanced Analytics**: Projected spending, competitive landscape analysis
+6. **Performance Optimization**: Precomputed aggregations, caching strategies
+
+### User Experience Considerations
+
+- **Initial Load Time**: Dashboard should load within 5 seconds on standard hardware
+- **Interaction Response**: Filter changes should propagate in under 2 seconds
+- **Visual Clarity**: Clean presentation with clear labels and minimal clutter
+- **Information Hierarchy**: Most important insights prominently displayed
+- **Guided Discovery**: Progressive disclosure of details through drill-downs
+- **Export Capabilities**: All visualizations should be exportable as images/PDF
+- **Mobile Responsiveness**: Dashboard should adapt to tablet/mobile displays
+
+### Technical Implementation
+
+- **Data Preparation**:
+  - Pre-aggregated tables for common dashboard queries
+  - Materialized views for complex calculations
+  - Scheduled recalculation of projection models
+
+- **Visualization Framework**:
+  - Plotly for interactive charts
+  - Streamlit components for layout management
+  - Custom CSS for professional styling and branding
+
+- **Performance Optimization**:
+  - Client-side caching for static elements
+  - Lazy loading for secondary visualizations
+  - Asynchronous data loading for non-critical components
+
+### Expected Impact
+
+The Strategic Default Dashboard will dramatically enhance user experience by providing immediate value upon application launch. Users will gain strategic insights within seconds, rather than having to construct queries manually. The dashboard will serve as a "mission control" interface for business development and capture management activities, highlighting the most promising opportunities and market trends without requiring extensive data manipulation.
+
+This feature directly supports the core business goals of identifying high-value opportunities, understanding customer preferences, analyzing competitors, optimizing geographic focus, and leveraging technology trends - all in an immediately accessible format that encourages regular use and data-driven decision making.

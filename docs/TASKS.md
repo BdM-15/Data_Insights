@@ -19,6 +19,23 @@
 - **Fix fiscal quarter calculation for government fiscal year**:
   - ✅ Updated fiscal year and quarter calculation to correctly align with government fiscal year (Oct 1 - Sep 30)
   - ✅ Fixed NaN handling in quarterly data visualization
+- **Improve SAM.gov API Integration**:
+  - ✅ Implemented robust rate limiting with exponential backoff to handle API rate limits
+  - ✅ Added automatic retry mechanism with configurable maximum retries
+  - ✅ Enhanced error handling with specific error types (rate limit, connection, general)
+  - ✅ Implemented detailed logging with timestamps for debugging
+  - ✅ Created a daily request quota tracking system
+  - ✅ Added cache invalidation and session refresh mechanisms
+  - ✅ Enabled fetching of future opportunity data to align with project vision of combining historical contract data with upcoming opportunities
+  - Status: ✅ Completed. Script now works reliably with SAM.gov API rate limitations.
+- **Implement Automated Schema Migration for Data Sources**:
+  - ✅ Created dynamic schema detection and adaptation system for external data sources
+  - ✅ Implemented automatic column addition when source data formats change
+  - ✅ Added case-insensitive column matching to prevent duplication
+  - ✅ Fixed NATO NSPA data import to preserve original XML field names and formats
+  - ✅ Eliminated need for manual table recreation when data sources evolve
+  - ✅ Added detailed logging for schema changes to track format evolution
+  - Status: ✅ Completed. NATO NSPA importer now handles schema changes gracefully.
 - ~~**Database Migration to PostgreSQL**~~:
   - ✅ Successfully migrated data from SQLite to PostgreSQL for improved performance with large datasets
   - ✅ Updated connection strings and database queries in application code
@@ -81,6 +98,40 @@
       - Create export capabilities for different formats and styling options
       - Build integration with other AI agents for seamless workflow
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
+
+## Model Context Protocol (MCP) Tools Integration for Streamlit App
+
+- **Add MCP Integration to Streamlit Interface**:
+
+  - Sub-tasks:
+    - **Create MCP Tools Tab in Streamlit**:
+      - Implement a multi-tab interface in the Streamlit app
+      - Create a dedicated "AI Tools" tab for MCP integration
+      - Design a clean UI for tool selection and interaction
+      - Implement authentication/security for AI tool access
+    - **Chatbot Interface Integration**:
+      - Embed a conversational interface in the Streamlit sidebar
+      - Connect the interface to local Ollama runtime
+      - Implement context-aware prompting with active filters and selected data
+      - Add conversation history management
+      - Create specialized prompts for contract analysis questions
+    - **Capture Profile Generator UI**:
+      - Add "Generate Capture Profile" button to query results
+      - Create a form for capture profile customization options
+      - Implement progress indicator for document generation
+      - Add preview capability for generated profiles
+      - Include download options for different formats (DOCX, PDF)
+    - **Web Intelligence Integration**:
+      - Create a search interface for market intelligence gathering
+      - Implement entity selection (agencies, companies, technologies)
+      - Add visualization for intelligence mapping
+      - Create a digest generator for web intelligence findings
+    - **Visualization Tool Enhancement**:
+      - Add AI-assisted visualization recommendation engine
+      - Implement natural language query-to-visualization converter
+      - Create custom visualization templates for federal contracting
+      - Add annotation and sharing capabilities
+  - Status: Planned, to be implemented after core MCP tools are developed
 
 - **Implement Shipley Capture Milestone Mapping**:
 
@@ -161,6 +212,57 @@
       - Implement capture management workflow automation
   - Status: Planned, to be developed in parallel with MCP tools for comprehensive data solution
 
+- **Add Admin-Only Data Fetch Interface**:
+
+  - Sub-tasks:
+    - **Create Admin Authentication System**:
+      - Implement user identification via environment variable (ADMIN_USER_IDS)
+      - Add session-based authentication mechanism to Streamlit interface
+      - Create secure admin verification function
+    - **Build Admin Data Fetch Interface**:
+      - Add admin-only data fetch button to sidebar for authenticated users
+      - Create modal dialog with source selection options (SAM.gov, NATO, USAspending)
+      - Implement progress indicators for ongoing fetches
+      - Display fetch status and results summary
+    - **Add Logging and Monitoring**:
+      - Create detailed logs of data fetch operations
+      - Implement notification system for completed fetches
+      - Add error reporting with diagnostics
+  - Status: Planned, medium priority to provide convenient data refresh without exposing to all users
+
+- **Implement Strategic Default Dashboard**:
+
+  - Sub-tasks:
+    - **Create Multi-Tab Interface**:
+      - Develop a default "Strategic Overview" tab that loads automatically
+      - Implement dynamic visualization updates based on sidebar filters
+      - Create a professional, clean UI with expandable sections and tooltips
+    - **Develop Historical Contract Summary**:
+      - Visualize contract spending trends by fiscal quarter and year
+      - Create agency/sub-agency/office hierarchical drill-down visualizations
+      - Add top NAICS code analysis with descriptions and spending patterns
+    - **Build Contract Vehicle Analysis**:
+      - Implement pie charts for contract vehicle types (IDV, single/multiple award)
+      - Create distribution visualizations by agency and NAICS code
+      - Add timeline view of IDV expiration dates and remaining ceiling values
+    - **Create Geographic Visualization**:
+      - Implement interactive heat map of contract place of performance
+      - Show award density by state with drill-down capabilities
+      - Include filtering by NAICS, PSC, and agency
+    - **Add Competitive Landscape Analysis**:
+      - Create market share visualization for top contractors
+      - Show small business participation metrics
+      - Visualize competitor performance by NAICS code and agency
+    - **Implement Projected Spend Forecast**:
+      - Develop ML-based projection model for future spending
+      - Create 24-36 month forecast visualization with confidence intervals
+      - Show projected obligations by agency and NAICS code
+    - **Expiring Contracts Timeline**:
+      - Build interactive timeline of contracts expiring in next 6-24 months
+      - Include filtering by value threshold, NAICS, and agency
+      - Provide strategic opportunity assessment for each expiring contract
+  - Status: Planned, high priority to enhance business intelligence capabilities and provide immediate value on application launch
+
 - **Add advanced filtering**:
   - Implement keyword search for contract descriptions.
   - Add multi-select filters for NAICS/PSC codes.
@@ -173,6 +275,26 @@
   - Explore lazy loading or pagination for large datasets.
   - Review database indexes for further optimization.
   - Status: Planned.
+
+## GitHub Copilot Integration
+
+- **Implement GitHub Copilot Custom Tools**:
+  - ✅ Created a `.copilot` directory structure for custom tool definitions
+  - ✅ Developed eight specialized tool configurations for project-specific assistance:
+    - Contract Analysis Tool: For analyzing federal contracts from USAspending.gov data
+    - Capture Management Tool: For capture management and business development code
+    - PostgreSQL Query Generator: For optimized database queries
+    - Streamlit Visualization Helper: For advanced Streamlit/Plotly visualizations
+    - MCP Integration Tool: For Model Context Protocol integration templates
+    - Shipley Milestone Framework Helper: For implementing capture milestone tracking
+    - Data Pipeline Integration Tool: For external data source integration
+    - Capture Profile Generator Tool: For AI-assisted capture profile creation
+  - Sub-tasks:
+    - Implement supporting Python functions referenced by the Copilot tools
+    - Create test cases to validate tool functionality
+    - Document usage patterns for each tool
+    - Refine tool definitions based on usage feedback
+  - Status: ✅ Tool framework created, supporting functions pending implementation
 
 ## Milestones
 
