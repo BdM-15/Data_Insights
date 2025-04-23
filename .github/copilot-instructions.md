@@ -33,6 +33,18 @@ Business intelligence application for defense contractors focusing on logistics,
 - Use relative imports within packages
 - Maintain consistent file structure
 
+### Configuration Management
+
+- Store sensitive information (credentials, API keys) in `.env` file only, never in code
+- Use `config.py` as the centralized access point for all configuration values
+- Add new configuration items to `.env` for environment-specific values, with appropriate defaults in `config.py`
+- Access all configuration through `config` module imports, never directly from environment
+- Document all configuration parameters in both the `.env` file (as comments) and in `config.py` docstrings
+- Update both `.env.example` and `config.py` when adding new configuration parameters
+- Validate critical configuration values on startup to fail fast when misconfigured
+- Group related configuration parameters together (database, API endpoints, etc.)
+- For feature flags or toggles, use the configuration system rather than hardcoded values
+
 ### Coding Standards
 
 - Python as primary language with PEP8 and black formatting
