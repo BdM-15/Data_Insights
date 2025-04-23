@@ -21,32 +21,84 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights.
 - **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making.
 
-### Scripts and Their Purpose
+### Project Structure
 
-#### **Core Application**
+The project has been reorganized to follow a modular approach for better code organization and maintainability:
+
+```
+Data_Insights/
+├── config.py                     # Configuration settings (root level)
+├── app.py                        # Main Streamlit application entry point
+├── requirements.txt              # Dependencies
+├── .env                          # Environment variables (not in git)
+├── .env.example                  # Example environment variables
+├── data/                         # Data files
+├── docs/                         # Documentation
+├── logs/                         # Log files
+├── tests/                        # Unit tests
+└── src/                          # Source code
+    ├── backend/                  # Backend functionality
+    │   ├── core/                 # Core backend functionality
+    │   │   ├── database.py       # Database connection and utilities
+    │   │   ├── maintenance.py    # Database maintenance utilities
+    │   │   └── utils.py          # Common utilities
+    │   ├── data_processing/      # Data processing modules
+    │   │   ├── cleansing.py      # Data cleaning functions
+    │   │   ├── transformation.py # Data transformation
+    │   │   ├── import.py         # Data import utilities
+    │   │   └── migration.py      # Database migration utilities
+    │   ├── data_acquisition/     # Data acquisition modules
+    │   │   ├── sam_gov.py        # SAM.gov API integration
+    │   │   ├── nato_nspa.py      # NATO NSPA data acquisition
+    │   │   ├── usaspending.py    # USAspending.gov current data
+    │   │   └── usaspending_historical.py # USAspending.gov historical data
+    │   └── ai/                   # AI integration
+    │       └── mcp/              # Model Context Protocol integration
+    └── frontend/                 # Frontend UI functionality
+        ├── pages/                # Streamlit multipage components
+        ├── components/           # Reusable UI components
+        ├── visualizations/       # Visualization components
+        └── capture/              # Capture management features
+```
+
+### Module Descriptions
+
+#### Core Application
 
 - **`app.py`**: The main Streamlit application that provides the user interface for filtering, querying, and visualizing federal spending data.
+- **`config.py`**: Central configuration file that manages all application settings, API keys, and environment variables.
 
-#### **Data Preparation and Transformation**
+#### Backend Modules
 
-- **`create_awards_slim_table.py`**: Creates the `awards_slim` table by extracting and transforming relevant data from the source database.
-- **`data_transformation.py`**: Cleans and transforms the data in the `awards_slim` table, creating the `awards_slim_cleaned` table. Includes precomputing filter values and aggregating quarterly data for visualizations.
-- **`data_cleansing_in_db.py`**: Cleans specific columns in the database, such as replacing blanks with default values and applying title case transformations.
-- **`remove_duplicates_db.py`**: Removes duplicate rows from the `awards_slim` table and recreates indexes for optimized performance.
+- **Core Utilities**:
 
-#### **Database Management**
+  - **`src/backend/core/database.py`**: Database connection management and common database operations.
+  - **`src/backend/core/maintenance.py`**: Database maintenance utilities for optimization and cleanup.
+  - **`src/backend/core/utils.py`**: Common utility functions used throughout the application.
 
-- **`create_sql_indexes.py`**: Creates indexes on frequently filtered columns and a composite index for improved query performance.
-- **`db_check.py`**: Provides utilities to inspect the database schema and verify the presence of specific tables or columns.
-- **`sqlite_to_postgresql_migration.py`**: Migrates data from SQLite to PostgreSQL for improved performance with large datasets.
+- **Data Processing**:
 
-#### **Data Loading**
+  - **`src/backend/data_processing/cleansing.py`**: Data cleaning and normalization functions.
+  - **`src/backend/data_processing/transformation.py`**: Data transformation and preprocessing for app performance.
+  - **`src/backend/data_processing/import.py`**: CSV to database transfer utilities.
+  - **`src/backend/data_processing/migration.py`**: Database migration utilities (SQLite to PostgreSQL).
 
-- **`csv_to_db_transfer.py`**: Automates the process of uploading CSV files into the database, handling large datasets in chunks.
+- **Data Acquisition**:
 
-#### **Error Handling and Debugging**
+  - **`src/backend/data_acquisition/sam_gov.py`**: SAM.gov API integration for opportunity data.
+  - **`src/backend/data_acquisition/nato_nspa.py`**: NATO NSPA data acquisition.
+  - **`src/backend/data_acquisition/usaspending.py`**: Current USAspending.gov data acquisition.
+  - **`src/backend/data_acquisition/usaspending_historical.py`**: Historical USAspending.gov data acquisition.
 
-- **`review_project_files.py`**: Reads and extracts rules, tasks, and insights from `PLANNING.md`, `TASKS.md`, and `CAPTUREINTEL.md` to ensure alignment with project goals.
+- **AI Integration**:
+  - **`src/backend/ai/mcp/`**: Model Context Protocol integration for advanced AI capabilities.
+
+#### Frontend Modules
+
+- **`src/frontend/pages/`**: Streamlit multipage components for different application views.
+- **`src/frontend/components/`**: Reusable UI components such as filters and tables.
+- **`src/frontend/visualizations/`**: Data visualization components and chart generation.
+- **`src/frontend/capture/`**: Capture management features including profile generation.
 
 ### Supporting Documents
 
@@ -84,13 +136,12 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 2. **Prepare the Database**:
 
    - Ensure PostgreSQL is installed and running
+   - Configure your database connection in `.env` file (see `.env.example`)
    - Run the data preparation scripts in the following order:
-     1. `sqlite_to_postgresql_migration.py` (if migrating from an existing SQLite database)
-     2. `create_awards_slim_table.py`
-     3. `data_cleansing_in_db.py`
-     4. `remove_duplicates_db.py`
-     5. `data_transformation.py`
-     6. `create_sql_indexes.py`
+     1. `src/backend/data_processing/migration.py` (if migrating from an existing SQLite database)
+     2. `src/backend/data_processing/cleansing.py`
+     3. `src/backend/data_processing/transformation.py`
+     4. `src/backend/data_processing/import.py` (if importing from CSV files)
 
 3. **Start the Application**:
 
