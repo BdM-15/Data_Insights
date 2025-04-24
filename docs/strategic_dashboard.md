@@ -161,3 +161,43 @@ The dashboard requires the following base data from the usaspending_cleaned tabl
 - Caching of frequently accessed data for performance
 - Responsive design for various screen sizes
 - Session state management for filter persistence
+
+## Strategic Dashboard
+
+The Strategic Dashboard provides a high-level view of the government acquisition landscape with a focus on contract opportunities and business intelligence.
+
+### Executive Summary Metrics
+
+The Executive Summary section displays key performance indicators (KPIs) for the selected filters:
+
+- **Total Obligations**: Total dollar value of all obligations
+- **Total Award Actions**: Number of distinct award actions
+- **Average Award Value**: Average dollar value per award action
+- **Active Contracts**: Number of currently active contracts
+- **Expiring Contracts (24mo)**: Number of contracts expiring within the next 24 months
+- **Suitability**: Percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions
+- **Synergy**: Percentage of expiring contracts suitable across MTS business units based on comparing company capabilities to expiring contract descriptions
+
+### Visualizations
+
+The dashboard includes several interactive visualizations:
+
+1. **Obligations and Award Actions Trend**: Line chart showing quarterly trends for both obligations and award actions
+2. **Action-to-Obligation Ratio Analysis**: Scatter plot analyzing agencies by award actions and obligation amounts
+3. **Contract Vehicle Distribution**: Pie chart showing distribution of contract vehicles
+4. **Competitive Landscape**: Treemap visualization of top competitors by market share
+5. **Top Agencies Analysis**: Bar charts of top agencies by both award count and obligation amount
+
+### Filters
+
+Users can filter the dashboard data by:
+
+- NAICS Code
+- Date Range (Start Date and End Date)
+- Agency
+
+The Clear Filters button resets all filters to their default values.
+
+### Data Source
+
+The dashboard pulls data from the PostgreSQL database table `usaprime_cleaned` with fallback options for other potential table names.

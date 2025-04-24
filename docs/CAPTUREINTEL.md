@@ -175,6 +175,57 @@ The integration of subaward data will enhance several existing components:
 - **Opportunity Identification**: Will consider teaming potential based on subcontracting patterns
 - **Market Differentiation**: Will leverage insights into how competitors structure their teams
 
+## SBA Mentor-Protégé Agreements Integration
+
+### Purpose
+
+To enhance competitive intelligence, teaming opportunity identification, and capability gap analysis by incorporating SBA Mentor-Protégé Agreement data from SBA.gov (https://www.sba.gov/document/support-active-mentor-protege-agreements).
+
+### Implementation Approach
+
+- **Data Source**: Downloadable spreadsheet from SBA.gov containing active Mentor-Protégé relationships
+- **Data Integration**: New database tables to store mentor-protégé relationship data with regular updates
+- **Database Design**: Creation of `sba_mentor_protege` tables to track these strategic partnerships
+
+### Key Benefits
+
+- **Strategic Teaming Opportunities**: Identify potential small business partners with established capabilities and active federal contracts
+- **Competitor Partnership Intelligence**: Track which large businesses are mentoring which small businesses to understand competitive teaming strategies
+- **Industry Capability Mapping**: Gain insights into complementary capabilities between mentors and protégés
+- **Gap Analysis Support**: Identify where competitors have filled capability gaps through mentor-protégé relationships
+- **Bid Strategy Enhancement**: Develop more competitive teaming approaches informed by industry partnership trends
+
+### Impact on Existing Features
+
+This data source will directly support and enhance multiple aspects of the Data Insights platform:
+
+- **Capture Profile Development**: Include mentor-protégé relationship data in competitor analysis sections of capture profiles
+- **Competitor Analysis**: Provide comprehensive mapping of competitor's small business partnerships and potential teaming strategies
+- **Capability Gap Identification**: Identify patterns in how competitors address capability gaps through strategic partnerships
+- **Teaming Partner Identification**: Discover potential small business partners for set-aside opportunities
+- **Market Intelligence**: Gain insights into emerging industry trends based on mentor-protégé focus areas
+
+### Data Elements
+
+The SBA Mentor-Protégé database includes valuable data elements such as:
+
+- **Protégé Name and Location**: Small business partner information
+- **Protégé Business Type(s)**: Socio-economic designations (8(a), SDVOSB, HUBZone, WOSB, etc.)
+- **Mentor Name and Location**: Large business partner information
+- **Agreement Approval Date**: When the partnership was officially established
+- **Agreement Expiration Date**: When the partnership will conclude
+- **Primary NAICS Code**: Core industry focus of the partnership
+- **Agreement Benefits**: Specific areas of development within the partnership
+
+### Integration with Shipley Process
+
+This data source provides critical intelligence for multiple Shipley Capture milestones:
+
+- **Milestone 0**: Identify potential small business partners for set-aside opportunities
+- **Milestone 1**: Analyze competitor teaming strategies to inform capture approach
+- **Milestone 2**: Evaluate potential teaming partners based on past performance with mentors
+- **Milestone 3**: Fine-tune proposal teaming strategy based on competitive partnership intelligence
+
 ## Data Dictionary
 
 The following data dictionary provides detailed information about key data elements used in the Data Insights platform. This comprehensive reference is designed to help both new and experienced users understand the data elements, their sources, typical values, and their strategic significance for business development and capture management.
@@ -774,6 +825,7 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 1. Dashboard Layout and Organization
 
 - **Multi-Tab Interface**:
+
   - Strategic Overview tab (loads by default)
   - Detailed Analysis tab (accessible after overview)
   - Expiring Contracts tab (focused on recompete opportunities)
@@ -787,32 +839,38 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 2. Historical Spending Analysis
 
 - **Agency Hierarchy Visualizations**:
+
   - **Top Agencies by Award Actions and Obligations**:
+
     - Bar charts showing top 10-15 awarding agencies by both award count and total obligation amount
     - Year-over-year comparison option
     - Tooltips providing additional context (% change, average award size)
-  
+
   - **Sub-Agency Breakdown**:
+
     - Hierarchical treemap displaying sub-agency spending within parent agencies
     - Color intensity indicating spending concentration
     - Click-through capability to drill down to individual sub-agencies
-  
+
   - **Funding Office Analysis**:
     - Bar charts of top funding offices by award count and obligation amount
     - Office growth/decline indicators showing trend direction
     - Filtering capability by parent agency and sub-agency
 
 - **NAICS and PSC Code Analysis**:
+
   - **Top NAICS Codes**:
+
     - Bar charts of top 20 NAICS codes by award actions and obligations
     - NAICS description inclusion for immediate understanding
     - Sparkline trend indicators showing spending trajectory
-  
+
   - **NAICS Code Clustering**:
+
     - Group visualization of related NAICS codes to identify broader industry trends
     - Year-over-year growth indicators for industry segments
     - Filtering by first 2-3 digits for broader category analysis
-  
+
   - **PSC Code Spending**:
     - Bar/pie charts showing product vs. service distribution
     - Top PSC categories by obligation
@@ -821,16 +879,19 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 3. Contract Vehicle Analysis
 
 - **Vehicle Type Distribution**:
+
   - **Award Type Breakdown**:
+
     - Pie chart showing distribution of contract types (Definitive Contracts, Purchase Orders, IDVs, etc.)
     - Trend charts showing shifts in vehicle usage over time
     - Agency preference analysis for vehicle types
-  
+
   - **IDV Analysis**:
+
     - Pie charts for single vs. multiple award IDVs
     - Bar charts of top IDVs by total obligations
     - Remaining ceiling visualization for active IDVs
-  
+
   - **Contract Type Analysis**:
     - Distribution of pricing types (Firm-Fixed Price, Cost-Plus, T&M, etc.)
     - Agency preferences for contract types
@@ -839,16 +900,19 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 4. Competitive Landscape Analysis
 
 - **Contractor Market Share**:
+
   - **Top Contractors**:
+
     - Bar charts of top 20 contractors by award actions and obligations
     - Market share pie chart with focus on top 10 contractors
     - Year-over-year change indicators
-  
+
   - **Small Business Participation**:
+
     - Small vs. large business award distribution
     - Set-aside category breakdown (8(a), SDVOSB, HUBZone, etc.)
     - Small business participation trends over time
-  
+
   - **Competitive Landscape by NAICS**:
     - Heatmap of contractor activity across top NAICS codes
     - Market concentration analysis by NAICS
@@ -857,11 +921,13 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 5. Geographic Distribution Analysis
 
 - **Performance Location Heatmap**:
+
   - **National Map**:
+
     - Heatmap of award actions and obligations by state
     - Color intensity reflecting concentration of contract activity
     - Tooltips showing state-specific metrics (total awards, obligations, top contractors)
-  
+
   - **Regional Breakdown**:
     - Bar charts of top metropolitan areas by contract activity
     - Regional concentration analysis
@@ -870,17 +936,20 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 6. Future Opportunity Analysis
 
 - **Expiring Contract Timeline**:
+
   - **6-24 Month Expiration View**:
+
     - Timeline visualization of contracts expiring in next 6-24 months
     - Size indicators reflecting contract value
     - Color coding by agency/NAICS
     - Filtering by minimum value threshold
-  
+
   - **Recompete Opportunity Table**:
+
     - Sortable table of expiring high-value contracts
     - Incumbent information and performance history
     - Estimated recompete dates and projected values
-  
+
   - **Incumbent Performance**:
     - Performance metrics for expiring contracts where available
     - Modification frequency analysis as performance indicator
@@ -896,32 +965,38 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 7. SAM.gov Opportunity Insights
 
 - **Current Opportunity Analysis**:
+
   - **Open Solicitations Overview**:
+
     - Real-time tracking of open solicitations, RFIs, and Sources Sought notices from SAM.gov
     - Agency-based distribution visualization using vibrant blue heatmaps
     - Timeline view of upcoming deadlines with urgency indicators
-  
+
   - **Opportunity Trend Analysis**:
+
     - Bar charts showing procurement trends by agency and NAICS code
     - Growth indicators for emerging procurement categories
     - Seasonal patterns visualization with electric blue highlight for peak periods
-  
+
   - **Capability Alignment Assessment**:
+
     - AI-powered matching of opportunity requirements with historical contract performance
-    - Capability gap analysis showing strengths and improvement areas 
+    - Capability gap analysis showing strengths and improvement areas
     - Heat-scored visualization of capability alignment with color intensity indicating match level
-  
+
   - **Competitive Positioning**:
     - Market analysis for targeted opportunities based on historical contract data
     - Identification of potential competitors for specific opportunities
     - Visualization of competitive landscape with blue-toned positioning map
 
 - **Opportunity Pipeline**:
+
   - **Procurement Forecast Integration**:
+
     - Long-range view of anticipated solicitations from agency procurement forecasts
     - Timeline visualization with confidence scoring for likelihood and timing
     - Estimated value projections based on historical similar procurements
-  
+
   - **Opportunity Qualification Dashboard**:
     - Automated scoring of opportunities against company capabilities
     - Probability of win assessment based on historical performance in similar contracts
@@ -930,16 +1005,19 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 8. Enhanced Visualizations
 
 - **Heatmaps**:
+
   - Contract award density by month/year
   - Agency/NAICS code correlations
   - Competitive density across contract vehicles
 
 - **Interactive Bubble Charts**:
+
   - Contract distribution by size, competition level, and agency
   - Multi-dimensional analysis of market segments
   - Dynamic filtering capabilities
 
 - **Animated Time Series**:
+
   - Spending pattern evolution over multiple years
   - Market share shifts among top contractors
   - Agency priority changes visualized over time
@@ -952,6 +1030,7 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 9. Filter Integration and Dynamic Updates
 
 - **Sidebar Filter Application**:
+
   - All dashboard visualizations should update dynamically based on sidebar filters
   - Filter state should persist across dashboard tabs
   - Quick filter presets for common scenarios (e.g., DoD Only, Civilian Only, IT Contracts)
@@ -964,11 +1043,13 @@ To provide users with immediate, actionable business intelligence upon applicati
 #### 10. Advanced Analytics Integration
 
 - **Trend Indicators**:
+
   - Growth/decline arrows on key metrics
   - Statistical significance indicators for trends
   - Anomaly highlighting for unusual patterns
 
 - **Benchmark Comparisons**:
+
   - Agency spending vs. government-wide averages
   - Contract size comparisons to industry benchmarks
   - Competition level comparisons across segments
@@ -1000,11 +1081,13 @@ To provide users with immediate, actionable business intelligence upon applicati
 ### Technical Implementation
 
 - **Data Preparation**:
+
   - Pre-aggregated tables for common dashboard queries
   - Materialized views for complex calculations
   - Scheduled recalculation of projection models
 
 - **Visualization Framework**:
+
   - Plotly for interactive charts
   - Streamlit components for layout management
   - Custom CSS for professional styling and branding
@@ -1019,3 +1102,91 @@ To provide users with immediate, actionable business intelligence upon applicati
 The Strategic Default Dashboard will dramatically enhance user experience by providing immediate value upon application launch. Users will gain strategic insights within seconds, rather than having to construct queries manually. The dashboard will serve as a "mission control" interface for business development and capture management activities, highlighting the most promising opportunities and market trends without requiring extensive data manipulation.
 
 This feature directly supports the core business goals of identifying high-value opportunities, understanding customer preferences, analyzing competitors, optimizing geographic focus, and leveraging technology trends - all in an immediately accessible format that encourages regular use and data-driven decision making.
+
+## Offers Received Data Integration
+
+### Purpose
+
+To enhance competitive intelligence, probability of win (pWin) calculations, and overall capture strategy by leveraging the "number_of_offers_received" data element from USAspending.gov, providing critical insights into competitive density across federal contracts.
+
+### Implementation Approach
+
+- **Data Source**: The "number_of_offers_received" field from USAspending.gov records
+- **Data Integration**: Incorporated into competitive analysis workflows and pWin models
+- **Database Usage**: Leveraged in queries for filtering opportunities by competition level
+
+### Key Benefits
+
+- **Competition Intensity Mapping**: Identify markets and agencies with varying levels of competitive density
+- **pWin Model Enhancement**: Create more accurate probability of win calculations based on historical bidder counts
+- **Strategic Opportunity Targeting**: Find "sweet spot" opportunities with favorable value-to-competition ratios
+- **Pricing Strategy Refinement**: Analyze correlation between number of bidders and winning bid amounts
+- **Competitive Landscape Visualization**: Graphically represent competitive density across contract types, agencies, and NAICS codes
+- **Bid/No-Bid Decision Support**: Provide objective metrics on competitive environment for milestone decisions
+
+### Impact on Existing Features
+
+This data element will directly enhance multiple aspects of the Data Insights platform:
+
+- **Capture Profile Development**: Include competitive density analysis in opportunity assessment sections
+- **Competitive Analysis**: Calculate average number of bidders by agency, NAICS code, and contract type
+- **Strategic Dashboard**: Add competition intensity metrics to executive view
+- **pWin Calculation**: Implement mathematical model using number of bidders as a key factor
+- **Opportunity Qualification**: Filter and prioritize opportunities by competition level
+
+### Integration with Shipley Process
+
+The "number of offers received" data provides critical intelligence for multiple Shipley Capture milestones:
+
+- **Milestone 0**: Use historical bidder data to assess early opportunity attractiveness
+- **Milestone 1**: Incorporate competitive density analysis into resource allocation decisions
+- **Milestone 2**: Use competition level as a key factor in bid/no-bid decisions
+- **Milestone 3**: Refine pricing strategy based on expected number of competitors
+
+### Mathematical pWin Model
+
+The integration enables a more sophisticated pWin calculation that accounts for:
+
+1. Base probability (1/number of bidders)
+2. Capability alignment factor
+3. Incumbent advantage factor
+4. Agency relationship factor
+5. Pricing strategy effectiveness
+
+The resulting model provides more realistic win probability estimates that inform resource allocation and pursuit decisions.
+
+## Competition Intensity Analysis
+
+The "number_of_offers_received" field from USAspending.gov provides critical insights into competitive density across federal contracts. This data element is essential for:
+
+### Strategic Intelligence Applications
+
+1. **Market Competition Mapping**: Identify agencies, NAICS codes, and contract types with varying levels of competitive intensity
+2. **Probability of Win (pWin) Calculation**: Create more accurate mathematical models where base probability starts with 1/number of bidders
+3. **Opportunity Targeting**: Find "sweet spot" opportunities with optimal value-to-competition ratios
+4. **Pricing Strategy Development**: Analyze correlation between number of bidders and winning bid amounts
+5. **Competitive Landscape Visualization**: Graphically represent competitive density across market segments
+
+### Implementation in Capture Process
+
+- **Opportunity Qualification**: Use historical bidder counts as a factor in Go/No-Go decisions
+- **Capture Strategy Development**: Tailor approaches based on expected competition level
+- **Price-to-Win Analysis**: Factor competitive density into pricing models
+- **Proposal Development**: Adjust win themes based on competitive environment
+- **Teaming Decisions**: Build stronger teams for highly competitive opportunities
+
+### Mathematical pWin Model Integration
+
+The platform integrates number of bidders into a sophisticated pWin calculation:
+
+```
+pWin = (base_probability × capability_factor × incumbent_advantage × 100)
+```
+
+Where:
+
+- base_probability = 1 / number_of_offers_received
+- capability_factor = our_capabilities_score / 100 (0-1 range)
+- incumbent_advantage = 1.5 if incumbent, otherwise 1.0
+
+This creates a more realistic probability assessment that accounts for the specific competitive environment of each opportunity, enabling better resource allocation decisions.

@@ -63,14 +63,27 @@ st.markdown(f"""
     }}
     .stTabs [data-baseweb="tab"] {{
         background-color: {THEME['bg_color']};
-        border-radius: 4px 4px 0px 0px;
+        border-radius: 8px 8px 0px 0px;
         color: {THEME['text_color']};
-        padding: 10px 20px;
+        padding: 15px 25px;  /* Increased padding for larger tabs */
+        font-size: 16px;     /* Larger font size */
+        min-width: 160px;    /* Minimum width for each tab */
+        text-align: center;
     }}
     .stTabs [aria-selected="true"] {{
         background-color: {THEME['primary_color']};
         color: {THEME['bg_color']};
         font-weight: bold;
+    }}
+    /* Make the tabs more prominent with a subtle box shadow */
+    .stTabs [data-baseweb="tab"] {{
+        box-shadow: 0 -3px 5px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+    }}
+    /* Add a hover effect */
+    .stTabs [data-baseweb="tab"]:hover:not([aria-selected="true"]) {{
+        background-color: rgba(0, 195, 255, 0.1);
+        transform: translateY(-2px);
     }}
     /* Updated metric styling */
     [data-testid="metric-container"] {{
@@ -135,6 +148,60 @@ st.markdown(f"""
         border-top: 1px solid rgba(0, 195, 255, 0.1);
         padding-top: 1rem;
         margin-top: 1rem;
+    }}
+    /* Center the metric titles properly */
+    [data-testid="metric-container"] > div:nth-child(1) {{
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }}
+    
+    [data-testid="metric-container"] > div:nth-child(1) > label {{
+        width: 100%;
+        text-align: center;
+    }}
+    
+    div[data-testid="stMetricValue"] {{
+        font-size: 2rem;
+        color: {THEME['highlight_color']};
+        text-align: center;
+        width: 100%;
+    }}
+    
+    div[data-testid="stMetricLabel"] {{
+        font-size: 1rem;
+        color: {THEME['text_color']};
+        text-align: center;
+        width: 100%;
+    }}
+    /* Properly center metric card titles with more specific selectors */
+    [data-testid="stMetricLabel"] {{
+        font-size: 1rem;
+        color: {THEME['text_color']};
+        width: 100%;
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex !important;
+        flex-direction: row;
+    }}
+    
+    [data-testid="stMetricValue"] {{
+        font-size: 2rem;
+        color: {THEME['highlight_color']};
+        width: 100%;
+        text-align: center;
+    }}
+    
+    /* Force metric container label to center */
+    [data-testid="metric-container"] > div:first-child {{
+        justify-content: center !important;
+        display: flex !important;
+        width: 100% !important;
+    }}
+    
+    [data-testid="metric-container"] > div:first-child > label {{
+        text-align: center !important;
+        width: 100% !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -545,6 +612,139 @@ def get_competitive_landscape(df):
     
     return competitors
 
+# PLACEHOLDER - Competition Intensity Analysis Function
+# @st.cache_data(ttl=3600)
+# def get_competition_intensity(df):
+#     """
+#     Analyze competition intensity across contracts.
+#     
+#     Args:
+#         df: DataFrame containing award data with number_of_offers_received column
+#         
+#     Returns:
+#         DataFrame with competition intensity metrics
+#     """
+#     if df.empty or 'number_of_offers_received' not in df.columns:
+#         return pd.DataFrame()
+#     
+#     # Convert offers received to numeric, handling any non-numeric values
+#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(0)
+#     
+#     # Filter for base awards only
+#     base_awards = df[df['modification_number'] == '0']
+#     
+#     # Calculate competition metrics by various dimensions
+#     
+#     # 1. By agency
+#     agency_competition = base_awards.groupby('parent_award_agency_name')['number_of_offers_received'].agg(
+#         avg_bidders=('mean'),
+#         max_bidders=('max'),
+#         min_bidders=('min'),
+#         total_contracts=('count')
+#     ).reset_index()
+#     
+#     # 2. By NAICS code
+#     naics_competition = base_awards.groupby('naics_code')['number_of_offers_received'].agg(
+#         avg_bidders=('mean'),
+#         max_bidders=('max'),
+#         min_bidders=('min'),
+#         total_contracts=('count')
+#     ).reset_index()
+#     
+#     # 3. By contract type
+#     contract_type_competition = base_awards.groupby('award_type')['number_of_offers_received'].agg(
+#         avg_bidders=('mean'),
+#         max_bidders=('max'),
+#         min_bidders=('min'),
+#         total_contracts=('count')
+#     ).reset_index()
+#     
+#     # 4. Create competition categories
+#     def categorize_competition(bidders):
+#         if bidders <= 2:
+#             return "Low Competition (1-2 bidders)"
+#         elif bidders <= 5:
+#             return "Medium Competition (3-5 bidders)"
+#         else:
+#             return "High Competition (6+ bidders)"
+#     
+#     # Apply categorization
+#     base_awards['competition_level'] = base_awards['number_of_offers_received'].apply(categorize_competition)
+#     
+#     # Count contracts by competition level
+#     competition_distribution = base_awards['competition_level'].value_counts().reset_index()
+#     competition_distribution.columns = ['competition_level', 'contract_count']
+#     
+#     # Calculate overall average
+#     overall_avg_bidders = base_awards['number_of_offers_received'].mean()
+#     
+#     return {
+#         'agency_competition': agency_competition,
+#         'naics_competition': naics_competition, 
+#         'contract_type_competition': contract_type_competition,
+#         'competition_distribution': competition_distribution,
+#         'overall_avg_bidders': overall_avg_bidders
+#     }
+
+# PLACEHOLDER - Probability of Win Calculation
+# @st.cache_data(ttl=3600)
+# def calculate_pwin(df, our_capabilities_score=75, incumbent_status=False):
+#     """
+#     Calculate probability of win based on competitive factors.
+#     
+#     Args:
+#         df: DataFrame containing contract data with number_of_offers_received
+#         our_capabilities_score: Score from 0-100 representing capability match
+#         incumbent_status: Boolean indicating if we are the incumbent
+#         
+#     Returns:
+#         Dictionary with pWin calculations for different contract segments
+#     """
+#     if df.empty or 'number_of_offers_received' not in df.columns:
+#         return {'overall_pwin': 0, 'by_agency': pd.DataFrame(), 'by_naics': pd.DataFrame()}
+#     
+#     # Convert offers received to numeric
+#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(1)
+#     df.loc[df['number_of_offers_received'] == 0, 'number_of_offers_received'] = 1  # Avoid division by zero
+#     
+#     # Filter for base awards only
+#     base_awards = df[df['modification_number'] == '0']
+#     
+#     # Calculate base probability (1/number of bidders)
+#     base_awards['base_probability'] = 1 / base_awards['number_of_offers_received']
+#     
+#     # Apply capability factor (0-1 scale)
+#     capability_factor = our_capabilities_score / 100
+#     
+#     # Apply incumbent advantage (if applicable)
+#     incumbent_advantage = 1.5 if incumbent_status else 1.0
+#     
+#     # Calculate adjusted pWin percentage
+#     base_awards['pwin'] = (base_awards['base_probability'] * capability_factor * incumbent_advantage * 100).clip(upper=95)
+#     
+#     # Calculate overall pWin
+#     overall_pwin = base_awards['pwin'].mean()
+#     
+#     # Calculate pWin by agency
+#     pwin_by_agency = base_awards.groupby('parent_award_agency_name').agg(
+#         avg_pwin=('pwin', 'mean'),
+#         avg_bidders=('number_of_offers_received', 'mean'),
+#         contract_count=('pwin', 'count')
+#     ).reset_index().sort_values('avg_pwin', ascending=False)
+#     
+#     # Calculate pWin by NAICS
+#     pwin_by_naics = base_awards.groupby('naics_code').agg(
+#         avg_pwin=('pwin', 'mean'),
+#         avg_bidders=('number_of_offers_received', 'mean'),
+#         contract_count=('pwin', 'count')
+#     ).reset_index().sort_values('avg_pwin', ascending=False)
+#     
+#     return {
+#         'overall_pwin': overall_pwin,
+#         'by_agency': pwin_by_agency,
+#         'by_naics': pwin_by_naics
+#     }
+
 @st.cache_data(ttl=3600)
 def get_expiring_contracts(df, months_ahead=24):
     """
@@ -586,7 +786,7 @@ def get_expiring_contracts(df, months_ahead=24):
     base_awards = df[df['is_base_award'] == True]
     
     # Use the appropriate date column for expiration calculations
-    if perf_end_date_col:
+    if (perf_end_date_col):
         # Convert to datetime
         base_awards[perf_end_date_col] = pd.to_datetime(base_awards[perf_end_date_col], errors='coerce')
         
@@ -635,12 +835,66 @@ def format_value(value, is_currency=False):
     
     return f"${formatted}" if is_currency else formatted
 
+@st.cache_data(ttl=3600)
+def get_unique_naics_codes(_engine):
+    """
+    Get all unique NAICS codes from the database filter_values_naics_code table.
+    
+    Args:
+        _engine: SQLAlchemy engine (with leading underscore to prevent hashing issues)
+        
+    Returns:
+        List of unique NAICS codes
+    """
+    try:
+        # Get NAICS codes from the filter_values_naics_code table
+        from sqlalchemy import text
+        with _engine.connect() as conn:
+            # Use the correct table and column name based on the database structure
+            try:
+                # Based on the screenshot, the column is named "value"
+                query = "SELECT value FROM public.filter_values_naics_code ORDER BY value"
+                result = conn.execute(text(query)).fetchall()
+                if result:
+                    # Add "All" as the first option
+                    return ["All"] + [r[0] for r in result]
+            except Exception as e:
+                st.sidebar.warning(f"Error getting NAICS codes from filter_values_naics_code: {e}")
+                # Try alternative column name
+                try:
+                    query = "SELECT code FROM public.filter_values_naics_code ORDER BY code"
+                    result = conn.execute(text(query)).fetchall()
+                    if result:
+                        return ["All"] + [r[0] for r in result]
+                except Exception as e2:
+                    st.sidebar.warning(f"Error with alternative column name: {e2}")
+                    pass
+                
+            # If no filter table exists or errors occurred, try getting unique values from main data tables
+            table_names = ["usaprime_cleaned", "usaspending_cleaned", "usaprime", "usaspending", 
+                          "fetched_current_usaspending", "contracts"]
+            
+            for table in table_names:
+                try:
+                    query = f"SELECT DISTINCT naics_code FROM {table} WHERE naics_code IS NOT NULL ORDER BY naics_code"
+                    result = conn.execute(text(query)).fetchall()
+                    if result:
+                        return ["All"] + [r[0] for r in result]
+                except Exception:
+                    continue
+                    
+        # Default if no data found
+        return ["561210", "All"]
+    except Exception as e:
+        st.sidebar.error(f"Error getting NAICS codes: {str(e)}")
+        return ["561210", "All"]
+
 # Main function with enhanced error handling
 def main():
-    """Main function to render the strategic dashboard."""
+    """Main function to render the capture dashboard."""
     
     # Title and description
-    st.title("Strategic Dashboard")
+    st.title("Capture Dashboard")
     st.markdown("""
     This dashboard provides a high-level view of the government acquisition landscape with a focus on NAICS 561210 (Facilities Support Services).
     It visualizes key metrics including total obligations, award actions, top agencies, funding sub-agencies, and funding offices.
@@ -648,27 +902,88 @@ def main():
     
     # Create the sidebar layout for navigation and filters
     with st.sidebar:
-        st.image("c:/GitHub/Data_Insights/assets/logo.png", width=250)
+        # Restore logo to original size (no style modifications)
+        st.image("c:/GitHub/Data_Insights/assets/logo.png")
         
         # Create application navigation 
         st.markdown("## Navigation")
         
-        # Main navigation sections from project documentation
+        # Modern navigation links with sleek style (not hyperlink appearance)
         st.markdown("""
-        <div class="sidebar-nav">
-            <a href="#" class="sidebar-nav-item active">📊 Strategic Dashboard</a>
-            <a href="#" class="sidebar-nav-item">🔍 Data Explorer</a>
-            <a href="#" class="sidebar-nav-item">📈 Visualizations</a>
-            <a href="#" class="sidebar-nav-item">📑 Capture Profiles</a>
-            <a href="#" class="sidebar-nav-item">🤖 AI Tools</a>
+        <style>
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background-color: rgba(5, 27, 48, 0.6);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .nav-item:hover {
+            background-color: rgba(0, 195, 255, 0.1);
+            border-left: 3px solid rgba(0, 195, 255, 0.5);
+            transform: translateX(3px);
+        }
+        .nav-item.active {
+            background-color: rgba(0, 195, 255, 0.2);
+            border-left: 3px solid rgba(0, 195, 255, 1);
+        }
+        .nav-icon {
+            margin-right: 10px;
+            color: #00C3FF;
+            width: 20px;
+            text-align: center;
+        }
+        .nav-text {
+            color: white;
+            font-weight: 500;
+        }
+        </style>
+        
+        <div class="nav-item active">
+            <div class="nav-icon">📊</div>
+            <div class="nav-text">Capture Dashboard</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🔍</div>
+            <div class="nav-text">Advanced Data Explorer</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">📈</div>
+            <div class="nav-text">Visualizations</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">📑</div>
+            <div class="nav-text">Capture Profiles</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🤖</div>
+            <div class="nav-text">AI Tools</div>
         </div>
         """, unsafe_allow_html=True)
         
         # Filters section
         st.markdown("## Filters")
         
+        # Get database connection for NAICS and agency lists
+        try:
+            # Create engine for database connection
+            engine = get_db_engine()
+            
+            # Get all unique NAICS codes from the database
+            naics_options = get_unique_naics_codes(engine)
+            
+            # Agency filter if database connection works
+            agency_options = ["All"] + get_unique_values(engine, "parent_award_agency_name")
+        except Exception as e:
+            st.error(f"Error loading filter values: {str(e)}")
+            naics_options = ["561210", "All"]
+            agency_options = ["All"]
+        
         # NAICS code filter
-        naics_options = ["561210", "All"]  # Default to 561210 or allow all
         selected_naics = st.selectbox("NAICS Code", naics_options, index=0)
         
         # Date range
@@ -683,20 +998,25 @@ def main():
             st.error("Start date must be before end date")
             end_date = start_date
         
-        # Get database connection for agency list
-        try:
-            # Create engine for database connection
-            engine = get_db_engine()
-            
-            # Agency filter if database connection works
-            agency_options = ["All"] + get_unique_values(engine, "parent_award_agency_name")
-            selected_agency = st.selectbox("Agency", agency_options)
-        except Exception as e:
-            st.error("Agency filter unavailable.")
-            selected_agency = "All"
+        selected_agency = st.selectbox("Agency", agency_options)
         
-        # Apply filters button
-        apply_filters = st.button("Apply Filters")
+        # PLACEHOLDER - Competition Intensity Filter
+        # competition_levels = ["All Levels", "Low Competition (1-2 bidders)", 
+        #                       "Medium Competition (3-5 bidders)", 
+        #                       "High Competition (6+ bidders)"]
+        # selected_competition = st.selectbox(
+        #     "Competition Level",
+        #     options=competition_levels,
+        #     index=0,
+        #     help="Filter by historical competition intensity"
+        # )
+        
+        # Filter buttons in a row (Apply and Clear)
+        col1, col2 = st.columns(2)
+        with col1:
+            apply_filters = st.button("Apply Filters", use_container_width=True)
+        with col2:
+            clear_filters = st.button("Clear Filters", use_container_width=True)
         
         # Add settings/about section at bottom of sidebar
         st.markdown("""
@@ -726,6 +1046,19 @@ def main():
             "end_date": end_date.strftime("%Y-%m-%d"),
             "agency": selected_agency if selected_agency != "All" else None
         }
+    
+    # Handle Clear Filters button
+    if clear_filters:
+        # Reset all filters to default values
+        st.session_state.filter_applied = False
+        st.session_state.filter_params = {
+            "naics_code": "561210",
+            "start_date": default_start.strftime("%Y-%m-%d"),
+            "end_date": today.strftime("%Y-%m-%d"),
+            "agency": "All"
+        }
+        # Rerun the app to update the UI
+        st.experimental_rerun()
     
     # Load data based on current filters
     with st.spinner("Loading data..."):
@@ -762,7 +1095,7 @@ def main():
             
             # KPI metrics row
             st.subheader("Executive Summary")
-            col1, col2, col3, col4, col5 = st.columns(5)
+            col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
             
             with col1:
                 st.metric("Total Obligations", format_value(summary['total_obligations'], is_currency=True))
@@ -780,10 +1113,51 @@ def main():
                 # Calculate expiring contracts (next 24 months)
                 expiring_contracts = get_expiring_contracts(df, months_ahead=24)
                 st.metric(
-                    "Expiring Contracts (24mo)", 
+                    "Expiring Contracts", 
                     format_value(expiring_contracts),
                     help="Number of contracts expiring in the next 24 months from today"
                 )
+                
+            with col6:
+                # Hardcoded suitability value
+                st.metric(
+                    "Suitability", 
+                    "35%",
+                    help="The percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions"
+                )
+                
+            with col7:
+                # Hardcoded synergy value
+                st.metric(
+                    "Synergy", 
+                    "55%",
+                    help="The percentage of expiring contracts suitable across MTS based on comparing company capabilities to expiring contract descriptions"
+                )
+            
+            # PLACEHOLDER - Add Competition Intensity KPI
+            # competition_data = get_competition_intensity(df)
+            # if competition_data and not isinstance(competition_data, pd.DataFrame):
+            #     avg_bidders = competition_data.get('overall_avg_bidders', 0)
+            #     # Calculate the change from previous period if needed
+            #     # avg_bidders_change = 0  # This would come from historical comparison
+            #     col8, col9 = st.columns(2)
+            #     with col8:
+            #         st.metric(
+            #             "Average Competitors",
+            #             f"{avg_bidders:.1f}",
+            #             # f"{avg_bidders_change:.1f}%",
+            #             help="Average number of bidders per contract in selected period"
+            #         )
+            #     with col9:
+            #         # Calculate approximate pWin based on average bidders
+            #         pwin_result = calculate_pwin(df, our_capabilities_score=75)
+            #         if isinstance(pwin_result, dict):
+            #             overall_pwin = pwin_result.get('overall_pwin', 0)
+            #             st.metric(
+            #                 "Estimated pWin",
+            #                 f"{overall_pwin:.1f}%",
+            #                 help="Estimated probability of win based on competition level"
+            #             )
             
             # Row for the two main visualizations
             col1, col2 = st.columns(2)
@@ -1204,6 +1578,105 @@ def main():
     with tab3:
         st.header("Competitive Landscape")
         st.info("This tab will provide detailed analysis of competitors and market positioning.")
+        
+        # PLACEHOLDER - Competition Intensity Analysis
+        # st.subheader("Competition Intensity Analysis")
+        # if 'number_of_offers_received' in df.columns:
+        #     competition_data = get_competition_intensity(df)
+        #     if competition_data and not isinstance(competition_data, pd.DataFrame):
+        #         # Display competition distribution 
+        #         st.write("### Competition Level Distribution")
+        #         comp_dist = competition_data.get('competition_distribution', pd.DataFrame())
+        #         if not comp_dist.empty:
+        #             fig = px.pie(
+        #                 comp_dist,
+        #                 values="contract_count",
+        #                 names="competition_level",
+        #                 title="Distribution of Contracts by Competition Level",
+        #                 hole=0.4,
+        #                 color_discrete_sequence=px.colors.sequential.Viridis
+        #             )
+        #             fig.update_layout(
+        #                 plot_bgcolor=THEME["bg_color"],
+        #                 paper_bgcolor=THEME["bg_color"],
+        #                 font=dict(color=THEME["text_color"]),
+        #                 margin=dict(l=40, r=40, t=40, b=40)
+        #             )
+        #             st.plotly_chart(fig, use_container_width=True)
+        #         
+        #         # Competition Bubble Chart
+        #         st.write("### Contract Value vs. Competition Level")
+        #         # This would be a placeholder for the bubble chart showing contract value vs bidders
+        #         # Example implementation sketch:
+        #         # fig = plot_competition_bubble_chart(df)
+        #         # st.plotly_chart(fig, use_container_width=True)
+        #         
+        #         # Agency Competition Analysis
+        #         st.write("### Agency Competition Analysis")
+        #         agency_comp = competition_data.get('agency_competition', pd.DataFrame())
+        #         if not agency_comp.empty:
+        #             # Sort by average bidders in descending order and get top 15
+        #             agency_comp = agency_comp.sort_values('avg_bidders', ascending=False).head(15)
+        #             
+        #             fig = px.bar(
+        #                 agency_comp,
+        #                 x="avg_bidders",
+        #                 y="parent_award_agency_name",
+        #                 title="Average Number of Bidders by Agency",
+        #                 orientation="h",
+        #                 color="avg_bidders",
+        #                 color_continuous_scale="Viridis",
+        #                 labels={
+        #                     "avg_bidders": "Average Number of Bidders",
+        #                     "parent_award_agency_name": "Agency"
+        #                 },
+        #                 hover_data=["min_bidders", "max_bidders", "total_contracts"]
+        #             )
+        #             fig.update_layout(
+        #                 plot_bgcolor=THEME["bg_color"],
+        #                 paper_bgcolor=THEME["bg_color"],
+        #                 font=dict(color=THEME["text_color"]),
+        #                 margin=dict(l=40, r=40, t=40, b=40),
+        #                 coloraxis_showscale=False
+        #             )
+        #             st.plotly_chart(fig, use_container_width=True)
+        #         
+        #         # Probability of Win Analysis
+        #         st.write("### Probability of Win (pWin) Analysis")
+        #         pwin_result = calculate_pwin(df, our_capabilities_score=75)
+        #         if isinstance(pwin_result, dict):
+        #             pwin_by_agency = pwin_result.get('by_agency', pd.DataFrame())
+        #             if not pwin_by_agency.empty:
+        #                 # Get top 10 agencies by pWin
+        #                 pwin_by_agency = pwin_by_agency.head(10)
+        #                 
+        #                 fig = px.bar(
+        #                     pwin_by_agency,
+        #                     x="avg_pwin",
+        #                     y="parent_award_agency_name",
+        #                     title="Estimated Probability of Win by Agency",
+        #                     orientation="h",
+        #                     color="avg_pwin",
+        #                     color_continuous_scale="Viridis",
+        #                     labels={
+        #                         "avg_pwin": "Estimated pWin (%)",
+        #                         "parent_award_agency_name": "Agency"
+        #                     },
+        #                     hover_data=["avg_bidders", "contract_count"]
+        #                 )
+        #                 fig.update_layout(
+        #                     plot_bgcolor=THEME["bg_color"],
+        #                     paper_bgcolor=THEME["bg_color"],
+        #                     font=dict(color=THEME["text_color"]),
+        #                     margin=dict(l=40, r=40, t=40, b=40),
+        #                     coloraxis_showscale=False
+        #                 )
+        #                 st.plotly_chart(fig, use_container_width=True)
+        #     else:
+        #         st.warning("Unable to calculate competition metrics from the available data.")
+        # else:
+        #     st.warning("The 'number_of_offers_received' data field is not available in the current dataset.")
+        #     st.info("This analysis requires the number of bidders information to calculate competition intensity metrics.")
         
         # We'll implement the detailed visualizations in the next phase
         st.markdown("""
