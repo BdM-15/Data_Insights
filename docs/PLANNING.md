@@ -167,11 +167,13 @@ Data_Insights/
 
 - **External Data Source Integration**:
 
-  - SAM.gov API integration for future opportunity data
-  - SBA's SubNet integration for subcontracting opportunities
-  - GovWin IQ API integration (with API key) for pre-RFP intelligence and teaming partners
-  - Bloomberg Government API integration (with API key) for financial insights and subcontractor data
-  - Salesforce REST API integration for capture management and CRM functionality
+  - **USAspending.gov**: Primary source for historical contract data
+  - **SAM.gov API**: Integration for future opportunity data
+  - **SBA Mentor-Protégé Agreements**: Partnership data from SBA.gov providing insights on mentor-protégé relationships (https://www.sba.gov/document/support-active-mentor-protege-agreements)
+  - **SBA's SubNet**: Integration for subcontracting opportunities
+  - **GovWin IQ API**: Pre-RFP intelligence and teaming partners (requires API key)
+  - **Bloomberg Government API**: Financial insights and subcontractor data (requires API key)
+  - **Salesforce REST API**: Capture management and CRM functionality integration
 
 - **Admin-Only Data Fetch Interface**:
 
@@ -181,11 +183,25 @@ Data_Insights/
   - Add detailed logging and notification system
 
 - **Capture Management Enhancement**:
+
   - Pipeline building with automatic opportunity feeds into CRM systems
   - Opportunity qualification with scoring models for probability of win
   - Teaming and relationship building through subcontractor identification
   - Competitive analysis with visualization of competitor trends
   - Proposal development with automated extraction of key RFP terms
+
+- **Competition Intensity Analysis**:
+
+  - Create a dedicated "Competition Intensity" dashboard component showing:
+    - Average number of bidders by agency, NAICS code, and contract type
+    - Visual classification of high, medium, and low competition markets
+    - Trend analysis showing changes in competitive density over time
+    - "Sweet spot" identification for optimal value-to-competition ratio
+    - Correlation between competition levels and contract values
+  - Implement competition-based filtering options in the sidebar
+  - Develop a mathematical pWin model incorporating number of bidders as a key factor
+  - Integrate competition intensity metrics into opportunity qualification scoring
+  - Create specialized visualizations showing competitive density across federal market segments
 
 ## Potential Improvements
 
@@ -297,6 +313,7 @@ Data_Insights/
 ## Implementation Status
 
 ### Completed Features
+
 - ✅ **Application Architecture**: Modular structure with clear separation of concerns
 - ✅ **PostgreSQL Integration**: Connection, queries, and data management
 - ✅ **Basic UI**: Streamlit interface with filtering and visualization
@@ -305,10 +322,12 @@ Data_Insights/
 - ✅ **Multipage Structure**: Navigation between dedicated application pages
 
 ### In Progress
+
 - 🔄 **Advanced Filtering**: Enhanced data filtering capabilities
 - 🔄 **Export Functionality**: CSV and Excel export for data tables
 
 ### Pending
+
 - ⏱️ **AI Integration**: Local LLM inference with Ollama
 - ⏱️ **Capture Profile Generation**: AI-assisted document creation
 - ⏱️ **External Data Integration**: SAM.gov and other data sources
@@ -316,8 +335,11 @@ Data_Insights/
 ## Architecture Updates
 
 ### Streamlit Multipage Implementation
+
 The application now follows a modular structure with:
+
 - **Root Level**:
+
   - `app.py`: Main entry point and home dashboard
   - `config.py`: Centralized configuration management
   - `.env`: Environment-specific configuration
@@ -329,24 +351,65 @@ The application now follows a modular structure with:
   - `src/frontend/visualizations`: Chart generation functions
 
 ### Component Organization
+
 - **Database Layer**: Abstracted through utility functions in `database.py`
 - **Configuration**: Environment variables centralized in `config.py`
 - **UI Components**: Modular components for filters, charts, and data display
 - **Visualization**: Dedicated functions for creating different chart types
 
+## Data Architecture
+
+### Data Sources
+
+- **Primary Data Sources**:
+
+  - **USAspending.gov API**: Historical contract award data
+  - **USAspending.gov Bulk Download**: Large-scale historical data
+  - **SAM.gov API**: Active and future opportunities
+  - **NATO NSPA XML Feed**: European procurement opportunities
+  - **Small Business Administration (SBA) SubNet**: Subcontracting opportunities
+  - **Federal Procurement Data System (FPDS)**: Additional contract data
+  - **GovWin IQ API**: Pre-RFP intelligence and teaming opportunities
+  - **Bloomberg Government API**: Agency spending trends and legislative tracking
+
+- **Data Acquisition Mechanisms**:
+  - **Manual Fetch Button**: Admin-only interface for on-demand data updates
+  - **Automated Fetch Scheduler**: Configurable scheduled data retrieval system
+    - Time-based scheduling (daily, weekly, monthly)
+    - Differential updates to minimize processing requirements
+    - Automated retry with exponential backoff for failed fetches
+    - Health check reporting and notification system
+    - Source-specific configuration (frequency, scope, credentials)
+    - Logging and monitoring dashboard
+  - **REST API Connectors**: For real-time data access
+  - **Bulk Download Processors**: For large dataset ingestion
+  - **Web Scrapers**: For non-API data sources
+
+### Data Storage
+
+- **PostgreSQL Database**: Primary data storage
+  - Optimized table structure for federal contracting data
+  - Materialized views for common query patterns
+  - Indexed search fields for performance
+  - Partitioning for large historical datasets
+  - Connection pooling for concurrent access
+
 ## Next Steps
 
 ### Short Term
+
 1. Complete the filter implementation in the sidebar
 2. Implement the Data Explorer page with advanced filtering
 3. Create the Visualizations page with interactive charts
 
 ### Medium Term
+
 1. Implement state persistence between pages
 2. Add export functionality for all data views
 3. Enhance visualizations with interactive features
 
 ### Long Term
+
 1. Integrate local LLM inference with Ollama
 2. Implement capture profile generation
 3. Add external data integration (SAM.gov, etc.)

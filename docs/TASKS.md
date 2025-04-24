@@ -137,6 +137,7 @@
   - Status: Planned, high priority as these tools will provide the foundation for the Capture Profile feature
 
 - **Enhance User Interface**:
+
   - Sub-tasks:
     - Implement filter state persistence between sessions
     - Add custom CSS for improved branding
@@ -144,6 +145,7 @@
   - Status: Planned, medium priority
 
 - **Complete Data Explorer Page**:
+
   - Sub-tasks:
     - Implement advanced filtering functionality
     - Create detailed data table view with sorting/filtering
@@ -151,6 +153,7 @@
   - Status: Planned, high priority
 
 - **Implement Visualizations Page**:
+
   - Sub-tasks:
     - Create comprehensive visualization library
     - Implement user customization options for charts
@@ -479,3 +482,26 @@
   - Add tabbed interfaces for content organization
   - Integrate advanced Streamlit features for improved user experience
   - Status: Planned, to be implemented after core functionality is stable.
+
+## Future Development Tasks
+
+### Competition Analysis Enhancement
+
+- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
+- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
+- [ ] Create mathematical pWin model using number of bidders as a key factor
+- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
+- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
+- [ ] Add competition intensity metrics to executive summary dashboard
+- [ ] Incorporate competition level insights into Shipley milestone process
+
+### Automated Data Fetch Scheduler
+
+- [ ] Implement scheduled data fetching system to replace manual refresh process
+- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
+- [ ] Add logging and notification system for scheduled fetch results
+- [ ] Implement retry mechanism for failed fetches with exponential backoff
+- [ ] Create admin dashboard for schedule configuration and monitoring
+- [ ] Add health check reporting for data source connectivity
+- [ ] Implement differential update to only fetch new/changed records
+- [ ] Develop email/notification alerts for fetch failures or anomalies
