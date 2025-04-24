@@ -178,6 +178,22 @@ def get_ollama_config() -> Dict[str, Any]:
         "MAX_TOKENS": int(os.getenv("MAX_TOKENS", "2000"))
     }
 
+def get_log_config() -> Dict[str, Any]:
+    """
+    Get logging configuration from environment variables.
+    
+    Returns:
+        Dictionary containing logging configuration parameters
+    """
+    return {
+        "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+        "LOG_FILE": os.getenv("LOG_FILE", os.path.join(LOGS_DIR, "app.log")),
+        "LOG_FORMAT": os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
+        "LOG_TO_CONSOLE": os.getenv("LOG_TO_CONSOLE", "True").lower() == "true",
+        "LOG_MAX_BYTES": int(os.getenv("LOG_MAX_BYTES", "10485760")),  # 10MB
+        "LOG_BACKUP_COUNT": int(os.getenv("LOG_BACKUP_COUNT", "5"))
+    }
+
 # Validate critical configuration on module load
 def validate_config() -> bool:
     """
