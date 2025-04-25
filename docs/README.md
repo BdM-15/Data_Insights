@@ -178,6 +178,15 @@ Data_Insights/
   - Implement advanced filtering options
   - Optimize for large datasets with pagination
 
+### Recent Updates (April 2025)
+
+- **Cross-Environment Compatibility Improvements**:
+  - Replaced all Unicode special characters with ASCII-compatible alternatives
+  - Standardized symbol usage across dashboards and reports
+  - Enhanced compatibility across Windows, Linux, and cloud environments
+  - Fixed encoding issues in exported files and visualizations
+  - Improved readability and consistent appearance across different platforms
+
 ### Model Context Protocol (MCP) Integration in Streamlit
 
 The USAspending.gov Data Explorer will be enhanced with direct integration of Model Context Protocol (MCP) AI tools within the Streamlit interface, providing users with AI-powered analysis capabilities directly in the web application.

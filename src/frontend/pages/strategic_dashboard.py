@@ -85,38 +85,46 @@ st.markdown(f"""
         background-color: rgba(0, 195, 255, 0.1);
         transform: translateY(-2px);
     }}
-    /* Updated metric styling */
+    /* Metric card styling with solid background */
+    [data-testid="stMetricValue"] {{
+        background-color: {THEME['bg_color']}; 
+        border-radius: 8px 8px 0px 0px;
+        padding: 10px 5px 0px 5px;
+        color: {THEME['highlight_color']};
+        width: 100%;
+        text-align: center;
+        font-size: 2rem;
+    }}
+    
+    [data-testid="stMetricLabel"] {{
+        background-color: {THEME['bg_color']};
+        border-radius: 0px 0px 8px 8px;
+        padding: 0px 5px 10px 5px;
+        color: {THEME['text_color']};
+        width: 100%;
+        text-align: center;
+        border-bottom: 4px solid {THEME['primary_color']};
+    }}
+    
+    /* Add box shadow and border styling to the whole metric container */
     [data-testid="metric-container"] {{
         background-color: {THEME['bg_color']};
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
         border-radius: 8px;
-        padding: 15px 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        margin: 0px 3px;
         border-left: 4px solid {THEME['primary_color']};
-        width: 100%;
-        text-align: center;
+        border-right: 1px solid rgba(0, 195, 255, 0.2);
+        border-top: 1px solid rgba(0, 195, 255, 0.2);
+        border-bottom: 1px solid rgba(0, 195, 255, 0.2);
     }}
-    div[data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    div[data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        text-align: center;
-        width: 100%;
-    }}
+
+    /* Handle delta values styling */
     div[data-testid="stMetricDelta"] {{
         text-align: center;
         width: 100%;
+        background-color: {THEME['bg_color']};
     }}
-    /* Add styling for metric titles (labels) to ensure they're centered */
-    .css-1wivap2[data-testid="metric-container"] > div:nth-child(1) {{
-        display: flex;
-        justify-content: center;
-        text-align: center;
-    }}
+    
     /* Style the sidebar */
     [data-testid="stSidebar"] {{
         background-color: {THEME['bg_color']};
@@ -149,60 +157,6 @@ st.markdown(f"""
         padding-top: 1rem;
         margin-top: 1rem;
     }}
-    /* Center the metric titles properly */
-    [data-testid="metric-container"] > div:nth-child(1) {{
-        width: 100%;
-        display: flex;
-        justify-content: center;
-    }}
-    
-    [data-testid="metric-container"] > div:nth-child(1) > label {{
-        width: 100%;
-        text-align: center;
-    }}
-    
-    div[data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    
-    div[data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    /* Properly center metric card titles with more specific selectors */
-    [data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        width: 100%;
-        text-align: center !important;
-        justify-content: center !important;
-        display: flex !important;
-        flex-direction: row;
-    }}
-    
-    [data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        width: 100%;
-        text-align: center;
-    }}
-    
-    /* Force metric container label to center */
-    [data-testid="metric-container"] > div:first-child {{
-        justify-content: center !important;
-        display: flex !important;
-        width: 100% !important;
-    }}
-    
-    [data-testid="metric-container"] > div:first-child > label {{
-        text-align: center !important;
-        width: 100% !important;
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -225,14 +179,14 @@ def get_db_connection():
             with engine.connect() as conn:
                 from sqlalchemy import text
                 result = conn.execute(text("SELECT 1")).fetchone()
-                st.sidebar.success(f"✓ Database connection successful: {result}")
+                st.sidebar.success(f"[+] Database connection successful: {result}")
                 
                 # Check if the table exists
                 result = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaprime_cleaned')")).fetchone()
                 if result and result[0]:
-                    st.sidebar.success("✓ Table 'usaprime_cleaned' exists")
+                    st.sidebar.success("[+] Table 'usaprime_cleaned' exists")
                 else:
-                    st.sidebar.warning("⚠️ Table 'usaprime_cleaned' does not exist")
+                    st.sidebar.warning(f"[-] Table 'usaprime_cleaned' doesn't exist")
                     # List available tables to help debugging
                     tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).fetchall()
                     if tables:
@@ -318,9 +272,6 @@ def get_naics_data(naics_code="561210", start_date=None, end_date=None):
             st.sidebar.info(f"Trying table: {table_name}")
             st.sidebar.info(f"Query params: {params}")
             
-            # Use pandas chunking to handle large datasets efficiently
-            conn = engine.connect()
-            
             # First count how many rows we'll be processing
             count_query = f"""
                 SELECT COUNT(*) FROM {table_name}
@@ -339,32 +290,42 @@ def get_naics_data(naics_code="561210", start_date=None, end_date=None):
             
             # Get total row count
             try:
-                row_count = pd.read_sql(text(count_query), conn, params=params).iloc[0, 0]
-                st.sidebar.info(f"Found {row_count:,} total rows matching criteria")
+                with engine.connect() as conn:
+                    row_count = pd.read_sql(text(count_query), conn, params=params).iloc[0, 0]
+                    st.sidebar.info(f"Found {row_count:,} total rows matching criteria")
             except Exception as e:
                 st.sidebar.warning(f"Could not determine total row count: {str(e)}")
                 row_count = "unknown"
             
-            # Process data in chunks to handle large datasets
+            # Process data in chunks to handle large datasets efficiently
             chunk_size = 100000  # Adjust based on memory constraints
             df_list = []
             
-            # Use chunking for potentially large datasets
-            with st.sidebar.status(f"Loading data from {table_name}..."):
-                for chunk in pd.read_sql(text(query), conn, params=params, chunksize=chunk_size):
+            # Use chunking with a status indicator
+            with st.sidebar.status(f"Loading data from {table_name}...") as status:
+                conn = engine.connect()
+                total_loaded = 0
+                
+                for chunk_num, chunk in enumerate(pd.read_sql(text(query), conn, params=params, chunksize=chunk_size)):
                     df_list.append(chunk)
+                    total_loaded += len(chunk)
+                    status.update(label=f"Loading data: {total_loaded:,} rows loaded ({chunk_num+1} chunks)")
+                    
+                # Combine all chunks
+                if df_list:
                     if len(df_list) == 1:
-                        st.sidebar.info(f"Loaded first chunk of {len(chunk):,} rows")
+                        # Only one chunk, no need for concatenation
+                        df = df_list[0]
                     else:
-                        st.sidebar.info(f"Loaded {len(df_list)} chunks ({len(df_list) * chunk_size:,} rows)")
-            
-            # Combine all chunks
-            if df_list:
-                df = pd.concat(df_list, ignore_index=True)
-                st.sidebar.success(f"✓ Successfully loaded {len(df):,} rows from '{table_name}'")
-                return df
-            else:
-                st.sidebar.warning(f"⚠️ Table '{table_name}' exists but returned no data")
+                        # Multiple chunks, concatenate them
+                        df = pd.concat(df_list, ignore_index=True)
+                    
+                    status.update(label=f"Complete! Loaded {len(df):,} rows from {table_name}")
+                    st.sidebar.success(f"[+] Successfully loaded {len(df):,} rows from '{table_name}'")
+                    return df
+                else:
+                    status.update(label=f"No data found in {table_name}")
+                    st.sidebar.warning(f"[-] Table {table_name} exists but returns no data")
                 
         except Exception as e:
             error_str = str(e).lower()
@@ -538,6 +499,18 @@ def get_agency_obligation_ratio(df):
     # Handle infinite values
     agency_ratio['avg_award_value'] = agency_ratio['avg_award_value'].replace([np.inf, -np.inf], 0)
     
+    # Ensure that size values are positive for scatter plot
+    # Reason: Plotly requires size values to be positive numbers
+    agency_ratio['scatter_size'] = np.abs(agency_ratio['avg_award_value'])
+    
+    # Cap extremely large values to prevent dominating the visualization
+    size_cap = agency_ratio['scatter_size'].quantile(0.95)  # Cap at 95th percentile
+    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].clip(upper=size_cap)
+    
+    # Ensure minimum size for visibility
+    min_size = 5
+    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].apply(lambda x: max(x, min_size))
+    
     # Normalize data to prevent bunching due to outliers
     # Apply log transformation for better visualization of skewed data
     agency_ratio['award_count_normalized'] = np.log1p(agency_ratio['award_count'])
@@ -573,6 +546,164 @@ def get_contract_vehicles(df):
     return vehicle_counts
 
 @st.cache_data(ttl=3600)
+def get_recipient_award_counts(df):
+    """
+    Get award counts by recipient (base awards only).
+    
+    Args:
+        df: DataFrame containing award data
+        
+    Returns:
+        DataFrame with recipient award counts
+    """
+    if df.empty:
+        return pd.DataFrame()
+    
+    # Filter for base awards only
+    base_awards = df[df['modification_number'] == '0']
+    
+    # Count awards by recipient
+    award_counts = base_awards.groupby('recipient_name').size().reset_index(name='award_count')
+    
+    return award_counts
+
+@st.cache_data(ttl=3600)
+def get_recipient_obligations(df):
+    """
+    Get total obligations by recipient (all awards including modifications).
+    
+    Args:
+        df: DataFrame containing award data
+        
+    Returns:
+        DataFrame with recipient obligations
+    """
+    if df.empty:
+        return pd.DataFrame()
+    
+    # Sum obligations by recipient (all records including modifications)
+    obligations = df.groupby('recipient_name')['federal_action_obligation'].sum().reset_index()
+    
+    return obligations
+
+@st.cache_data(ttl=3600)
+def get_treemap_data(df):
+    """
+    Prepare data specifically for the competitive landscape treemap.
+    Debug version that includes detailed diagnostics for troubleshooting.
+    
+    Args:
+        df: DataFrame containing award data
+        
+    Returns:
+        DataFrame specifically formatted for the treemap visualization
+    """
+    if df.empty:
+        return pd.DataFrame()
+    
+    # Debug info in an expander in the sidebar
+    with st.sidebar.expander("Treemap Data Diagnostics", expanded=False):
+        st.write(f"Total rows in dataset: {len(df)}")
+        
+        # Check for NAICS code distribution
+        naics_counts = df['naics_code'].value_counts().head(5)
+        st.write("Top NAICS codes in current data:")
+        st.write(naics_counts)
+        
+        # Get modification number distribution
+        mod_counts = df['modification_number'].value_counts().head(10)
+        st.write("Modification number distribution:")
+        st.write(mod_counts)
+        
+        # Check data types
+        st.write("Modification number data type:", df['modification_number'].dtype)
+        
+        # Sample a few rows to see actual values
+        st.write("Sample rows from dataset:")
+        st.write(df[['recipient_name', 'modification_number', 'federal_action_obligation']].head(3))
+    
+    # Create a deep copy to avoid modifying original
+    filtered_df = df.copy()
+    
+    # Ensure modification_number is properly handled as a string
+    filtered_df['modification_number'] = filtered_df['modification_number'].astype(str).str.strip()
+    
+    # Directly identify and count base awards
+    filtered_df['is_base'] = filtered_df['modification_number'] == '0'
+    
+    # Get a list of all recipients for processing
+    recipients = filtered_df['recipient_name'].unique()
+    
+    # Process each recipient to ensure accurate counts
+    result_data = []
+    
+    for recipient in recipients:
+        # Get data for this recipient
+        recipient_df = filtered_df[filtered_df['recipient_name'] == recipient]
+        
+        # Get total obligations (all records)
+        total_obligations = recipient_df['federal_action_obligation'].sum()
+        
+        # Get base award count (exact '0' modification number)
+        base_count = recipient_df['is_base'].sum()
+        
+        # Add to results
+        result_data.append({
+            'recipient_name': recipient,
+            'federal_action_obligation': total_obligations,
+            'award_count': base_count
+        })
+    
+    # Convert to DataFrame
+    treemap_data = pd.DataFrame(result_data)
+    
+    # Calculate market share
+    total_obligations = treemap_data['federal_action_obligation'].sum()
+    if total_obligations > 0:
+        treemap_data['market_share'] = treemap_data['federal_action_obligation'] / total_obligations * 100
+    else:
+        treemap_data['market_share'] = 0
+    
+    # Calculate win rate
+    total_awards = treemap_data['award_count'].sum()
+    if total_awards > 0:
+        treemap_data['win_rate'] = treemap_data['award_count'] / total_awards * 100
+    else:
+        treemap_data['win_rate'] = 0
+    
+    # Sort by market share
+    treemap_data = treemap_data.sort_values('market_share', ascending=False)
+    
+    # Debug specific recipients if they exist in the data
+    problem_recipients = ['National Technology & Engineering Solutions of Sandia, LLC', 
+                         'Vectrus Systems LLC', 
+                         'NTESS, LLC']
+    
+    with st.sidebar.expander("Problem Recipients Analysis", expanded=False):
+        for prob_recip in problem_recipients:
+            matching_rows = filtered_df[filtered_df['recipient_name'].str.contains(prob_recip, case=False, na=False)]
+            if not matching_rows.empty:
+                st.write(f"Analysis for: {prob_recip}")
+                st.write(f"Total rows: {len(matching_rows)}")
+                
+                # Show modification numbers for this recipient
+                mod_dist = matching_rows['modification_number'].value_counts().head(5)
+                st.write("Modification distribution:")
+                st.write(mod_dist)
+                
+                # Check if there are any base awards with mod number = '0'
+                base_rows = matching_rows[matching_rows['modification_number'] == '0']
+                st.write(f"Base awards (mod='0'): {len(base_rows)}")
+                
+                # Result in treemap:
+                recip_in_treemap = treemap_data[treemap_data['recipient_name'].str.contains(prob_recip, case=False, na=False)]
+                if not recip_in_treemap.empty:
+                    st.write("In treemap data:")
+                    st.write(recip_in_treemap[['recipient_name', 'award_count', 'federal_action_obligation']])
+    
+    return treemap_data
+
+@st.cache_data(ttl=3600)
 def get_competitive_landscape(df):
     """
     Analyze competitive landscape among contractors.
@@ -586,8 +717,7 @@ def get_competitive_landscape(df):
     if df.empty:
         return pd.DataFrame()
     
-    # Simply filter for modification_number '0' directly
-    # No need for regex patterns or string normalization
+    # Use only exact string comparison for modification_number
     base_awards = df[df['modification_number'] == '0']
     
     # Count awards by recipient
@@ -596,7 +726,7 @@ def get_competitive_landscape(df):
     # Sum obligations by recipient (using all records including modifications)
     obligations = df.groupby('recipient_name')['federal_action_obligation'].sum().reset_index()
     
-    # Merge the datasets
+    # Merge the datasets - using outer join to include all recipients
     competitors = pd.merge(award_counts, obligations, on='recipient_name', how='outer').fillna(0)
     
     # Calculate market share
@@ -610,140 +740,20 @@ def get_competitive_landscape(df):
     # Sort by market share
     competitors = competitors.sort_values('market_share', ascending=False)
     
+    # Add debugging - examine data just before return for problem contractors
+    with st.sidebar.expander("Competitive Landscape Analysis", expanded=False):
+        st.write(f"Total competitors: {len(competitors)}")
+        st.write(f"Total with zero award counts: {len(competitors[competitors['award_count'] == 0])}")
+        
+        # Look at top contractors by obligation
+        top_by_obligation = competitors.nlargest(5, 'federal_action_obligation')
+        st.write("Top 5 by obligation:")
+        st.write(top_by_obligation[['recipient_name', 'award_count', 'federal_action_obligation', 'market_share']])
+        
+        # Show debug message explaining limited historical data
+        st.info("Note: Zero award counts may appear for contractors whose base awards occurred before your data collection period began (~2.5 years). The treemap still accurately shows their market share based on obligations during the selected timeframe.")
+    
     return competitors
-
-# PLACEHOLDER - Competition Intensity Analysis Function
-# @st.cache_data(ttl=3600)
-# def get_competition_intensity(df):
-#     """
-#     Analyze competition intensity across contracts.
-#     
-#     Args:
-#         df: DataFrame containing award data with number_of_offers_received column
-#         
-#     Returns:
-#         DataFrame with competition intensity metrics
-#     """
-#     if df.empty or 'number_of_offers_received' not in df.columns:
-#         return pd.DataFrame()
-#     
-#     # Convert offers received to numeric, handling any non-numeric values
-#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(0)
-#     
-#     # Filter for base awards only
-#     base_awards = df[df['modification_number'] == '0']
-#     
-#     # Calculate competition metrics by various dimensions
-#     
-#     # 1. By agency
-#     agency_competition = base_awards.groupby('parent_award_agency_name')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 2. By NAICS code
-#     naics_competition = base_awards.groupby('naics_code')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 3. By contract type
-#     contract_type_competition = base_awards.groupby('award_type')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 4. Create competition categories
-#     def categorize_competition(bidders):
-#         if bidders <= 2:
-#             return "Low Competition (1-2 bidders)"
-#         elif bidders <= 5:
-#             return "Medium Competition (3-5 bidders)"
-#         else:
-#             return "High Competition (6+ bidders)"
-#     
-#     # Apply categorization
-#     base_awards['competition_level'] = base_awards['number_of_offers_received'].apply(categorize_competition)
-#     
-#     # Count contracts by competition level
-#     competition_distribution = base_awards['competition_level'].value_counts().reset_index()
-#     competition_distribution.columns = ['competition_level', 'contract_count']
-#     
-#     # Calculate overall average
-#     overall_avg_bidders = base_awards['number_of_offers_received'].mean()
-#     
-#     return {
-#         'agency_competition': agency_competition,
-#         'naics_competition': naics_competition, 
-#         'contract_type_competition': contract_type_competition,
-#         'competition_distribution': competition_distribution,
-#         'overall_avg_bidders': overall_avg_bidders
-#     }
-
-# PLACEHOLDER - Probability of Win Calculation
-# @st.cache_data(ttl=3600)
-# def calculate_pwin(df, our_capabilities_score=75, incumbent_status=False):
-#     """
-#     Calculate probability of win based on competitive factors.
-#     
-#     Args:
-#         df: DataFrame containing contract data with number_of_offers_received
-#         our_capabilities_score: Score from 0-100 representing capability match
-#         incumbent_status: Boolean indicating if we are the incumbent
-#         
-#     Returns:
-#         Dictionary with pWin calculations for different contract segments
-#     """
-#     if df.empty or 'number_of_offers_received' not in df.columns:
-#         return {'overall_pwin': 0, 'by_agency': pd.DataFrame(), 'by_naics': pd.DataFrame()}
-#     
-#     # Convert offers received to numeric
-#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(1)
-#     df.loc[df['number_of_offers_received'] == 0, 'number_of_offers_received'] = 1  # Avoid division by zero
-#     
-#     # Filter for base awards only
-#     base_awards = df[df['modification_number'] == '0']
-#     
-#     # Calculate base probability (1/number of bidders)
-#     base_awards['base_probability'] = 1 / base_awards['number_of_offers_received']
-#     
-#     # Apply capability factor (0-1 scale)
-#     capability_factor = our_capabilities_score / 100
-#     
-#     # Apply incumbent advantage (if applicable)
-#     incumbent_advantage = 1.5 if incumbent_status else 1.0
-#     
-#     # Calculate adjusted pWin percentage
-#     base_awards['pwin'] = (base_awards['base_probability'] * capability_factor * incumbent_advantage * 100).clip(upper=95)
-#     
-#     # Calculate overall pWin
-#     overall_pwin = base_awards['pwin'].mean()
-#     
-#     # Calculate pWin by agency
-#     pwin_by_agency = base_awards.groupby('parent_award_agency_name').agg(
-#         avg_pwin=('pwin', 'mean'),
-#         avg_bidders=('number_of_offers_received', 'mean'),
-#         contract_count=('pwin', 'count')
-#     ).reset_index().sort_values('avg_pwin', ascending=False)
-#     
-#     # Calculate pWin by NAICS
-#     pwin_by_naics = base_awards.groupby('naics_code').agg(
-#         avg_pwin=('pwin', 'mean'),
-#         avg_bidders=('number_of_offers_received', 'mean'),
-#         contract_count=('pwin', 'count')
-#     ).reset_index().sort_values('avg_pwin', ascending=False)
-#     
-#     return {
-#         'overall_pwin': overall_pwin,
-#         'by_agency': pwin_by_agency,
-#         'by_naics': pwin_by_naics
-#     }
 
 @st.cache_data(ttl=3600)
 def get_expiring_contracts(df, months_ahead=24):
@@ -1079,8 +1089,9 @@ def main():
             df = pd.DataFrame()
     
     # Main dashboard tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab_future, tab2, tab3, tab4, tab5 = st.tabs([
         "Market Overview", 
+        "Future Opportunities",
         "Agency Intelligence",
         "Competitive Analysis",
         "Contract Vehicle Analysis",
@@ -1180,7 +1191,9 @@ def main():
                             name="Obligations",
                             line=dict(color=THEME["primary_color"], width=3),
                             mode="lines+markers",
-                            marker=dict(size=8)
+                            marker=dict(size=8),
+                            # Add custom hovertemplate to format obligations with commas and no decimal places
+                            hovertemplate="<b>%{x}</b><br>Obligations: $%{y:,.0f}<extra></extra>"
                         ),
                         secondary_y=False
                     )
@@ -1193,7 +1206,9 @@ def main():
                             name="Award Actions",
                             line=dict(color=THEME["accent2_color"], width=3),
                             mode="lines+markers",
-                            marker=dict(size=8)
+                            marker=dict(size=8),
+                            # Add custom hovertemplate to format award actions with commas and no decimal places
+                            hovertemplate="<b>%{x}</b><br>Award Actions: %{y:,.0f}<extra></extra>"
                         ),
                         secondary_y=True
                     )
@@ -1257,7 +1272,7 @@ def main():
                         agency_ratio,
                         x="award_count_normalized",
                         y="obligation_normalized",
-                        size="avg_award_value",
+                        size="scatter_size",
                         color="parent_award_agency_name",
                         hover_name="parent_award_agency_name",
                         hover_data={
@@ -1388,11 +1403,12 @@ def main():
                 # Competitive Landscape
                 st.subheader("Competitive Landscape")
                 
-                competitors = get_competitive_landscape(df)
+                # Use the new specialized treemap data function instead of get_competitive_landscape()
+                treemap_data = get_treemap_data(df)
                 
-                if not competitors.empty:
+                if not treemap_data.empty:
                     # Use only top 10 competitors
-                    top_competitors = competitors.head(10)
+                    top_competitors = treemap_data.head(10)
                     
                     fig = px.treemap(
                         top_competitors,
@@ -1534,13 +1550,13 @@ def main():
                     annotations = []
                     for i, row in top_agencies_dollars.iterrows():
                         annotations.append({
-                            "x": row["federal_action_obligation"],
-                            "y": row["parent_award_agency_name"],
-                            "text": format_value(row["federal_action_obligation"], is_currency=True),
-                            "showarrow": False,
-                            "xanchor": "left",
-                            "xshift": 5,
-                            "font": {"color": "white", "size": 10}
+                            'x': row['federal_action_obligation'],
+                            'y': row['parent_award_agency_name'],
+                            'text': format_value(row['federal_action_obligation'], is_currency=True),
+                            'showarrow': False,
+                            'xanchor': 'left',
+                            'xshift': 5,
+                            'font': {'color': 'white', 'size': 10}
                         })
                     
                     fig.update_layout(annotations=annotations)
@@ -1561,48 +1577,27 @@ def main():
             See the Diagnostics section in the sidebar for more details.
             """)
     
+    # Tab Future: Future Opportunities (placeholder)
+    with tab_future:
+        st.header("Future Opportunities")
+        st.info("This tab will identify upcoming opportunities by connecting historical contract data with active solicitations from SAM.gov and NATO NSPA.")
+        
+        # We'll implement the detailed visualizations in the next phase
+        st.markdown("""
+        Planned visualizations:
+        - Expiring Contracts Timeline for next 6-24 months
+        - Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
+        - Active SAM.gov Opportunities with capability match scoring
+        - NATO NSPA Opportunities with capability match scoring  
+        - Strategic Connections between historical performance and future opportunities
+        """)
+    
     # Tab 2: Agency Intelligence (placeholder for now)
     with tab2:
         st.header("Agency Intelligence")
         st.info("This tab will provide detailed analysis of agencies, sub-agencies, and offices.")
         
         # We'll implement the detailed visualizations in the next phase
-        st.markdown("""
-        Planned visualizations:
-        - Agency hierarchy analysis
-        - Agency spending patterns
-        - Set-aside utilization by agency
-        """)
-    
-    # Tab 3: Competitive Landscape (placeholder for now)
-    with tab3:
-        st.header("Competitive Landscape")
-        st.info("This tab will provide detailed analysis of competitors and market positioning.")
-        
-        # PLACEHOLDER - Competition Intensity Analysis
-        # st.subheader("Competition Intensity Analysis")
-        # if 'number_of_offers_received' in df.columns:
-        #     competition_data = get_competition_intensity(df)
-        #     if competition_data and not isinstance(competition_data, pd.DataFrame):
-        #         # Display competition distribution 
-        #         st.write("### Competition Level Distribution")
-        #         comp_dist = competition_data.get('competition_distribution', pd.DataFrame())
-        #         if not comp_dist.empty:
-        #             fig = px.pie(
-        #                 comp_dist,
-        #                 values="contract_count",
-        #                 names="competition_level",
-        #                 title="Distribution of Contracts by Competition Level",
-        #                 hole=0.4,
-        #                 color_discrete_sequence=px.colors.sequential.Viridis
-        #             )
-        #             fig.update_layout(
-        #                 plot_bgcolor=THEME["bg_color"],
-        #                 paper_bgcolor=THEME["bg_color"],
-        #                 font=dict(color=THEME["text_color"]),
-        #                 margin=dict(l=40, r=40, t=40, b=40)
-        #             )
-        #             st.plotly_chart(fig, use_container_width=True)
         #         
         #         # Competition Bubble Chart
         #         st.write("### Contract Value vs. Competition Level")
@@ -1685,6 +1680,455 @@ def main():
         - Contract type success rates
         - Win rate analysis by vehicle type
         """)
+    
+    # Tab 3: Competitive Analysis
+    with tab3:
+        st.header("Competitive Analysis")
+        
+        if not df.empty:
+            st.subheader("Competitive Intelligence Overview")
+            st.markdown("""
+            This tab provides detailed analysis of the competitive landscape across federal contracts, 
+            helping you understand competitor strengths, agency relationships, and market positioning.
+            """)
+            
+            # Top Competitors Analysis
+            competitors_data = get_competitive_landscape(df)
+            
+            if not competitors_data.empty:
+                # Prepare data for visualization - get top 10 competitors
+                top_competitors = competitors_data.nlargest(10, 'market_share')
+                
+                # First row of visualizations - Market Share and Win Rate
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Competitor Market Share Analysis
+                    st.subheader("Market Share Analysis")
+                    
+                    fig = px.bar(
+                        top_competitors,
+                        x='market_share',
+                        y='recipient_name',
+                        orientation='h',
+                        title="Top 10 Competitors by Market Share",
+                        color='market_share',
+                        color_continuous_scale="Blues",
+                        labels={
+                            'market_share': 'Market Share (%)',
+                            'recipient_name': 'Competitor'
+                        }
+                    )
+                    
+                    # Update layout
+                    fig.update_layout(
+                        plot_bgcolor=THEME["bg_color"],
+                        paper_bgcolor=THEME["bg_color"],
+                        font=dict(color=THEME["text_color"]),
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        yaxis={'categoryorder': 'total ascending'},
+                        coloraxis_showscale=False
+                    )
+                    
+                    # Add value annotations
+                    fig.update_traces(
+                        texttemplate='%{x:.1f}%',
+                        textposition='outside',
+                        hovertemplate='<b>%{y}</b><br>Market Share: %{x:.2f}%<extra></extra>'
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    # Competitor Win Rate Analysis
+                    st.subheader("Win Rate Analysis")
+                    
+                    fig = px.bar(
+                        top_competitors,
+                        x='win_rate',
+                        y='recipient_name',
+                        orientation='h',
+                        title="Top 10 Competitors by Win Rate",
+                        color='win_rate',
+                        color_continuous_scale="Teal",
+                        labels={
+                            'win_rate': 'Win Rate (%)',
+                            'recipient_name': 'Competitor'
+                        }
+                    )
+                    
+                    # Update layout
+                    fig.update_layout(
+                        plot_bgcolor=THEME["bg_color"],
+                        paper_bgcolor=THEME["bg_color"],
+                        font=dict(color=THEME["text_color"]),
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        yaxis={'categoryorder': 'total ascending'},
+                        coloraxis_showscale=False
+                    )
+                    
+                    # Add value annotations
+                    fig.update_traces(
+                        texttemplate='%{x:.1f}%',
+                        textposition='outside',
+                        hovertemplate='<b>%{y}</b><br>Win Rate: %{x:.2f}%<extra></extra>'
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Market Position Analysis - Scatter Plot
+                st.subheader("Market Position Analysis")
+                
+                # Create scatter plot with win rate vs market share
+                fig = px.scatter(
+                    top_competitors,
+                    x='market_share',
+                    y='win_rate',
+                    size='federal_action_obligation',
+                    color='recipient_name',
+                    hover_name='recipient_name',
+                    title="Competitive Positioning: Win Rate vs Market Share",
+                    labels={
+                        'market_share': 'Market Share (%)',
+                        'win_rate': 'Win Rate (%)',
+                        'federal_action_obligation': 'Total Obligations ($)'
+                    },
+                    size_max=50
+                )
+                
+                # Add quadrant lines at median values
+                median_market_share = top_competitors['market_share'].median()
+                median_win_rate = top_competitors['win_rate'].median()
+                
+                fig.add_shape(
+                    type="line",
+                    x0=median_market_share,
+                    y0=0,
+                    x1=median_market_share,
+                    y1=top_competitors['win_rate'].max() * 1.1,
+                    line=dict(color="White", width=1, dash="dash")
+                )
+                
+                fig.add_shape(
+                    type="line",
+                    x0=0,
+                    y0=median_win_rate,
+                    x1=top_competitors['market_share'].max() * 1.1,
+                    y1=median_win_rate,
+                    line=dict(color="White", width=1, dash="dash")
+                )
+                
+                # Add quadrant labels
+                fig.add_annotation(
+                    x=median_market_share/2,
+                    y=top_competitors['win_rate'].max() * 0.8,
+                    text="High Win Rate, Low Market Share",
+                    showarrow=False,
+                    font=dict(color=THEME["highlight_color"])
+                )
+                
+                fig.add_annotation(
+                    x=top_competitors['market_share'].max() * 0.8,
+                    y=top_competitors['win_rate'].max() * 0.8,
+                    text="Market Leaders",
+                    showarrow=False,
+                    font=dict(color=THEME["highlight_color"])
+                )
+                
+                fig.add_annotation(
+                    x=median_market_share/2,
+                    y=median_win_rate/2,
+                    text="Struggling Competitors",
+                    showarrow=False,
+                    font=dict(color=THEME["text_color"])
+                )
+                
+                fig.add_annotation(
+                    x=top_competitors['market_share'].max() * 0.8,
+                    y=median_win_rate/2,
+                    text="High Volume, Low Win Rate",
+                    showarrow=False,
+                    font=dict(color=THEME["text_color"])
+                )
+                
+                # Update layout
+                fig.update_layout(
+                    plot_bgcolor=THEME["bg_color"],
+                    paper_bgcolor=THEME["bg_color"],
+                    font=dict(color=THEME["text_color"]),
+                    margin=dict(l=10, r=10, t=40, b=10)
+                )
+                
+                # Update hover template
+                fig.update_traces(
+                    hovertemplate="<b>%{hovertext}</b><br>" +
+                                  "Market Share: %{x:.2f}%<br>" +
+                                  "Win Rate: %{y:.2f}%<br>" +
+                                  "Total Obligations: $%{marker.size:,.0f}<extra></extra>"
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Competitor-Agency Relationship Analysis
+                st.subheader("Competitor-Agency Relationships")
+                
+                # For each top competitor, find their top agencies
+                # This would normally use a more sophisticated query, but we'll simulate the relationship here
+                
+                # Process the data to get competitor-agency relationships
+                # Group by recipient_name and parent_award_agency_name
+                if 'parent_award_agency_name' in df.columns and not df.empty:
+                    competitor_agency = df.groupby(['recipient_name', 'parent_award_agency_name'])['federal_action_obligation'].sum().reset_index()
+                    
+                    # Filter for top 5 competitors only
+                    top_5_competitors = competitors_data.nlargest(5, 'market_share')['recipient_name'].tolist()
+                    competitor_agency = competitor_agency[competitor_agency['recipient_name'].isin(top_5_competitors)]
+                    
+                    # For each competitor, get their top 3 agencies
+                    competitor_top_agencies = {}
+                    for competitor in top_5_competitors:
+                        competitor_data = competitor_agency[competitor_agency['recipient_name'] == competitor]
+                        top_agencies = competitor_data.nlargest(3, 'federal_action_obligation')
+                        competitor_top_agencies[competitor] = top_agencies
+                    
+                    # Create a heatmap-style visualization
+                    # Prepare data for heatmap
+                    heatmap_data = []
+                    for competitor in top_5_competitors:
+                        if competitor in competitor_top_agencies:
+                            for _, row in competitor_top_agencies[competitor].iterrows():
+                                heatmap_data.append({
+                                    'Competitor': competitor,
+                                    'Agency': row['parent_award_agency_name'],
+                                    'Obligation': row['federal_action_obligation']
+                                })
+                    
+                    if heatmap_data:
+                        heatmap_df = pd.DataFrame(heatmap_data)
+                        
+                        # Create a pivot table for the heatmap
+                        pivot_df = heatmap_df.pivot_table(
+                            values='Obligation',
+                            index='Competitor',
+                            columns='Agency',
+                            aggfunc='sum',
+                            fill_value=0
+                        )
+                        
+                        # Normalize values for better visualization
+                        normalized_pivot = pivot_df.div(pivot_df.max(axis=1), axis=0)
+                        
+                        # Create heatmap
+                        fig = px.imshow(
+                            normalized_pivot,
+                            color_continuous_scale="Blues",
+                            labels=dict(x="Agency", y="Competitor", color="Relationship Strength"),
+                            title="Top Competitor-Agency Relationships"
+                        )
+                        
+                        # Update layout
+                        fig.update_layout(
+                            plot_bgcolor=THEME["bg_color"],
+                            paper_bgcolor=THEME["bg_color"],
+                            font=dict(color=THEME["text_color"]),
+                            margin=dict(l=10, r=20, t=40, b=10),
+                            xaxis={'side': 'top'}
+                        )
+                        
+                        # Customize hover template to show actual values
+                        fig.update_traces(
+                            hovertemplate="<b>%{y}</b> - <b>%{x}</b><br>" +
+                                          "Relationship Strength: %{z:.2f}<br>" +
+                                          "<extra></extra>"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info("Insufficient data to generate competitor-agency relationships.")
+                else:
+                    st.info("Agency data not available to generate competitor-agency relationships.")
+                
+                # Competition Intensity by Contract Type
+                st.subheader("Contract Type Analysis")
+                
+                # This analysis would typically use offers_received data, but we'll simulate it
+                # by looking at the distribution of competitors across contract types
+                if 'type_of_contract_pricing' in df.columns and not df.empty:
+                    # Group by contract type and count unique recipients
+                    contract_type_competition = df.groupby('type_of_contract_pricing')['recipient_name'].nunique().reset_index()
+                    contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
+                    
+                    # Sort by number of competitors
+                    contract_type_competition = contract_type_competition.sort_values('Number of Competitors', ascending=False)
+                    
+                    # Top 10 contract types by competition
+                    top_contract_types = contract_type_competition.head(10)
+                    
+                    fig = px.bar(
+                        top_contract_types,
+                        x='Number of Competitors',
+                        y='Contract Type',
+                        orientation='h',
+                        title="Competition Intensity by Contract Type",
+                        color='Number of Competitors',
+                        color_continuous_scale="Blues",
+                        labels={
+                            'Number of Competitors': 'Number of Unique Competitors',
+                            'Contract Type': 'Contract Type'
+                        }
+                    )
+                    
+                    # Update layout
+                    fig.update_layout(
+                        plot_bgcolor=THEME["bg_color"],
+                        paper_bgcolor=THEME["bg_color"],
+                        font=dict(color=THEME["text_color"]),
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        yaxis={'categoryorder': 'total ascending'},
+                        coloraxis_showscale=False
+                    )
+                    
+                    # Add value annotations
+                    fig.update_traces(
+                        texttemplate='%{x:.0f}',
+                        textposition='outside',
+                        hovertemplate='<b>%{y}</b><br>Competitors: %{x:.0f}<extra></extra>'
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Get contract value distribution by type
+                    contract_type_value = df.groupby('type_of_contract_pricing')['federal_action_obligation'].sum().reset_index()
+                    contract_type_value.columns = ['Contract Type', 'Total Obligation']
+                    
+                    # Merge with competition data
+                    contract_type_analysis = pd.merge(contract_type_competition, contract_type_value, on='Contract Type')
+                    
+                    # Calculate average contract value
+                    contract_type_analysis['Average Obligation'] = contract_type_analysis['Total Obligation'] / contract_type_analysis['Number of Competitors']
+                    
+                    # Top 10 by total obligation
+                    top_value_types = contract_type_analysis.nlargest(10, 'Total Obligation')
+                    
+                    # Create dual-axis chart (bar for total value, line for average)
+                    fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    
+                    # Add bar chart for total obligation
+                    fig.add_trace(
+                        go.Bar(
+                            x=top_value_types['Contract Type'],
+                            y=top_value_types['Total Obligation'],
+                            name='Total Obligation',
+                            marker_color=THEME["primary_color"]
+                        ),
+                        secondary_y=False
+                    )
+                    
+                    # Add line chart for average value
+                    fig.add_trace(
+                        go.Scatter(
+                            x=top_value_types['Contract Type'],
+                            y=top_value_types['Average Obligation'],
+                            name='Avg Obligation per Competitor',
+                            mode='lines+markers',
+                            marker=dict(color=THEME["accent2_color"]),
+                            line=dict(width=3)
+                        ),
+                        secondary_y=True
+                    )
+                    
+                    # Update layout
+                    fig.update_layout(
+                        title_text="Contract Type Value Analysis",
+                        plot_bgcolor=THEME["bg_color"],
+                        paper_bgcolor=THEME["bg_color"],
+                        font=dict(color=THEME["text_color"]),
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
+                        )
+                    )
+                    
+                    # Update x-axis
+                    fig.update_xaxes(
+                        title_text="Contract Type",
+                        tickangle=45
+                    )
+                    
+                    # Update y-axes
+                    fig.update_yaxes(
+                        title_text="Total Obligation ($)",
+                        secondary_y=False,
+                        tickprefix="$",
+                        tickformat=",."
+                    )
+                    
+                    fig.update_yaxes(
+                        title_text="Avg Obligation per Competitor ($)",
+                        secondary_y=True,
+                        tickprefix="$",
+                        tickformat=",."
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Contract type data not available for analysis.")
+                
+                # Winning Strategy Suggestions based on Competitive Analysis
+                st.subheader("Competitive Strategy Insights")
+                
+                # Create a container for the insights
+                insights_container = st.container()
+                
+                with insights_container:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("""
+                        ### Market Positioning
+                        
+                        Based on the competitive analysis, consider these strategies:
+                        
+                        - **Focus on high win-rate, low market share quadrant** agencies where your company can efficiently compete
+                        - **Identify partnering opportunities** with complementary contractors
+                        - **Target contract vehicles** with lower competitive intensity
+                        - **Develop specialized offerings** for agencies with diverse contractor bases
+                        """)
+                    
+                    with col2:
+                        st.markdown("""
+                        ### Differentiation Opportunities
+                        
+                        Competitive analysis suggests these differentiation approaches:
+                        
+                        - **Pricing strategies** tailored to specific contract types
+                        - **Agency-specific expertise** development where competitors are weaker
+                        - **Contract vehicle specialization** in less congested segments
+                        - **Past performance emphasis** in areas with strong incumbent presence
+                        """)
+            else:
+                st.warning("Insufficient data for competitive analysis. Try expanding your filter criteria.")
+        else:
+            # Help the user understand why there's no data
+            st.warning("No data available for Competitive Analysis.")
+            st.info("Possible issues:")
+            st.markdown("""
+            1. **Database Connection**: Verify PostgreSQL is running and connection details are correct
+            2. **Table Names**: The table 'usaprime_cleaned' may not exist (sidebar will show available tables)
+            3. **Data Availability**: There may be no data for selected NAICS code in the database
+            4. **Date Range**: Try expanding the date range to capture more data
+            
+            See the Diagnostics section in the sidebar for more details.
+            """)
+            
+            # Show a sample of what the tab would look like with data
+            st.subheader("Sample Competitive Analysis View")
+            st.image("https://via.placeholder.com/800x500.png?text=Competitive+Analysis+Dashboard+(Sample)", 
+                    caption="Sample visualization of Competitive Analysis tab with data")
     
     # Tab 4: Contract Vehicle Analysis (placeholder for now)
     with tab4:

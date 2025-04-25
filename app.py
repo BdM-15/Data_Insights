@@ -9,6 +9,7 @@ import os
 import sys
 import logging
 from datetime import datetime
+import streamlit as st
 
 # Add the project root to the path to ensure imports work correctly
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -35,26 +36,26 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def main():
-    """
-    Main function to start the application.
-    
-    This function sets up logging and launches the Streamlit application
-    with the strategic dashboard as the entry point.
-    """
-    logger.info(f"Starting Data_Insights application at {datetime.now()}")
-    
-    # Launch Streamlit application with the strategic dashboard
-    streamlit_path = os.path.join("src", "frontend", "pages", "strategic_dashboard.py")
-    
-    # Check if the file exists before trying to run it
-    if not os.path.exists(streamlit_path):
-        logger.error(f"Error: Could not find {streamlit_path}")
-        print(f"Error: Could not find {streamlit_path}")
-        return
-    
-    logger.info(f"Launching Streamlit with: {streamlit_path}")
-    os.system(f"streamlit run {streamlit_path}")
+logger.info(f"Starting Data_Insights application at {datetime.now()}")
 
-if __name__ == "__main__":
-    main()
+# Import and call the main function from strategic_dashboard instead of launching a new process
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+    dashboard_path = os.path.join("src", "frontend", "pages", "strategic_dashboard.py")
+    
+    if not os.path.exists(dashboard_path):
+        st.error(f"Error: Could not find {dashboard_path}")
+        logger.error(f"Error: Could not find {dashboard_path}")
+    else:
+        logger.info(f"Importing dashboard from: {dashboard_path}")
+        
+        # Use a redirect approach
+        from src.frontend.pages.strategic_dashboard import main
+        
+        # Call the main function directly
+        main()
+except Exception as e:
+    st.error(f"Error loading the strategic dashboard: {str(e)}")
+    logger.error(f"Error loading the strategic dashboard: {str(e)}")
+    import traceback
+    logger.error(traceback.format_exc())

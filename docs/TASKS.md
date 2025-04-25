@@ -92,11 +92,33 @@
   - ✅ Applied consistent electric theme styling throughout the dashboard
   - ✅ Created placeholders for secondary tabs (Agency Intelligence, Competitive Analysis, etc.)
   - Status: **COMPLETE**
+- **Implement Competitive Analysis Tab**:
+  - ✅ Created Market Share Analysis visualization with horizontal bar chart
+  - ✅ Implemented Win Rate Analysis with competitors visualization
+  - ✅ Developed quadrant-based Market Position Analysis scatter plot
+  - ✅ Added Competitor-Agency Relationships heatmap visualization
+  - ✅ Created Contract Type competition intensity analysis
+  - ✅ Implemented dual-axis Contract Type Value Analysis chart
+  - ✅ Added actionable Competitive Strategy Insights section
+  - Status: **COMPLETE** (April 2025)
+- **Implement Future Opportunities Tab**:
+  - ✅ Added "Future Opportunities" tab between "Market Overview" and "Agency Intelligence"
+  - ✅ Created placeholder with informational text explaining the tab's purpose
+  - ✅ Outlined planned visualizations with bullet points
+  - [ ] Implement the following planned visualizations:
+    - [ ] Expiring Contracts Timeline for next 6-24 months
+    - [ ] Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
+    - [ ] Active SAM.gov Opportunities with capability match scoring
+    - [ ] NATO NSPA Opportunities integration with capability match scoring
+    - [ ] Strategic Connections showing links between historical performance and future opportunities
+  - [ ] Integrate data from both SAM.gov and NATO NSPA APIs
+  - [ ] Implement capability match scoring algorithm based on historical performance
+  - [ ] Add clickable links to opportunity details on SAM.gov and NATO NSPA portals
+  - Status: **PARTIAL - Basic tab created, full implementation pending** (April 2025)
 
 ## Backlog
 
 - **Develop Model Context Protocol (MCP) Integration**:
-
   - Sub-tasks:
     - **Visualization Tool Integration**:
       - Design and develop a dedicated Python-based UI for interactive visualizations of USASpending.gov data

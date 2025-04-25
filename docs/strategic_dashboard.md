@@ -15,6 +15,7 @@ The dashboard user interface has been enhanced with:
 - About section in the sidebar footer with version information
 - Removal of diagnostic panels for a cleaner interface
 - Consistent electric theme styling throughout
+- Replaced Unicode characters with ASCII-compatible alternatives for improved compatibility across environments
 
 ## Visual Theme
 
@@ -92,29 +93,32 @@ The dashboard uses an "electric energy" theme with:
 
 ### Tab Navigation
 
-The dashboard now uses a tabbed interface with five main tabs:
+The dashboard now uses a tabbed interface with six main tabs:
 
 1. **Market Overview** (default tab)
    - Contains executive summary metrics and key visualizations
-2. **Agency Intelligence**
-
+2. **Future Opportunities**
+   - Expiring Contracts Timeline for next 6-24 months
+   - Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
+   - Active SAM.gov Opportunities with capability match scoring
+   - NATO NSPA Opportunities with capability match scoring
+   - Strategic Connections between historical performance and future opportunities
+3. **Agency Intelligence**
    - Agency hierarchy analysis
    - Agency spending patterns
    - Set-aside utilization by agency
-
-3. **Competitive Analysis**
-
-   - Competitor-Agency relationships
-   - Contract type success rates
-   - Win rate analysis by vehicle type
-
-4. **Contract Vehicle Analysis**
-
+4. **Competitive Analysis**
+   - Market Share Analysis - Horizontal bar chart of competitors by market share
+   - Win Rate Analysis - Bar chart showing top competitors by win rate percentage
+   - Market Position Analysis - Quadrant scatter plot showing win rate vs market share
+   - Competitor-Agency Relationships - Heatmap visualization of relationships between top competitors and agencies
+   - Contract Type Analysis - Competition intensity by contract type and dual-axis chart of contract value
+   - Competitive Strategy Insights - Actionable recommendations based on analysis
+5. **Contract Vehicle Analysis**
    - Vehicle preference by agency
    - Award type distributions
    - Success rates by contract type
-
-5. **Geographic Analysis**
+6. **Geographic Analysis**
    - Regional spending patterns
    - Performance by location
    - Geographic concentration of awards
@@ -135,6 +139,10 @@ The dashboard now uses a tabbed interface with five main tabs:
 - [x] Center metric card titles for improved readability
 - [x] Implement placeholder navigation system
 - [x] Add About section to sidebar
+- [x] Replace Unicode characters with ASCII-compatible alternatives
+- [x] Add placeholder for Future Opportunities tab
+- [x] Implement comprehensive Competitive Analysis visualizations
+- [ ] Complete Future Opportunities tab with full visualizations
 - [ ] Add drill-down capabilities to all charts
 - [ ] Optimize query performance for large datasets
 - [ ] Implement export functionality for reports
@@ -161,6 +169,7 @@ The dashboard requires the following base data from the usaspending_cleaned tabl
 - Caching of frequently accessed data for performance
 - Responsive design for various screen sizes
 - Session state management for filter persistence
+- ASCII-compatible character usage for cross-environment compatibility
 
 ## Strategic Dashboard
 
