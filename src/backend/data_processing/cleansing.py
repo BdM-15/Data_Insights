@@ -28,6 +28,7 @@ engine = create_engine(db_url, echo=False)
 def cleanse_data(force_rebuild=True):
     """
     Main function to cleanse the raw awards data with significantly improved performance.
+    Optimized for 64GB RAM and NVIDIA GTX 4060 GPU hardware on Windows platform.
     
     Parameters:
     -----------
@@ -153,17 +154,22 @@ def cleanse_data(force_rebuild=True):
         print("\nPerforming direct SQL transformation and data cleansing...")
         
         # Execute the single, optimized SQL statement that does all the work
-        # This is the most efficient approach for PostgreSQL
         with engine.connect() as connection:
-            # Set performance optimization parameters
+            # Set performance optimization parameters for Windows platform with 64GB RAM
+            # Reason: Only use parameters that can be changed during runtime in PostgreSQL on Windows
             connection.execute(text("SET synchronous_commit = OFF"))
-            connection.execute(text("SET work_mem = '2000MB'"))
-            connection.execute(text("SET maintenance_work_mem = '2000MB'"))
+            connection.execute(text("SET work_mem = '2047MB'"))  # Max allowed ~2GB (2097151 KB)
+            connection.execute(text("SET maintenance_work_mem = '2047MB'"))  # Max allowed ~2GB
+            connection.execute(text("SET max_parallel_workers_per_gather = 4"))  # Use multiple cores
+            connection.execute(text("SET max_parallel_workers = 8"))  # Set max workers based on CPU cores
+            connection.execute(text("SET random_page_cost = 1.1"))  # Assume fast SSD storage
+            connection.execute(text("SET cpu_tuple_cost = 0.03"))  # Lower for modern CPUs
             
             print("Starting data transformation (this may take some time)...")
             transform_start = time.time()
             
-            # One-shot direct SQL transformation with all cleansing steps built in
+            # Modified SQL transformation - REMOVED deduplication logic to preserve all raw data
+            # Reason: Preserving all raw data until deduplication strategy is confirmed
             transform_sql = text("""
                 INSERT INTO usaprime_cleaned
                 SELECT 
@@ -171,7 +177,13 @@ def cleanse_data(force_rebuild=True):
                     action_date::date,
                     parent_award_id_piid,
                     award_id_piid,
-                    TRIM(modification_number::text),
+                    -- Standardize modification_number for consistent award counting
+                    -- Only basic standardization to ensure empty values become '0'
+                    CASE 
+                        WHEN modification_number IS NULL THEN '0'
+                        WHEN TRIM(modification_number::text) = '' THEN '0'
+                        ELSE TRIM(modification_number::text)
+                    END,
                     federal_action_obligation::numeric,
                     total_dollars_obligated::numeric,
                     potential_total_value_of_award::numeric,
@@ -220,11 +232,7 @@ def cleanse_data(force_rebuild=True):
                     multi_year_contract,
                     multiple_or_single_award_idv,
                     usaspending_permalink
-                FROM (
-                    SELECT DISTINCT ON (award_id_piid, modification_number, action_date, federal_action_obligation, recipient_name)
-                        *
-                    FROM usaspending_prime_awards
-                ) AS distinct_rows
+                FROM usaspending_prime_awards
             """)
             
             try:
@@ -247,10 +255,53 @@ def cleanse_data(force_rebuild=True):
                 print(f"Processed {processed_rows:,} rows")
                 print(f"Processing speed: {rows_per_second:.2f} rows/second")
                 
-                # Calculate duplicate removal stats
-                duplicates_removed = source_row_count - processed_rows
-                duplicate_percentage = (duplicates_removed / source_row_count) * 100 if source_row_count > 0 else 0
-                print(f"Duplicates removed: {duplicates_removed:,} ({duplicate_percentage:.2f}%)")
+                # Note about preserved rows
+                print(f"All {source_row_count:,} source rows preserved in the transformation")
+                
+                # Optimize indexing for query performance
+                print("\nCreating optimized indexes for query performance...")
+                
+                # Create index on modification_number for efficient base award filtering
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_modification_number 
+                    ON usaprime_cleaned(modification_number);
+                """))
+                print("✓ Created index on modification_number")
+                
+                # Create index on award_id_piid for efficient joins
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_award_id_piid 
+                    ON usaprime_cleaned(award_id_piid);
+                """))
+                print("✓ Created index on award_id_piid")
+                
+                # Create index on action_date for time-based queries
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_action_date 
+                    ON usaprime_cleaned(action_date);
+                """))
+                print("✓ Created index on action_date")
+                
+                # Create index on recipient_name for competitor analysis
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_recipient_name 
+                    ON usaprime_cleaned(recipient_name);
+                """))
+                print("✓ Created index on recipient_name")
+                
+                # Create index on naics_code for filtering
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_naics_code 
+                    ON usaprime_cleaned(naics_code);
+                """))
+                print("✓ Created index on naics_code")
+                
+                # Create composite index for common query patterns
+                connection.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_agency_fiscal_year 
+                    ON usaprime_cleaned(parent_award_agency_name, action_date_fiscal_year);
+                """))
+                print("✓ Created composite index on parent_award_agency_name and action_date_fiscal_year")
                 
                 # Analyze table for query optimization
                 print("\nAnalyzing table for query optimization...")
@@ -276,7 +327,7 @@ def cleanse_data(force_rebuild=True):
     print(f"Total elapsed time: {hours}h {minutes}m {seconds}s")
     print(f"Processed {processed_rows:,} records")
     print(f"Average processing speed: {processed_rows/elapsed_time:.2f} rows/second")
-    print(f"\nIMPORTANT: Run data_preprocessing_for_app_performance.py next to create indexes and filter tables")
+    print(f"\nIMPORTANT: Run data_preprocessing_for_app_performance.py next to create filter tables")
     
     return True
 

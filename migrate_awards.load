@@ -1,0 +1,13 @@
+LOAD DATABASE
+     FROM sqlite:///sqlite_data/usaspending_historical.db
+     INTO postgresql://postgres:admin@host.docker.internal:5432/capture_insights
+
+-- Only include the awards table and rename it
+EXCLUDING TABLE NAMES LIKE 'sqlite_%'
+EXCLUDING TABLE NAMES LIKE '%_idx'
+EXCLUDING TABLE NAMES LIKE '%_sequence'
+EXCLUDING TABLE NAMES LIKE '%_content'
+EXCLUDING TABLE NAMES LIKE '%_stat'
+EXCLUDING TABLE NAMES LIKE '%_master'
+EXCLUDING TABLE NAMES LIKE '%_temp'
+ALTER TABLE NAMES MATCHING 'awards' RENAME TO 'usaspending_prime_awards';

@@ -85,38 +85,46 @@ st.markdown(f"""
         background-color: rgba(0, 195, 255, 0.1);
         transform: translateY(-2px);
     }}
-    /* Updated metric styling */
+    /* Metric card styling with solid background */
+    [data-testid="stMetricValue"] {{
+        background-color: {THEME['bg_color']}; 
+        border-radius: 8px 8px 0px 0px;
+        padding: 10px 5px 0px 5px;
+        color: {THEME['highlight_color']};
+        width: 100%;
+        text-align: center;
+        font-size: 2rem;
+    }}
+    
+    [data-testid="stMetricLabel"] {{
+        background-color: {THEME['bg_color']};
+        border-radius: 0px 0px 8px 8px;
+        padding: 0px 5px 10px 5px;
+        color: {THEME['text_color']};
+        width: 100%;
+        text-align: center;
+        border-bottom: 4px solid {THEME['primary_color']};
+    }}
+    
+    /* Add box shadow and border styling to the whole metric container */
     [data-testid="metric-container"] {{
         background-color: {THEME['bg_color']};
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
         border-radius: 8px;
-        padding: 15px 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        margin: 0px 3px;
         border-left: 4px solid {THEME['primary_color']};
-        width: 100%;
-        text-align: center;
+        border-right: 1px solid rgba(0, 195, 255, 0.2);
+        border-top: 1px solid rgba(0, 195, 255, 0.2);
+        border-bottom: 1px solid rgba(0, 195, 255, 0.2);
     }}
-    div[data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    div[data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        text-align: center;
-        width: 100%;
-    }}
+
+    /* Handle delta values styling */
     div[data-testid="stMetricDelta"] {{
         text-align: center;
         width: 100%;
+        background-color: {THEME['bg_color']};
     }}
-    /* Add styling for metric titles (labels) to ensure they're centered */
-    .css-1wivap2[data-testid="metric-container"] > div:nth-child(1) {{
-        display: flex;
-        justify-content: center;
-        text-align: center;
-    }}
+    
     /* Style the sidebar */
     [data-testid="stSidebar"] {{
         background-color: {THEME['bg_color']};
@@ -148,60 +156,6 @@ st.markdown(f"""
         border-top: 1px solid rgba(0, 195, 255, 0.1);
         padding-top: 1rem;
         margin-top: 1rem;
-    }}
-    /* Center the metric titles properly */
-    [data-testid="metric-container"] > div:nth-child(1) {{
-        width: 100%;
-        display: flex;
-        justify-content: center;
-    }}
-    
-    [data-testid="metric-container"] > div:nth-child(1) > label {{
-        width: 100%;
-        text-align: center;
-    }}
-    
-    div[data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    
-    div[data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        text-align: center;
-        width: 100%;
-    }}
-    /* Properly center metric card titles with more specific selectors */
-    [data-testid="stMetricLabel"] {{
-        font-size: 1rem;
-        color: {THEME['text_color']};
-        width: 100%;
-        text-align: center !important;
-        justify-content: center !important;
-        display: flex !important;
-        flex-direction: row;
-    }}
-    
-    [data-testid="stMetricValue"] {{
-        font-size: 2rem;
-        color: {THEME['highlight_color']};
-        width: 100%;
-        text-align: center;
-    }}
-    
-    /* Force metric container label to center */
-    [data-testid="metric-container"] > div:first-child {{
-        justify-content: center !important;
-        display: flex !important;
-        width: 100% !important;
-    }}
-    
-    [data-testid="metric-container"] > div:first-child > label {{
-        text-align: center !important;
-        width: 100% !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -538,6 +492,18 @@ def get_agency_obligation_ratio(df):
     # Handle infinite values
     agency_ratio['avg_award_value'] = agency_ratio['avg_award_value'].replace([np.inf, -np.inf], 0)
     
+    # Ensure that size values are positive for scatter plot
+    # Reason: Plotly requires size values to be positive numbers
+    agency_ratio['scatter_size'] = np.abs(agency_ratio['avg_award_value'])
+    
+    # Cap extremely large values to prevent dominating the visualization
+    size_cap = agency_ratio['scatter_size'].quantile(0.95)  # Cap at 95th percentile
+    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].clip(upper=size_cap)
+    
+    # Ensure minimum size for visibility
+    min_size = 5
+    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].apply(lambda x: max(x, min_size))
+    
     # Normalize data to prevent bunching due to outliers
     # Apply log transformation for better visualization of skewed data
     agency_ratio['award_count_normalized'] = np.log1p(agency_ratio['award_count'])
@@ -586,8 +552,9 @@ def get_competitive_landscape(df):
     if df.empty:
         return pd.DataFrame()
     
-    # Simply filter for modification_number '0' directly
-    # No need for regex patterns or string normalization
+    # Use only exact string comparison for modification_number
+    # Reason: Our data cleansing process standardizes by trimming whitespace, 
+    # but preserves the original values, so we only need to check for exact '0'
     base_awards = df[df['modification_number'] == '0']
     
     # Count awards by recipient
@@ -611,139 +578,6 @@ def get_competitive_landscape(df):
     competitors = competitors.sort_values('market_share', ascending=False)
     
     return competitors
-
-# PLACEHOLDER - Competition Intensity Analysis Function
-# @st.cache_data(ttl=3600)
-# def get_competition_intensity(df):
-#     """
-#     Analyze competition intensity across contracts.
-#     
-#     Args:
-#         df: DataFrame containing award data with number_of_offers_received column
-#         
-#     Returns:
-#         DataFrame with competition intensity metrics
-#     """
-#     if df.empty or 'number_of_offers_received' not in df.columns:
-#         return pd.DataFrame()
-#     
-#     # Convert offers received to numeric, handling any non-numeric values
-#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(0)
-#     
-#     # Filter for base awards only
-#     base_awards = df[df['modification_number'] == '0']
-#     
-#     # Calculate competition metrics by various dimensions
-#     
-#     # 1. By agency
-#     agency_competition = base_awards.groupby('parent_award_agency_name')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 2. By NAICS code
-#     naics_competition = base_awards.groupby('naics_code')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 3. By contract type
-#     contract_type_competition = base_awards.groupby('award_type')['number_of_offers_received'].agg(
-#         avg_bidders=('mean'),
-#         max_bidders=('max'),
-#         min_bidders=('min'),
-#         total_contracts=('count')
-#     ).reset_index()
-#     
-#     # 4. Create competition categories
-#     def categorize_competition(bidders):
-#         if bidders <= 2:
-#             return "Low Competition (1-2 bidders)"
-#         elif bidders <= 5:
-#             return "Medium Competition (3-5 bidders)"
-#         else:
-#             return "High Competition (6+ bidders)"
-#     
-#     # Apply categorization
-#     base_awards['competition_level'] = base_awards['number_of_offers_received'].apply(categorize_competition)
-#     
-#     # Count contracts by competition level
-#     competition_distribution = base_awards['competition_level'].value_counts().reset_index()
-#     competition_distribution.columns = ['competition_level', 'contract_count']
-#     
-#     # Calculate overall average
-#     overall_avg_bidders = base_awards['number_of_offers_received'].mean()
-#     
-#     return {
-#         'agency_competition': agency_competition,
-#         'naics_competition': naics_competition, 
-#         'contract_type_competition': contract_type_competition,
-#         'competition_distribution': competition_distribution,
-#         'overall_avg_bidders': overall_avg_bidders
-#     }
-
-# PLACEHOLDER - Probability of Win Calculation
-# @st.cache_data(ttl=3600)
-# def calculate_pwin(df, our_capabilities_score=75, incumbent_status=False):
-#     """
-#     Calculate probability of win based on competitive factors.
-#     
-#     Args:
-#         df: DataFrame containing contract data with number_of_offers_received
-#         our_capabilities_score: Score from 0-100 representing capability match
-#         incumbent_status: Boolean indicating if we are the incumbent
-#         
-#     Returns:
-#         Dictionary with pWin calculations for different contract segments
-#     """
-#     if df.empty or 'number_of_offers_received' not in df.columns:
-#         return {'overall_pwin': 0, 'by_agency': pd.DataFrame(), 'by_naics': pd.DataFrame()}
-#     
-#     # Convert offers received to numeric
-#     df['number_of_offers_received'] = pd.to_numeric(df['number_of_offers_received'], errors='coerce').fillna(1)
-#     df.loc[df['number_of_offers_received'] == 0, 'number_of_offers_received'] = 1  # Avoid division by zero
-#     
-#     # Filter for base awards only
-#     base_awards = df[df['modification_number'] == '0']
-#     
-#     # Calculate base probability (1/number of bidders)
-#     base_awards['base_probability'] = 1 / base_awards['number_of_offers_received']
-#     
-#     # Apply capability factor (0-1 scale)
-#     capability_factor = our_capabilities_score / 100
-#     
-#     # Apply incumbent advantage (if applicable)
-#     incumbent_advantage = 1.5 if incumbent_status else 1.0
-#     
-#     # Calculate adjusted pWin percentage
-#     base_awards['pwin'] = (base_awards['base_probability'] * capability_factor * incumbent_advantage * 100).clip(upper=95)
-#     
-#     # Calculate overall pWin
-#     overall_pwin = base_awards['pwin'].mean()
-#     
-#     # Calculate pWin by agency
-#     pwin_by_agency = base_awards.groupby('parent_award_agency_name').agg(
-#         avg_pwin=('pwin', 'mean'),
-#         avg_bidders=('number_of_offers_received', 'mean'),
-#         contract_count=('pwin', 'count')
-#     ).reset_index().sort_values('avg_pwin', ascending=False)
-#     
-#     # Calculate pWin by NAICS
-#     pwin_by_naics = base_awards.groupby('naics_code').agg(
-#         avg_pwin=('pwin', 'mean'),
-#         avg_bidders=('number_of_offers_received', 'mean'),
-#         contract_count=('pwin', 'count')
-#     ).reset_index().sort_values('avg_pwin', ascending=False)
-#     
-#     return {
-#         'overall_pwin': overall_pwin,
-#         'by_agency': pwin_by_agency,
-#         'by_naics': pwin_by_naics
-#     }
 
 @st.cache_data(ttl=3600)
 def get_expiring_contracts(df, months_ahead=24):
@@ -1180,7 +1014,9 @@ def main():
                             name="Obligations",
                             line=dict(color=THEME["primary_color"], width=3),
                             mode="lines+markers",
-                            marker=dict(size=8)
+                            marker=dict(size=8),
+                            # Add custom hovertemplate to format obligations with commas and no decimal places
+                            hovertemplate="<b>%{x}</b><br>Obligations: $%{y:,.0f}<extra></extra>"
                         ),
                         secondary_y=False
                     )
@@ -1193,7 +1029,9 @@ def main():
                             name="Award Actions",
                             line=dict(color=THEME["accent2_color"], width=3),
                             mode="lines+markers",
-                            marker=dict(size=8)
+                            marker=dict(size=8),
+                            # Add custom hovertemplate to format award actions with commas and no decimal places
+                            hovertemplate="<b>%{x}</b><br>Award Actions: %{y:,.0f}<extra></extra>"
                         ),
                         secondary_y=True
                     )
@@ -1257,7 +1095,7 @@ def main():
                         agency_ratio,
                         x="award_count_normalized",
                         y="obligation_normalized",
-                        size="avg_award_value",
+                        size="scatter_size",
                         color="parent_award_agency_name",
                         hover_name="parent_award_agency_name",
                         hover_data={
