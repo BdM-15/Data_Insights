@@ -98,6 +98,8 @@ Business intelligence application for defense contractors focusing on logistics,
 
 - Track completed tasks in TASK.md
 - Add discovered sub-tasks under "Discovered During Work" section
+- Reference strategic_dashboard.md for dashboard design principles and goals
+- Follow implementation details in strategic_dashboard_implementation.md for dashboard development
 
 ### User Experience
 

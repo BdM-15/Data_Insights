@@ -171,6 +171,7 @@ Data_Insights/
   - **SAM.gov API**: Integration for future opportunity data
   - **SBA Mentor-Protégé Agreements**: Partnership data from SBA.gov providing insights on mentor-protégé relationships (https://www.sba.gov/document/support-active-mentor-protege-agreements)
   - **SBA's SubNet**: Integration for subcontracting opportunities
+  - **Bureau of Labor Statistics (BLS) API**: Economic data including employment, wages, and price indices to provide market context and economic trends
   - **GovWin IQ API**: Pre-RFP intelligence and teaming partners (requires API key)
   - **Bloomberg Government API**: Financial insights and subcontractor data (requires API key)
   - **Salesforce REST API**: Capture management and CRM functionality integration

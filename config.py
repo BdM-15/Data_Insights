@@ -46,6 +46,10 @@ SAM_NAICS_CODE = os.getenv("SAM_NAICS_CODE")  # Optional NAICS code filter
 SAM_STATE = os.getenv("SAM_STATE")  # Optional state filter
 SAM_ZIP = os.getenv("SAM_ZIP")  # Optional ZIP code filter
 
+# BLS API (Bureau of Labor Statistics)
+BLS_API_URL = "https://api.bls.gov/publicAPI/v2"
+BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
+
 # Rate limiting management for SAM.gov
 SAM_API_RATE_LIMIT = int(os.getenv("SAM_API_RATE_LIMIT", "5").split('#')[0].strip())  # Requests per minute allowed
 SAM_API_MAX_ATTEMPTS = int(os.getenv("SAM_API_MAX_ATTEMPTS", "8").split('#')[0].strip())  # Maximum retries on failure
@@ -140,7 +144,9 @@ def get_api_config() -> Dict[str, Any]:
         "SAM_API_CHUNK_SIZE": int(os.getenv("SAM_API_CHUNK_SIZE", "7")),
         "SAM_API_MAX_CONSECUTIVE_FAILURES": int(os.getenv("SAM_API_MAX_CONSECUTIVE_FAILURES", "3")),
         "DAILY_REQUEST_LIMIT": int(os.getenv("DAILY_REQUEST_LIMIT", "1000")),
-        "SAM_API_BASE_URL": os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/prod/opportunities/v1/search")
+        "SAM_API_BASE_URL": os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/prod/opportunities/v1/search"),
+        "BLS_API_URL": os.getenv("BLS_API_URL", "https://api.bls.gov/publicAPI/v2"),
+        "BLS_API_KEY": os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
     }
 
 def get_app_config() -> Dict[str, Any]:

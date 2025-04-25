@@ -1,4 +1,21 @@
 # This script will remain standalone for data ingestion.
+"""
+Data Import Script for USASpending Database
+-------------------------------------------
+This script processes CSV files containing USASpending data and imports them into a SQLite database.
+
+Functionality:
+1. Connects to a SQLite database at the specified path
+2. Defines a date range for data import (Oct 1, 2024 to Mar 15, 2025)
+3. Generates two-day date ranges for processing files in manageable chunks
+4. For each date range, looks for corresponding CSV files in the archive directory
+5. Imports data from each CSV file into the 'awards' table in the database
+6. Tracks and reports progress (files processed, rows inserted)
+7. Handles errors and missing files gracefully with appropriate logging
+
+The script assumes CSV files follow the naming pattern: usaspending_YYYY-MM-DD_to_YYYY-MM-DD.csv
+All data is imported as string data types to ensure consistency across diverse field formats.
+"""
 
 import pandas as pd
 from sqlalchemy import create_engine

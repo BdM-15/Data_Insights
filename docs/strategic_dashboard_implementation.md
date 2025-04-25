@@ -29,6 +29,7 @@
 - [x] Modernize navigation links for sleek appearance
 - [x] Add Clear Filters button to filter controls
 - [x] Fetch all NAICS codes from PostgreSQL database
+- [x] Replace Unicode characters with ASCII-compatible alternatives for cross-environment compatibility
 - [ ] Add competition intensity filter (Low/Medium/High)
 
 ### Primary Visualizations
@@ -56,6 +57,16 @@
 
 ## Phase 2: Secondary Analysis Tabs
 
+### Future Opportunities Tab
+- [x] Add "Future Opportunities" tab between Market Overview and Agency Intelligence
+- [x] Create placeholder with informational text explaining the tab's purpose
+- [x] Add bullet points outlining planned visualizations
+- [ ] Implement Expiring Contracts Timeline for next 6-24 months
+- [ ] Develop Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
+- [ ] Integrate SAM.gov Opportunities with capability match scoring
+- [ ] Integrate NATO NSPA Opportunities with capability match scoring
+- [ ] Create Strategic Connections visualization
+
 ### Agency Intelligence Tab
 
 - [ ] Create agency hierarchy visualization
@@ -65,10 +76,15 @@
 
 ### Competitive Analysis Tab
 
-- [ ] Create competitor-agency heatmap
-- [ ] Implement contract type success rate by competitor
-- [ ] Develop win rate analysis chart
-- [ ] Build competitor concentration metrics
+- [x] Create Market Share Analysis visualization with horizontal bar chart
+- [x] Implement Win Rate Analysis with competitors visualization
+- [x] Develop quadrant-based Market Position Analysis scatter plot
+- [x] Add Competitor-Agency Relationships heatmap visualization
+- [x] Create Contract Type competition intensity analysis
+- [x] Implement dual-axis Contract Type Value Analysis chart
+- [x] Add actionable Competitive Strategy Insights section
+- [ ] Incorporate "number_of_offers_received" data when available
+- [ ] Add PWin modeling based on competitive analysis
 
 ### Contract Vehicle Analysis Tab
 
@@ -97,11 +113,27 @@
 - [ ] Optimize database queries for performance
 - [ ] Implement caching for frequently accessed data
 - [ ] Add progress indicators for long-running queries
+- [x] Replace Unicode characters with ASCII-compatible alternatives for improved compatibility
 - [ ] Optimize visualization rendering
 
 ### Documentation and Testing
 
+- [x] Update documentation with Unicode to ASCII compatibility changes
 - [ ] Create user documentation for dashboard features
 - [ ] Develop testing plan for dashboard components
 - [ ] Perform cross-browser compatibility testing
 - [ ] Solicit user feedback and make refinements
+
+## Cross-Environment Compatibility
+
+### Character Encoding Improvements
+
+- [x] Identify instances of Unicode characters in the codebase
+- [x] Replace special characters with ASCII equivalents:
+  - [x] Replace fancy quotes (`"`, `"`, `'`, `'`) with standard ASCII quotes (`"`, `'`)
+  - [x] Replace em dashes (`—`) with double hyphens (`--`)
+  - [x] Replace en dashes (`–`) with single hyphens (`-`)
+  - [x] Replace bullet points (`•`) with asterisks (`*`) or hyphens (`-`)
+  - [x] Replace other special symbols with ASCII-compatible alternatives
+- [x] Test dashboard rendering across different environments
+- [x] Document character encoding standards for future development
