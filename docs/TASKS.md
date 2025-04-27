@@ -116,9 +116,93 @@
   - [ ] Add clickable links to opportunity details on SAM.gov and NATO NSPA portals
   - Status: **PARTIAL - Basic tab created, full implementation pending** (April 2025)
 
+## Strategic Dashboard Implementation Tasks
+
+### Phase 1: Core Dashboard Development (Completed)
+
+- [x] Create new `strategic_dashboard.py` file in the frontend/pages directory
+- [x] Set up dashboard layout with tabs and placeholder components
+- [x] Implement base query for NAICS 561210 data
+- [x] Add global filters for date range, agency, and other dimensions
+- [x] Calculate and display executive summary metrics
+  - [x] Total obligations in NAICS 561210
+  - [x] Total award actions (Modification No = '0' only)
+  - [x] Average award value
+  - [x] Active contracts count
+  - [x] Expiring contracts (24mo) count
+  - [x] Suitability percentage for expiring contracts
+  - [x] Synergy percentage across business units
+  - [ ] Average bidders (competition intensity) metric
+  - [ ] Estimated pWin percentage based on competition
+- [x] Optimize logo display in sidebar
+- [x] Modernize navigation links for sleek appearance
+- [x] Add Clear Filters button to filter controls
+- [x] Fetch all NAICS codes from PostgreSQL database
+- [x] Develop combined obligations and award actions trend chart
+  - [x] Dual-axis visualization with bar and line
+  - [x] Quarterly breakdown with fiscal year markers
+  - [x] Interactive tooltips with detailed metrics
+- [x] Implement agency-to-obligation ratio analysis
+  - [x] Scatter plot with quadrant analysis
+  - [x] Size bubbles by average award value
+  - [x] Add interactive elements for agency details
+- [x] Create contract vehicle distribution visualization
+  - [x] Donut chart of vehicle types
+  - [x] Tooltips with vehicle details and counts
+  - [x] Link to detailed vehicle analysis
+- [x] Build competitive landscape visualization
+  - [x] Treemap of top competitors
+  - [x] Color coding by win rate
+  - [x] Interactive elements for competitor details
+
+### Phase 2: Secondary Analysis Tabs (In Progress)
+
+- [x] Create Market Share Analysis visualization with horizontal bar chart
+- [x] Implement Win Rate Analysis with competitors visualization
+- [x] Develop quadrant-based Market Position Analysis scatter plot
+- [x] Add Competitor-Agency Relationships heatmap visualization
+- [x] Create Contract Type competition intensity analysis
+- [x] Implement dual-axis Contract Type Value Analysis chart
+- [x] Add actionable Competitive Strategy Insights section
+- [ ] Incorporate "number_of_offers_received" data when available
+- [ ] Add PWin modeling based on competitive analysis
+- [ ] Create agency hierarchy visualization
+- [ ] Implement agency year-over-year growth chart
+- [ ] Develop set-aside utilization patterns visualization
+- [ ] Build single vs. multiple award analysis component
+- [ ] Implement Expiring Contracts Timeline for next 6-24 months
+- [ ] Develop Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
+- [ ] Integrate SAM.gov Opportunities with capability match scoring
+- [ ] Integrate NATO NSPA Opportunities with capability match scoring
+- [ ] Create Strategic Connections visualization
+- [ ] Create vehicle preference by agency visualization
+- [ ] Implement award type distributions chart
+- [ ] Develop single vs. multiple award trends analysis
+- [ ] Build vehicle success rate visualization
+- [ ] Create performance by location map
+- [ ] Implement regional spending patterns visualization
+- [ ] Develop geographic concentration of awards chart
+
+### Phase 3: Enhancements and Optimization (Planned)
+
+- [ ] Add expandable cards for drill-down analysis
+- [ ] Implement dashboard state saving
+- [ ] Create export functionality for visualizations
+- [ ] Add user preference settings
+- [ ] Optimize database queries for performance
+- [ ] Implement caching for frequently accessed data
+- [ ] Add progress indicators for long-running queries
+- [x] Replace Unicode characters with ASCII-compatible alternatives for improved compatibility
+- [ ] Optimize visualization rendering
+- [ ] Create user documentation for dashboard features
+- [ ] Develop testing plan for dashboard components
+- [ ] Perform cross-browser compatibility testing
+- [ ] Solicit user feedback and make refinements
+
 ## Backlog
 
 - **Develop Model Context Protocol (MCP) Integration**:
+
   - Sub-tasks:
     - **Visualization Tool Integration**:
       - Design and develop a dedicated Python-based UI for interactive visualizations of USASpending.gov data
@@ -367,6 +451,29 @@
       - Create data pipeline for financial insights and legislative tracking
       - Build subcontractor data integration for teaming opportunities
       - Implement visualization of agency spending trends from BGov data
+    - **ILOSTAT Database API Integration**:
+      - Implement secure API key management for ILOSTAT access
+      - Create data connector for accessing international labor statistics
+      - Develop data processing for global wage rate analysis
+      - Implement filtering to use global data only when appropriate for international opportunities
+      - Build visualization components for comparative wage analysis across regions
+      - Create integration with pricing models for international opportunities
+    - **Data.gov Contract-Awarded Labor Category API Integration**:
+      - Develop secure API key management for Data.gov CALC API
+      - Create data pipeline for labor category rates and qualifications
+      - Build integration with pricing strategy components
+      - Implement visualization of market rates for common labor categories
+      - Create capability to benchmark proposed rates against historical awarded rates
+      - Develop integration with price-to-win modeling
+    - **Bureau of Labor Statistics OEWS API Integration**:
+      - Implement secure API key management for BLS API access
+      - Create data connector for accessing Occupational Employment and Wage Statistics
+      - Develop data processing pipeline for 800+ occupations across industries and geographic areas
+      - Build integration with pricing strategy and labor rate analysis components
+      - Create visualization tools for wage percentiles (10th, 25th, median, 75th, 90th)
+      - Implement cross-industry wage comparison by region
+      - Add capability to benchmark proposed rates against standard occupation wages
+      - Develop geographic wage variation analysis for distributed contract work
     - **Salesforce REST API Integration**:
       - Create bidirectional sync between data platform and Salesforce CRM
       - Develop automated opportunity feeds into Salesforce
@@ -486,6 +593,7 @@
   - Implement proposal development automation
   - Status: Planned, to be developed after data source integration.
 - **Milestone 5: Enhanced Capture Profile Generator**:
+
   - Implement a comprehensive profile generator that leverages all MCP tools
   - Create document generation with AI-assisted narratives and integrated visualizations
   - Build export capabilities for proposal and business development teams
@@ -494,7 +602,8 @@
   - Create strategic recommendation sections from Analysis and Reasoning tool
   - Build automated visual aids generation for proposal support
   - Generate ghosting strategies based on competitor intelligence
-  - Status: Planned, to be developed after MCP tools as the true end-state deliverable.
+  - Status: Planned, to be developed after MCP tools are functional, as it represents the end-state deliverable that consolidates all AI capabilities
+
 - **Milestone 6: Advanced Features and Optimization**:
   - Add advanced filtering and enhanced visualizations.
   - Optimize performance for large datasets.

@@ -1,4 +1,4 @@
-# Strategic Dashboard Implementation
+# Strategic Dashboard
 
 ## Overview
 
@@ -56,19 +56,22 @@ The dashboard uses an "electric energy" theme with:
 
 1. **Executive Summary Cards**
 
-   - Total Obligations in NAICS 561210
-   - Total Award Actions (base awards only, Modification No = '0')
-   - Average Award Value
-   - Total Active Contracts
-   - YoY Growth Rate
+   - Total Obligations: Total dollar value of all obligations
+   - Total Award Actions: Number of distinct award actions (base awards only, Modification No = '0')
+   - Average Award Value: Average dollar value per award action
+   - Active Contracts: Number of currently active contracts
+   - Expiring Contracts (24mo): Number of contracts expiring within the next 6 to 24 months
+   - Suitability: Percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions
+   - Synergy: Percentage of expiring contracts suitable across MTS business units based on comparing company capabilities to expiring contract descriptions
 
 2. **Combined Obligations and Award Actions Trend**
 
    - Dual-axis visualization showing relationship between spending and contract actions
    - Quarter-by-quarter view with fiscal year demarcations
    - Toggle capability between cumulative and quarterly views
+- Line chart showing quarterly trends for both obligations and award actions
 
-3. **Agency-to-Obligation Ratio Analysis**
+3. **Action-to-Obligation Ratio Analysis**
 
    - Scatter plot identifying agencies with high-value contracts but fewer award actions
    - Quadrant analysis for strategic targeting
@@ -76,37 +79,43 @@ The dashboard uses an "electric energy" theme with:
 
 4. **Contract Vehicle Distribution**
 
-   - Distribution of contract vehicles (FSS, GWAC, IDV, BPA, Stand Alone...etc.)
+   - Pie chart showing distribution of contract vehicles (FSS, GWAC, IDV, BPA, Stand Alone...etc.)
    - Single vs. Multiple award analysis
    - Vehicle preferences by agency
 
 5. **Competitive Landscape**
 
-   - Top competitors by market share
+   - Treemap visualization of top competitors by market share
    - Win rates by competitor
    - Agency-competitor relationships
 
-6. **Upcoming High-Value Opportunities**
-   - Timeline of expiring high-value contracts
-   - Incumbent and recompete information
-   - Estimated contract values
+6. **Top Agencies Analysis**
+   - Bar charts of top agencies by both award count and obligation amount
+   - Hover details with additional agency metrics
 
 ### Tab Navigation
 
-The dashboard now uses a tabbed interface with six main tabs:
+The dashboard uses a tabbed interface with six main tabs:
 
 1. **Market Overview** (default tab)
-   - Contains executive summary metrics and key visualizations
+   - Contains executive summary metrics and key visualizations described above
+   - Top agencies, recipients, and NAICS code analysis
+   - Interactive charts for obligations and award actions trends
+
 2. **Future Opportunities**
    - Expiring Contracts Timeline for next 6-24 months
    - Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
    - Active SAM.gov Opportunities with capability match scoring
    - NATO NSPA Opportunities with capability match scoring
+- Incumbenet and recompete information
    - Strategic Connections between historical performance and future opportunities
-3. **Agency Intelligence**
+ 
+   3. **Agency Intelligence**
    - Agency hierarchy analysis
    - Agency spending patterns
    - Set-aside utilization by agency
+- Competitor-agency relationships
+
 4. **Competitive Analysis**
    - Market Share Analysis - Horizontal bar chart of competitors by market share
    - Win Rate Analysis - Bar chart showing top competitors by win rate percentage
@@ -114,40 +123,16 @@ The dashboard now uses a tabbed interface with six main tabs:
    - Competitor-Agency Relationships - Heatmap visualization of relationships between top competitors and agencies
    - Contract Type Analysis - Competition intensity by contract type and dual-axis chart of contract value
    - Competitive Strategy Insights - Actionable recommendations based on analysis
+
 5. **Contract Vehicle Analysis**
    - Vehicle preference by agency
    - Award type distributions
    - Success rates by contract type
+
 6. **Geographic Analysis**
    - Regional spending patterns
    - Performance by location
    - Geographic concentration of awards
-
-## Implementation Tasks
-
-- [x] Design dashboard layout and component structure
-- [x] Create base queries for NAICS 561210 data filtering
-- [x] Implement executive summary metrics calculation
-- [x] Develop combined obligations/award actions visualization
-- [x] Build agency-to-obligation ratio scatter plot
-- [x] Create contract vehicle distribution chart
-- [x] Implement competitive landscape visualization
-- [x] Develop upcoming opportunities timeline
-- [x] Add global filtering functionality
-- [x] Implement tab navigation for secondary analyses
-- [x] Redesign sidebar layout with logical structure
-- [x] Center metric card titles for improved readability
-- [x] Implement placeholder navigation system
-- [x] Add About section to sidebar
-- [x] Replace Unicode characters with ASCII-compatible alternatives
-- [x] Add placeholder for Future Opportunities tab
-- [x] Implement comprehensive Competitive Analysis visualizations
-- [ ] Complete Future Opportunities tab with full visualizations
-- [ ] Add drill-down capabilities to all charts
-- [ ] Optimize query performance for large datasets
-- [ ] Implement export functionality for reports
-- [ ] Add user preference saving for filter settings
-- [ ] Create user documentation for dashboard features
 
 ## Data Requirements
 
@@ -161,6 +146,16 @@ The dashboard requires the following base data from the usaspending_cleaned tabl
 - Recipient information
 - NAICS codes (filtered to 561210 by default)
 
+## Filters
+
+Users can filter the dashboard data by:
+
+- NAICS Code: Default is 561210 (Facilities Support Services)
+- Date Range: Start Date and End Date (Default is 5-year span)
+- Agency: All agencies are available by default
+
+The Clear Filters button resets all filters to their default values.
+
 ## Technical Approach
 
 - Streamlit for frontend interface
@@ -171,42 +166,6 @@ The dashboard requires the following base data from the usaspending_cleaned tabl
 - Session state management for filter persistence
 - ASCII-compatible character usage for cross-environment compatibility
 
-## Strategic Dashboard
-
-The Strategic Dashboard provides a high-level view of the government acquisition landscape with a focus on contract opportunities and business intelligence.
-
-### Executive Summary Metrics
-
-The Executive Summary section displays key performance indicators (KPIs) for the selected filters:
-
-- **Total Obligations**: Total dollar value of all obligations
-- **Total Award Actions**: Number of distinct award actions
-- **Average Award Value**: Average dollar value per award action
-- **Active Contracts**: Number of currently active contracts
-- **Expiring Contracts (24mo)**: Number of contracts expiring within the next 24 months
-- **Suitability**: Percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions
-- **Synergy**: Percentage of expiring contracts suitable across MTS business units based on comparing company capabilities to expiring contract descriptions
-
-### Visualizations
-
-The dashboard includes several interactive visualizations:
-
-1. **Obligations and Award Actions Trend**: Line chart showing quarterly trends for both obligations and award actions
-2. **Action-to-Obligation Ratio Analysis**: Scatter plot analyzing agencies by award actions and obligation amounts
-3. **Contract Vehicle Distribution**: Pie chart showing distribution of contract vehicles
-4. **Competitive Landscape**: Treemap visualization of top competitors by market share
-5. **Top Agencies Analysis**: Bar charts of top agencies by both award count and obligation amount
-
-### Filters
-
-Users can filter the dashboard data by:
-
-- NAICS Code
-- Date Range (Start Date and End Date)
-- Agency
-
-The Clear Filters button resets all filters to their default values.
-
-### Data Source
+## Data Source
 
 The dashboard pulls data from the PostgreSQL database table `usaprime_cleaned` with fallback options for other potential table names.

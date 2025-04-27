@@ -372,6 +372,9 @@ The application now follows a modular structure with:
   - **Federal Procurement Data System (FPDS)**: Additional contract data
   - **GovWin IQ API**: Pre-RFP intelligence and teaming opportunities
   - **Bloomberg Government API**: Agency spending trends and legislative tracking
+  - **ILOSTAT Database API**: International Labour Organization's central repository of labor statistics for global wage rate analysis
+  - **Data.gov Contract-Awarded Labor Category API**: General Services Administration's data on contract-awarded labor categories, rates and qualifications
+  - **Bureau of Labor Statistics OEWS API**: Occupational Employment and Wage Statistics providing comprehensive wage data for 800+ occupations across various industries and geographic areas
 
 - **Data Acquisition Mechanisms**:
   - **Manual Fetch Button**: Admin-only interface for on-demand data updates

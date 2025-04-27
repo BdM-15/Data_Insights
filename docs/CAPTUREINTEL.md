@@ -753,6 +753,23 @@ To provide data-driven pricing intelligence that moves beyond simple historical 
   - **Implementation**: Competitor-focused historical price analysis.
   - **Milestone Utility**: Enhances competitive positioning for Milestone 2 and 3.
 
+- **BLS OEWS Wage Data Integration**:
+
+  - **Description**: Incorporates Bureau of Labor Statistics Occupational Employment and Wage Statistics for labor rate analysis.
+  - **Implementation**: API-based retrieval of national, state, and metropolitan area wage data for 800+ occupations.
+  - **Data Features**: Provides comprehensive percentile wage data (10th, 25th, median, 75th, 90th) by location and industry.
+  - **Cross-Industry Analysis**: Enables comparison of wage rates across industries for the same occupation.
+  - **Geographic Variance**: Shows wage differences based on location for distributed contract work.
+  - **Milestone Utility**: Supports labor rate justification and pricing strategy development at Milestones 1, 2, and 3.
+
+- **Labor Category Benchmarking**:
+
+  - **Description**: Combines Data.gov Contract-Awarded Labor Category API data with BLS OEWS statistics.
+  - **Implementation**: Cross-reference analysis between government contract rates and standard industry wages.
+  - **Rate Justification**: Provides statistically valid support for proposed rates based on percentile positioning.
+  - **Competitive Edge**: Enables strategic rate positioning based on experience levels relative to market standards.
+  - **Milestone Utility**: Critical for price proposal development at Milestone 3.
+
 - **Price-to-Win Predictive Model**:
 
   - **Description**: Combines multiple data factors to predict optimal pricing range.
@@ -1155,38 +1172,133 @@ The integration enables a more sophisticated pWin calculation that accounts for:
 
 The resulting model provides more realistic win probability estimates that inform resource allocation and pursuit decisions.
 
-## Competition Intensity Analysis
+## External Data Sources Integration
 
-The "number_of_offers_received" field from USAspending.gov provides critical insights into competitive density across federal contracts. This data element is essential for:
+### Purpose
 
-### Strategic Intelligence Applications
+To enhance capture intelligence and proposal development by integrating multiple authoritative data sources, providing a comprehensive view of the federal contracting landscape, labor rates, and emerging opportunities.
 
-1. **Market Competition Mapping**: Identify agencies, NAICS codes, and contract types with varying levels of competitive intensity
-2. **Probability of Win (pWin) Calculation**: Create more accurate mathematical models where base probability starts with 1/number of bidders
-3. **Opportunity Targeting**: Find "sweet spot" opportunities with optimal value-to-competition ratios
-4. **Pricing Strategy Development**: Analyze correlation between number of bidders and winning bid amounts
-5. **Competitive Landscape Visualization**: Graphically represent competitive density across market segments
+### Primary Data Sources
 
-### Implementation in Capture Process
+#### Contract and Opportunity Data Sources
 
-- **Opportunity Qualification**: Use historical bidder counts as a factor in Go/No-Go decisions
-- **Capture Strategy Development**: Tailor approaches based on expected competition level
-- **Price-to-Win Analysis**: Factor competitive density into pricing models
-- **Proposal Development**: Adjust win themes based on competitive environment
-- **Teaming Decisions**: Build stronger teams for highly competitive opportunities
+- **USAspending.gov API and Bulk Download**:
 
-### Mathematical pWin Model Integration
+  - **Description**: Primary source for historical federal contract award data
+  - **Implementation**: Both API connections and bulk data processing pipelines
+  - **Key Data**: Contract details, obligations, agency relationships, and historical trends
+  - **Strategic Value**: Provides foundation for historical spending analysis and recompete identification
 
-The platform integrates number of bidders into a sophisticated pWin calculation:
+- **SAM.gov API**:
 
-```
-pWin = (base_probability × capability_factor × incumbent_advantage × 100)
-```
+  - **Description**: Authoritative source for active and future federal opportunities
+  - **Implementation**: API integration with rate limiting and backoff strategies
+  - **Key Data**: Active solicitations, pre-solicitation notices, award notices
+  - **Strategic Value**: Enables pipeline building with forecasted opportunity data
 
-Where:
+- **NATO NSPA XML Feed**:
 
-- base_probability = 1 / number_of_offers_received
-- capability_factor = our_capabilities_score / 100 (0-1 range)
-- incumbent_advantage = 1.5 if incumbent, otherwise 1.0
+  - **Description**: European procurement opportunities from NATO Support and Procurement Agency
+  - **Implementation**: XML feed processing with schema detection
+  - **Key Data**: International defense and security procurement opportunities
+  - **Strategic Value**: Expands addressable market to European defense contracts
 
-This creates a more realistic probability assessment that accounts for the specific competitive environment of each opportunity, enabling better resource allocation decisions.
+- **Federal Procurement Data System (FPDS)**:
+  - **Description**: Additional contract data with detailed reporting
+  - **Implementation**: API integration and report processing
+  - **Key Data**: Specialized contract reporting data
+  - **Strategic Value**: Provides supplementary details not available in USAspending.gov
+
+#### Small Business and Teaming Intelligence
+
+- **Small Business Administration (SBA) SubNet**:
+
+  - **Description**: Repository of subcontracting opportunities
+  - **Implementation**: Data scraping and API integration
+  - **Key Data**: Prime contractor subcontracting opportunities
+  - **Strategic Value**: Identifies teaming opportunities and prime-sub relationships
+
+- **SBA Mentor-Protégé Agreements**:
+  - **Description**: Database of active mentor-protégé relationships
+  - **Implementation**: Regular updates from downloadable spreadsheets
+  - **Key Data**: Relationships between large businesses and small business partners
+  - **Strategic Value**: Provides competitive intelligence on teaming relationships
+
+#### Commercial Intelligence Sources
+
+- **GovWin IQ API**:
+
+  - **Description**: Commercial source for pre-RFP intelligence and teaming information
+  - **Implementation**: Secure API integration (requires paid subscription)
+  - **Key Data**: Early opportunity intelligence, forecast data, and competitive analysis
+  - **Strategic Value**: Provides pre-RFP intelligence for early capture positioning
+
+- **Bloomberg Government API**:
+  - **Description**: Financial insights and subcontractor intelligence
+  - **Implementation**: Secure API integration (requires paid subscription)
+  - **Key Data**: Agency spending trends, legislative tracking, and contractor relationships
+  - **Strategic Value**: Offers unique financial and legislative context for opportunities
+
+#### Labor Rate and Economic Data Sources
+
+- **ILOSTAT Database API**:
+
+  - **Description**: International Labour Organization's repository of global labor statistics
+  - **Implementation**: API integration with secure credential management
+  - **Key Data**: International wage rates, employment statistics, and labor market trends
+  - **Strategic Value**: Supports pricing for international opportunities and cost comparisons
+
+- **Data.gov Contract-Awarded Labor Category API (CALC)**:
+
+  - **Description**: General Services Administration's database of awarded labor rates
+  - **Implementation**: API integration with secure access management
+  - **Key Data**: Actual awarded labor rates for various contract categories
+  - **Strategic Value**: Enables competitive labor rate positioning based on historical awards
+
+- **Bureau of Labor Statistics OEWS API**:
+  - **Description**: Occupational Employment and Wage Statistics data
+  - **Implementation**: API-based retrieval with data transformation
+  - **Key Data**: Comprehensive wage data for 800+ occupations with percentile breakdowns
+  - **Strategic Value**: Provides market-based labor rate benchmarks with statistical validity
+
+### Integration Approach
+
+Each data source will be integrated with the following considerations:
+
+1. **Secure Credential Management**: API keys and access credentials securely stored in environment variables
+2. **Scheduled Refresh Cycles**: Automated data refresh on appropriate schedules (daily, weekly, monthly)
+3. **Data Transformation Pipeline**: Processing to normalize and standardize data formats
+4. **Schema Evolution Handling**: Dynamic adaptation to changes in source data structures
+5. **Cross-Source Relationship Mapping**: Creation of relationships between data from different sources
+6. **Unified Query Interface**: Common interface for querying across multiple data sources
+
+### Strategic Applications
+
+#### Integrated Capture Intelligence
+
+The combined data will enable comprehensive capture intelligence:
+
+- **Opportunity Lifecycle Tracking**: Follow opportunities from forecast through award
+- **Competitive Landscape Analysis**: Map competitors, relationships, and historical patterns
+- **Price-to-Win Modeling**: Develop data-driven pricing strategies with labor rate benchmarking
+- **Market Entry Analysis**: Identify optimal entry points into new market segments
+- **International Expansion Strategy**: Support capture planning for international opportunities
+
+#### Enhanced Proposal Development
+
+The data sources will directly enhance proposal development:
+
+- **Labor Rate Justification**: Statistical support for proposed labor rates
+- **Past Performance Validation**: Verification of historical contract performance
+- **Competitive Positioning**: Evidence-based differentiation from competitors
+- **Teaming Strategy Optimization**: Data-driven selection of optimal partners
+- **Pricing Strategy Development**: Competitive pricing based on market intelligence
+
+### Implementation Priorities
+
+1. **Core Historical Data**: USAspending.gov API and Bulk Download
+2. **Opportunity Pipeline**: SAM.gov API
+3. **Labor Rate Intelligence**: BLS OEWS API and CALC API
+4. **Teaming Intelligence**: SBA SubNet and Mentor-Protégé data
+5. **International Expansion**: ILOSTAT and NATO NSPA data
+6. **Premium Intelligence**: GovWin IQ and Bloomberg Government (budget permitting)

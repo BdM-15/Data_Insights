@@ -46,6 +46,14 @@ SAM_NAICS_CODE = os.getenv("SAM_NAICS_CODE")  # Optional NAICS code filter
 SAM_STATE = os.getenv("SAM_STATE")  # Optional state filter
 SAM_ZIP = os.getenv("SAM_ZIP")  # Optional ZIP code filter
 
+# CALC+ API (Contract-Awarded Labor Category)
+CALC_API_URL = "https://api.gsa.gov/acquisition/calc/v3/api/ceilingrates/"
+#CALC_API_KEY = os.getenv("CALC_API_KEY") # GSA CALC+ uses a public API, no key required
+
+# SDMX API (Statistical Data and Metadata eXchange) - ILOSTAT
+SDMX_API_URL = "https://www.ilo.org/sdmx/rest"
+#SDMX_API_KEY = os.getenv("SDMX_API_KEY") # ILOSTAT uses a public API, no key required
+
 # BLS API (Bureau of Labor Statistics)
 BLS_API_URL = "https://api.bls.gov/publicAPI/v2"
 BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
