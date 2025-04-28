@@ -241,12 +241,14 @@ def get_naics_data(naics_code="561210", start_date=None, end_date=None):
                     funding_sub_agency_name,
                     funding_office_name,
                     recipient_name,
+                    recipient_parent_name,
                     award_type,
                     naics_code,
                     type_of_idc,
                     multiple_or_single_award_idv,
                     type_of_contract_pricing,
-                    extent_competed
+                    extent_competed,
+                    transaction_description
                 FROM {table_name}
                 WHERE 1=1
             """
@@ -637,22 +639,103 @@ def get_treemap_data(df):
     # Process each recipient to ensure accurate counts
     result_data = []
     
+    # Process by recipient and funding sub-agency
+    # This approach allows us to maintain the hierarchy for treemap
     for recipient in recipients:
         # Get data for this recipient
         recipient_df = filtered_df[filtered_df['recipient_name'] == recipient]
         
-        # Get total obligations (all records)
-        total_obligations = recipient_df['federal_action_obligation'].sum()
+        # Get parent company name (use recipient name if parent is missing)
+        parent_name = recipient_df['recipient_parent_name'].iloc[0] if 'recipient_parent_name' in recipient_df.columns and not pd.isna(recipient_df['recipient_parent_name'].iloc[0]) else recipient
         
-        # Get base award count (exact '0' modification number)
-        base_count = recipient_df['is_base'].sum()
+        # Get the funding sub-agencies for this recipient
+        funding_sub_agencies = recipient_df['funding_sub_agency_name'].unique()
         
-        # Add to results
-        result_data.append({
-            'recipient_name': recipient,
-            'federal_action_obligation': total_obligations,
-            'award_count': base_count
-        })
+        # For each funding sub-agency, create a row in the result data
+        for sub_agency in funding_sub_agencies:
+            # Get data for this recipient and sub-agency
+            sub_agency_df = recipient_df[recipient_df['funding_sub_agency_name'] == sub_agency]
+            
+            # Get base award count (exact '0' modification number)
+            base_count = sub_agency_df['is_base'].sum()
+            
+            # Get total obligations for this recipient and sub-agency
+            total_obligations = sub_agency_df['federal_action_obligation'].sum()
+            
+            # Only add rows with actual obligations
+            if total_obligations > 0:
+                # Process contract descriptions - identify significant contracts
+                if 'transaction_description' in sub_agency_df.columns:
+                    # Filter for base awards with valid descriptions
+                    valid_desc_df = sub_agency_df[~sub_agency_df['transaction_description'].isna()]
+                    
+                    if not valid_desc_df.empty:
+                        # Sort contracts by obligation amount in descending order
+                        sorted_contracts = valid_desc_df.sort_values('federal_action_obligation', ascending=False)
+                        
+                        # Get top contracts (up to 5 largest or 20% of value)
+                        top_n = min(5, len(sorted_contracts))
+                        top_contracts = sorted_contracts.head(top_n)
+                        
+                        # For each significant contract, create an entry with rich description
+                        for _, contract in top_contracts.iterrows():
+                            # Clean and format description
+                            description = str(contract['transaction_description'])
+                            if description == 'nan' or not description or description.lower() in ['none', 'n/a']:
+                                description = f"Contract #{contract['modification_number']}"
+                            else:
+                                description = description.strip().replace('\n', ' ').replace('\r', '')
+                                if len(description) > 100:
+                                    description = description[:97] + '...'
+                            
+                            # Format amount for better readability
+                            amount = contract['federal_action_obligation']
+                            amount_str = f"${amount/1_000_000:.1f}M" if amount >= 1_000_000 else f"${amount/1_000:.1f}K" if amount >= 1_000 else f"${amount:.0f}"
+                            
+                            # Add to results with rich description
+                            result_data.append({
+                                'recipient_parent_name': parent_name,
+                                'recipient_name': recipient,
+                                'funding_sub_agency_name': sub_agency if not pd.isna(sub_agency) else 'Unknown',
+                                'transaction_description': f"{amount_str}: {description}",
+                                'federal_action_obligation': contract['federal_action_obligation'],
+                                'award_count': 1 if contract['is_base'] else 0
+                            })
+                            
+                        # Add remaining as "Other Contracts"
+                        remaining = sorted_contracts[~sorted_contracts.index.isin(top_contracts.index)]
+                        if not remaining.empty:
+                            remaining_value = remaining['federal_action_obligation'].sum()
+                            remaining_count = len(remaining)
+                            
+                            result_data.append({
+                                'recipient_parent_name': parent_name,
+                                'recipient_name': recipient,
+                                'funding_sub_agency_name': sub_agency if not pd.isna(sub_agency) else 'Unknown',
+                                'transaction_description': f"Other Contracts ({remaining_count})",
+                                'federal_action_obligation': remaining_value,
+                                'award_count': sum(remaining['is_base'])
+                            })
+                    else:
+                        # No valid descriptions
+                        result_data.append({
+                            'recipient_parent_name': parent_name,
+                            'recipient_name': recipient,
+                            'funding_sub_agency_name': sub_agency if not pd.isna(sub_agency) else 'Unknown',
+                            'transaction_description': 'All Contracts',
+                            'federal_action_obligation': total_obligations,
+                            'award_count': base_count
+                        })
+                else:
+                    # No transaction_description column
+                    result_data.append({
+                        'recipient_parent_name': parent_name,
+                        'recipient_name': recipient,
+                        'funding_sub_agency_name': sub_agency if not pd.isna(sub_agency) else 'Unknown',
+                        'transaction_description': 'All Contracts',
+                        'federal_action_obligation': total_obligations,
+                        'award_count': base_count
+                    })
     
     # Convert to DataFrame
     treemap_data = pd.DataFrame(result_data)
@@ -1126,7 +1209,7 @@ def main():
                 st.metric(
                     "Expiring Contracts", 
                     format_value(expiring_contracts),
-                    help="Number of contracts expiring in the next 24 months from today"
+                    help="Number of contracts expiring in the next 6 to 24 months from today"
                 )
                 
             with col6:
@@ -1257,8 +1340,8 @@ def main():
                     st.warning("Insufficient data for quarterly trends visualization.")
             
             with col2:
-                # Action-to-Obligation Ratio Analysis (renamed and using normalized data)
-                st.subheader("Action-to-Obligation Ratio Analysis")
+                # Captue Intensity (renamed and using normalized data)
+                st.subheader("Capture Intensity")
                 
                 agency_ratio = get_agency_obligation_ratio(df)
                 
@@ -1412,7 +1495,7 @@ def main():
                     
                     fig = px.treemap(
                         top_competitors,
-                        path=["recipient_name"],
+                        path=["recipient_parent_name", "recipient_name", "funding_sub_agency_name", "transaction_description"],
                         values="federal_action_obligation",
                         color="win_rate",
                         color_continuous_scale="Viridis",
@@ -1779,7 +1862,7 @@ def main():
                 # Market Position Analysis - Scatter Plot
                 st.subheader("Market Position Analysis")
                 
-                # Create scatter plot with win rate vs market share
+                               # Create scatter plot with win rate vs market share
                 fig = px.scatter(
                     top_competitors,
                     x='market_share',
@@ -1795,7 +1878,7 @@ def main():
                     },
                     size_max=50
                 )
-                
+
                 # Add quadrant lines at median values
                 median_market_share = top_competitors['market_share'].median()
                 median_win_rate = top_competitors['win_rate'].median()
@@ -1828,7 +1911,7 @@ def main():
                 )
                 
                 fig.add_annotation(
-                    x=top_competitors['market_share'].max() * 0.8,
+                    x=median_market_share*1.5,
                     y=top_competitors['win_rate'].max() * 0.8,
                     text="Market Leaders",
                     showarrow=False,
@@ -1844,7 +1927,7 @@ def main():
                 )
                 
                 fig.add_annotation(
-                    x=top_competitors['market_share'].max() * 0.8,
+                    x=median_market_share*1.5,
                     y=median_win_rate/2,
                     text="High Volume, Low Win Rate",
                     showarrow=False,
@@ -1870,8 +1953,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Competitor-Agency Relationship Analysis
-                st.subheader("Competitor-Agency Relationships")
-                
+                st.subheader("Competitor-Agency Relationships")                
                 # For each top competitor, find their top agencies
                 # This would normally use a more sophisticated query, but we'll simulate the relationship here
                 
@@ -1888,7 +1970,7 @@ def main():
                     competitor_top_agencies = {}
                     for competitor in top_5_competitors:
                         competitor_data = competitor_agency[competitor_agency['recipient_name'] == competitor]
-                        top_agencies = competitor_data.nlargest(3, 'federal_action_obligation')
+                        top_agencies = competitor_data.nlargest(3,'federal_action_obligation')
                         competitor_top_agencies[competitor] = top_agencies
                     
                     # Create a heatmap-style visualization
