@@ -366,6 +366,9 @@ The application now follows a modular structure with:
 
   - **USAspending.gov API**: Historical contract award data
   - **USAspending.gov Bulk Download**: Large-scale historical data
+- Complete PostgreSQL database (1.1TB) hosted on port 5433
+    - Direct access to all USAspending.gov tables and views
+    - Optimized for performance with custom PostgreSQL configuration
   - **SAM.gov API**: Active and future opportunities
   - **NATO NSPA XML Feed**: European procurement opportunities
   - **Small Business Administration (SBA) SubNet**: Subcontracting opportunities
@@ -397,6 +400,32 @@ The application now follows a modular structure with:
   - Indexed search fields for performance
   - Partitioning for large historical datasets
   - Connection pooling for concurrent access
+
+### Database Configuration
+
+The application now uses a dual-database approach:
+
+1. **Main application database** (PostgreSQL, port 5432):
+   - Contains cleansed and transformed data
+   - Optimized for application performance
+   - Stores filter values, dependencies, and materialized views
+   - Used for direct application operations
+
+2. **USAspending full database** (PostgreSQL, port 5433):
+   - Contains the complete USAspending.gov database
+   - Approximately 1.1TB in size
+   - Provides access to all original tables and relationships
+   - Configured with optimized performance settings:
+     - `shared_buffers = 4GB`
+     - `work_mem = 512MB`
+     - `maintenance_work_mem = 2000MB`
+     - `max_parallel_workers_per_gather = 8`
+     - `max_parallel_workers = 16`
+     - And other performance settings
+
+Both databases can be accessed separately through their respective connection details. The USAspending database provides comprehensive access to the complete federal spending dataset, while the main application database provides optimized performance for the application's specific needs.
+
+Connection details for both databases are stored in the `.env` file. See `docs/DATABASE_SETUP.md` for comprehensive database configuration information.
 
 ## Next Steps
 

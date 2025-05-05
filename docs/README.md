@@ -20,6 +20,7 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations.
 - **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights.
 - **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making.
+- **Full USAspending.gov Database**: Direct access to the complete USAspending.gov database (1.1TB) through a dedicated PostgreSQL instance on port 5433.
 
 ### Project Structure
 
@@ -113,8 +114,13 @@ Data_Insights/
   ```bash
   pip install -r requirements.txt
   ```
-- **Database**: PostgreSQL database (migrated from SQLite) with preloaded data.
+- **Databases**:
+  - Main Application Database: PostgreSQL database on port 5432 with transformed data
+  - USAspending Database: Complete USAspending.gov database on port 5433 (approximately 1.1TB)
 - **PostgreSQL**: PostgreSQL 14 or higher must be installed and configured.
+- **Hardware**:
+  - Minimum 64GB RAM recommended for optimal performance
+  - At least 2TB of free disk space for the USAspending database (1.1TB) and working files
 
 ### How to Run
 
@@ -133,15 +139,24 @@ Data_Insights/
      pip install -r requirements.txt
      ```
 
-2. **Prepare the Database**:
+2. **Prepare the Databases**:
 
    - Ensure PostgreSQL is installed and running
-   - Configure your database connection in `.env` file (see `.env.example`)
-   - Run the data preparation scripts in the following order:
-     1. `src/backend/data_processing/migration.py` (if migrating from an existing SQLite database)
-     2. `src/backend/data_processing/cleansing.py`
-     3. `src/backend/data_processing/transformation.py`
-     4. `src/backend/data_processing/import.py` (if importing from CSV files)
+   - Configure your database connections in `.env` file (see `.env.example`)
+   - For the main application database:
+     1. Run the data preparation scripts in the following order:
+        - `src/backend/data_processing/migration.py` (if migrating from an existing SQLite database)
+        - `src/backend/data_processing/cleansing.py`
+        - `src/backend/data_processing/transformation.py`
+        - `src/backend/data_processing/import.py` (if importing from CSV files)
+   - For the USAspending database:
+     1. Download the USAspending bulk data from USAspending.gov
+     2. Extract the data to a local directory
+     3. Run the restoration script:
+        ```bash
+        python usaspening_restore_improved.py
+        ```
+     4. See `docs/DATABASE_SETUP.md` for detailed database setup instructions
 
 3. **Start the Application**:
 
@@ -178,7 +193,14 @@ Data_Insights/
   - Implement advanced filtering options
   - Optimize for large datasets with pagination
 
-### Recent Updates (April 2025)
+### Recent Updates (May 2025)
+
+- **USAspending Database Restoration Complete**:
+  - Full 1.1TB USAspending.gov database successfully restored on May 1, 2025
+  - All schemas, indexes, and constraints properly created and optimized
+  - Database accessible on dedicated PostgreSQL instance on port 5433
+  - Performance-optimized configuration enables efficient querying of complex federal spending data
+  - See `docs/DATABASE_SETUP.md` for detailed connection information
 
 - **Cross-Environment Compatibility Improvements**:
   - Replaced all Unicode special characters with ASCII-compatible alternatives
