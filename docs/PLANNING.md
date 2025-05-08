@@ -95,6 +95,9 @@ Data_Insights/
 - **AI**: Ollama for local LLM inference, with models like `llama2` or `mistral` for narrative generation.
 - **Claude Desktop**: Claude Desktop can be used to assist with natural language processing tasks, such as summarizing large datasets, generating insights, or drafting narratives for the capture profile generation. It complements the local LLM inference by providing an additional layer of AI-driven analysis and content creation.
 - **Model Context Protocol**: Plan to incorporate Model Context Protocol (MCP) into the project to enhance advanced data analysis and predictive insights using the Microsoft VSCode Toolkit for local deployment.
+- **PydanticAI**: Agent framework for building production-grade AI applications with structured outputs, type safety, and a dependency injection system. Will provide the foundation for all LLM interactions across MCP tools, ensuring consistent, reliable agent behavior.
+- **Langfuse**: Open-source LLM engineering platform for observability, prompt management, evals, and analytics for all AI components in the application. Will track performance of all LLM interactions, store version history of prompts, and provide evaluation frameworks.
+- **Crawl4AI**: Open-source LLM-friendly web crawler and scraper for the Web Intelligence Scraper tool. Will provide clean markdown generation for RAG pipelines, structured data extraction, and advanced browser control for navigating complex government websites.
 - **AI Agent Suite**: Custom-built local AI tools using MCP integration:
   - Web Scraping/Intelligence Gatherer: AI-powered scraping tool to collect relevant contract and agency information
   - Document Creation Agent: AI assistant to create and update multiple document types (Word, Excel, CSV, PowerPoint) based on analyzed data
@@ -366,9 +369,11 @@ The application now follows a modular structure with:
 
   - **USAspending.gov API**: Historical contract award data
   - **USAspending.gov Bulk Download**: Large-scale historical data
+
 - Complete PostgreSQL database (1.1TB) hosted on port 5433
-    - Direct access to all USAspending.gov tables and views
-    - Optimized for performance with custom PostgreSQL configuration
+
+  - Direct access to all USAspending.gov tables and views
+  - Optimized for performance with custom PostgreSQL configuration
   - **SAM.gov API**: Active and future opportunities
   - **NATO NSPA XML Feed**: European procurement opportunities
   - **Small Business Administration (SBA) SubNet**: Subcontracting opportunities
@@ -406,6 +411,7 @@ The application now follows a modular structure with:
 The application now uses a dual-database approach:
 
 1. **Main application database** (PostgreSQL, port 5432):
+
    - Contains cleansed and transformed data
    - Optimized for application performance
    - Stores filter values, dependencies, and materialized views
@@ -447,3 +453,102 @@ Connection details for both databases are stored in the `.env` file. See `docs/D
 2. Implement capture profile generation
 3. Add external data integration (SAM.gov, etc.)
 4. Create AI agents using Model Context Protocol
+
+## AI Integration Strategies
+
+### PydanticAI Implementation Strategy
+
+PydanticAI provides a type-safe agent framework for building production-grade AI applications. The following implementation strategy will ensure successful integration with our Data_Insights project:
+
+#### Phase 1: Core Foundation
+
+1. **Core Domain Models**:
+
+   - Define Pydantic models for key federal contract entities
+   - Implement models for awards, agencies, opportunities, and contracts
+   - Create validation rules specific to federal contracting data
+   - Design specialized validators for monetary values, NAICS codes, and agency identifiers
+
+2. **Simple Analysis Agent**:
+
+   - Build a basic contract analysis agent as proof of concept
+   - Connect to Ollama for local LLM inference
+   - Implement structured response validation
+   - Test with sample contract data queries
+   - Measure performance and accuracy metrics
+
+3. **Database Integration**:
+   - Implement dependency injection for PostgreSQL database context
+   - Create data providers for USAspending database
+   - Design caching mechanisms for expensive database operations
+   - Build type-safe query result mappers to Pydantic models
+   - Implement transaction management for agent operations
+
+#### Phase 2: MCP Tool Integration
+
+4. **Capability Identifier Tool**:
+
+   - Define structured output models for capability identification
+   - Implement competitor capability modeling
+   - Create gap analysis schema with validated outputs
+   - Design structured competitiveness assessment metrics
+   - Build win probability estimation models
+
+5. **Document Creator Agent**:
+
+   - Develop document schema models for different output types
+   - Implement structured section generators
+   - Create validation for narrative sections
+   - Design templating system with typed parameters
+   - Build export validation for different formats
+
+6. **Web Intelligence Scraper**:
+
+   - Design models for intelligence sources and findings
+   - Implement entity detection with validation
+   - Create structured intelligence digest schema
+   - Build search result validation models
+   - Develop models for competitive intelligence analysis
+
+7. **Visualization Tool Enhancement**:
+   - Implement chart configuration models
+   - Create visualization recommendation schemas
+   - Design data validation for visualization inputs
+   - Build query-to-visualization converter models
+   - Implement annotation and metadata schemas
+
+#### Phase 3: Advanced Features
+
+8. **Agent Composition**:
+
+   - Implement modular agent design with composition patterns
+   - Create agent pipelines with validated intermediate outputs
+   - Design typed communication protocols between agent components
+   - Build testing framework for agent interactions
+   - Implement error handling and recovery strategies
+
+9. **Domain-Specific Models**:
+
+   - Create structured models for opportunity qualification
+   - Implement capture planning document schemas
+   - Design competitive analysis report structures
+   - Build price-to-win models with structured components
+   - Develop proposal strategy recommendation schemas
+
+10. **Integration with Langfuse**:
+    - Implement tracing for structured outputs
+    - Create evaluation metrics based on model validation
+    - Design test datasets for agent validation
+    - Build performance dashboards using structure definitions
+    - Implement A/B testing framework for model variants
+
+#### Implementation Guidelines
+
+1. **Start Small**: Begin with core models and a simple agent to test the integration framework
+2. **Incremental Adoption**: Gradually incorporate PydanticAI into each MCP tool
+3. **Type Safety First**: Leverage Python type hints throughout the implementation
+4. **Test-Driven Development**: Create comprehensive tests for all models and agents
+5. **Consistent Patterns**: Establish standard patterns for dependency injection and error handling
+6. **Documentation**: Document all models and their validation rules for future reference
+
+This implementation strategy aligns with the project's focus on local processing, strong validation, and domain-specific AI capabilities for federal contract analysis.

@@ -239,6 +239,12 @@
       - Create entity detection to monitor specific agencies, competitors, and technology trends
       - Build search functionality for Google, news sites, social media, and government portals
       - Develop data cleaning and preprocessing of scraped content
+      - Integrate Crawl4AI for high-performance, LLM-friendly web crawling and data extraction:
+        - Utilize its markdown generation capability for direct LLM ingestion
+        - Implement structured extraction for consistent data formatting
+        - Leverage advanced browser control for navigating complex government websites
+        - Use parallel crawling for faster intelligence gathering
+        - Benefit from its open-source approach with no API key requirements
       - Integrate LLM-based summarization to convert raw web content into actionable intelligence
       - Create custom intelligence digests by topic (customer priorities, competitive moves, market trends)
       - Add document storage for historical analysis and trend identification
@@ -647,7 +653,86 @@
 - [ ] Implement differential update to only fetch new/changed records
 - [ ] Develop email/notification alerts for fetch failures or anomalies
 
-#### Future Development Tasks
+### Langfuse Observability Integration
+
+- [ ] **Set up Langfuse for LLM observability**:
+
+  - [ ] Install Langfuse SDK in the Data_Insights environment
+  - [ ] Configure Langfuse connection (API keys, endpoints)
+  - [ ] Implement core tracing functionality in AI component framework
+  - [ ] Create initial prompt templates in Langfuse for version control
+  - [ ] Set up evaluation metrics specific to federal contracting domain
+
+- [ ] **Integrate Langfuse with MCP Tools**:
+  - [ ] Add tracing to the VS Code integrated Chatbot for award data analysis
+  - [ ] Implement prompt versioning in the Document Creator/Editor Agent
+  - [ ] Add observability to Capability Identifier Tool LLM calls
+  - [ ] Integrate Web Intelligence Scraper with Langfuse tracing
+  - [ ] Set up trace session management for user interactions
+- [ ] **Create Custom Evaluation Framework**:
+
+  - [ ] Define domain-specific evaluation criteria for federal contract analysis
+  - [ ] Implement LLM-as-a-judge evaluators for capture profile quality
+  - [ ] Create evaluation dashboards for AI component performance
+  - [ ] Set up feedback collection from business development users
+  - [ ] Develop benchmarks using historical successful capture profiles
+
+- [ ] **Establish Test Datasets in Langfuse**:
+
+  - [ ] Create datasets of example contracts from different agencies
+  - [ ] Build prompt testing frameworks for each contracting scenario
+  - [ ] Set up automated testing using contract datasets
+  - [ ] Implement A/B testing for prompt variations
+
+- [ ] **Implement Prompt Management System**:
+  - [ ] Create centralized prompt library in Langfuse
+  - [ ] Establish versioning workflow for prompt improvements
+  - [ ] Document prompt strategies and parameters
+  - [ ] Implement prompt templates for different contract types and agencies
+
+### PydanticAI Framework Integration
+
+- [ ] **Set up PydanticAI for MCP agent development**:
+
+  - [ ] Install PydanticAI in the Data_Insights environment
+  - [ ] Create core agent architecture for structured LLM interactions
+  - [ ] Develop domain-specific Pydantic models for federal contract data
+  - [ ] Implement base dependency injection system for database access
+  - [ ] Set up agent configuration with Ollama models for local inference
+
+- [ ] **Structured Agent Implementation for MCP Tools**:
+
+  - [ ] Create contract analysis agent with structured output validation
+  - [ ] Implement capture profile generator with document structure validation
+  - [ ] Build competitor analysis agent with defined output schema
+  - [ ] Develop agency intelligence agent with structured agency insights
+  - [ ] Create pricing analysis agent with structured pricing recommendations
+
+- [ ] **Type-Safe Agent Composition**:
+
+  - [ ] Implement modular agent design with composition patterns
+  - [ ] Create agent pipelines with validated intermediate outputs
+  - [ ] Develop typed communication between agent components
+  - [ ] Build testing framework for agent interactions
+  - [ ] Create error handling and recovery strategies for agent failures
+
+- [ ] **Integrate with Database and External Data**:
+
+  - [ ] Implement dependency injection for PostgreSQL database context
+  - [ ] Create structured data types for USAspending database entities
+  - [ ] Build Pydantic models for external API responses (SAM.gov, NATO NSPA)
+  - [ ] Develop context providers for real-time data access
+  - [ ] Create caching mechanisms for expensive data operations
+
+- [ ] **Develop Federal Contract Domain-Specific Models**:
+  - [ ] Create structured models for opportunity qualification
+  - [ ] Implement capture planning document schema
+  - [ ] Build competitive analysis report structure
+  - [ ] Develop price-to-win model with structured components
+  - [ ] Create proposal strategy recommendation schema
+  - [ ] Implement win themes generator with structured outputs
+
+Future Development Tasks
 
 ### Competition Analysis Enhancement
 
@@ -695,7 +780,28 @@ Future Development Tasks
 
 Future Development Tasks
 
-##
+### Competition Analysis Enhancement
+
+- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
+- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
+- [ ] Create mathematical pWin model using number of bidders as a key factor
+- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
+- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
+- [ ] Add competition intensity metrics to executive summary dashboard
+- [ ] Incorporate competition level insights into Shipley milestone process
+
+### Automated Data Fetch Scheduler
+
+- [ ] Implement scheduled data fetching system to replace manual refresh process
+- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
+- [ ] Add logging and notification system for scheduled fetch results
+- [ ] Implement retry mechanism for failed fetches with exponential backoff
+- [ ] Create admin dashboard for schedule configuration and monitoring
+- [ ] Add health check reporting for data source connectivity
+- [ ] Implement differential update to only fetch new/changed records
+- [ ] Develop email/notification alerts for fetch failures or anomalies
+
+Future Development Tasks
 
 ### Competition Analysis Enhancement
 
@@ -720,7 +826,7 @@ Future Development Tasks
 
 Future Development Tasks
 
-# Competition Analysis Enhancement
+### Competition Analysis Enhancement
 
 - [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
 - [ ] Develop visualization for competitive density by agency, NAICS, and contract type
@@ -743,7 +849,7 @@ Future Development Tasks
 
 Future Development Tasks
 
-# Competition Analysis Enhancement
+### Competition Analysis Enhancement
 
 - [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
 - [ ] Develop visualization for competitive density by agency, NAICS, and contract type

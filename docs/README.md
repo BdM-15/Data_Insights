@@ -178,6 +178,19 @@ Data_Insights/
 - **Model Context Protocol (MCP) Integration**:
   - Build AI tools for web intelligence gathering, document creation, visualization, and strategic analysis
   - Integrate all AI capabilities through Microsoft VSCode Toolkit for local deployment
+- **Langfuse Observability Integration**:
+  - Implement LLM observability framework for all AI components
+  - Track and version control prompts for all LLM interactions
+  - Create custom evaluation metrics for federal contracting domain
+  - Build performance dashboards for AI component quality assessment
+  - Develop test datasets and benchmarks for continuous improvement
+- **Advanced Web Intelligence with Crawl4AI**:
+  - Integrate open-source Crawl4AI for high-performance, LLM-friendly web crawling
+  - Generate clean markdown from government websites for direct LLM consumption
+  - Implement structured extraction for consistent data formatting across sources
+  - Leverage advanced browser control for navigating complex federal websites
+  - Enable parallel crawling for faster intelligence collection at scale
+  - Create a unified intelligence repository from multiple sources
 - **External Data Source Integration**:
   - Connect SAM.gov for future opportunity data
   - Integrate SBA SubNet for subcontracting opportunities
@@ -196,6 +209,7 @@ Data_Insights/
 ### Recent Updates (May 2025)
 
 - **USAspending Database Restoration Complete**:
+
   - Full 1.1TB USAspending.gov database successfully restored on May 1, 2025
   - All schemas, indexes, and constraints properly created and optimized
   - Database accessible on dedicated PostgreSQL instance on port 5433
@@ -252,6 +266,29 @@ The USAspending.gov Data Explorer will be enhanced with direct integration of Mo
 #### Implementation Approach
 
 The MCP integration will leverage local AI models through Ollama, ensuring all data processing remains on the user's system with no external API calls. The implementation will utilize the GTX 4060 GPU with CUDA for efficient inference, making sophisticated AI capabilities accessible without compromising data privacy.
+
+### AI Components and Framework
+
+The Data_Insights project incorporates several advanced AI components:
+
+- **Local LLM Integration**: Using Ollama for local LLM inference to generate capture profile narratives, leveraging the user's GTX 4060 with CUDA.
+- **AI Agent Framework**: Model Context Protocol (MCP) integration to build local AI tools including web intelligence gathering, document creation, and analysis.
+- **PydanticAI Integration**: Structured agent framework for type-safe AI components with validated outputs:
+  - Structured response validation using Pydantic models
+  - Type-safe dependency injection for AI agent components
+  - Domain-specific models for federal contracting
+  - Consistent error handling and recovery patterns
+  - Model-agnostic support for Ollama, OpenAI, Anthropic, and other providers
+- **LLM Observability**: Langfuse integration for tracking, evaluating, and improving AI component performance:
+  - Tracing of all LLM interactions across the application
+  - Prompt management system with versioning and templates
+  - Custom evaluation metrics for federal contracting domain
+  - Test datasets for continuous improvement of AI components
+- **Advanced Web Intelligence**: Crawl4AI integration for high-performance web scraping:
+  - Clean markdown generation for direct LLM consumption
+  - Structured extraction of data from complex websites
+  - Advanced browser control for federal procurement sites
+  - Parallel crawling for efficient intelligence gathering
 
 ### GitHub Copilot Integration
 
