@@ -64,6 +64,37 @@ The USAspending database is restored from the official USAspending.gov bulk down
    - Data loading
    - Index creation (post-data)
 
+### USAspending Fetch Adjustment
+
+To improve data retrieval reliability and accommodate API rate limits, we implemented the following fetch adjustments:
+
+1. **Optimized Batch Processing**:
+   - Implemented chunking of large data requests into smaller batches
+   - Added configurable batch size parameters to prevent timeouts
+   - Created resume capability to restart failed fetches from the last successful point
+
+2. **Enhanced Error Handling**:
+   - Added exponential backoff retry mechanism for API failures
+   - Implemented comprehensive error classification and recovery strategies
+   - Added detailed logging with timestamps for troubleshooting
+
+3. **Rate Limiting Compliance**:
+   - Implemented dynamic request throttling to respect API rate limits
+   - Added automatic pausing when approaching rate limits
+   - Created daily request quota tracking to prevent API cutoffs
+
+4. **Performance Optimizations**:
+   - Implemented parallel fetching for independent data segments
+   - Added progress tracking and ETA calculations for large fetches
+   - Created caching mechanism to prevent redundant requests
+
+5. **Data Integrity Safeguards**:
+   - Added checksum validation for downloaded files
+   - Implemented transaction-based loading to prevent partial updates
+   - Created automated data validation checks post-fetch
+
+These adjustments significantly improved the reliability and efficiency of data acquisition from USAspending.gov, enabling us to process the full 1.1TB of federal spending data while maintaining compliance with API limitations.
+
 ### Starting and Managing the USAspending PostgreSQL Instance
 
 The USAspending database runs on a separate PostgreSQL instance (port 5433) for performance isolation. This instance needs to be running for the application to connect to the USAspending database.
