@@ -2356,6 +2356,7 @@ This table contains information about top-tier federal agencies (departments).
 
 **Key fields for capture managers:**
 
+
 1. **Agency Identification**
 
    - `toptier_agency_id` - Unique identifier
@@ -2405,6 +2406,7 @@ This table contains information about sub-tier federal agencies (bureaus).
 
 **Key fields for capture managers:**
 
+
 1. **Agency Identification**
    - `subtier_agency_id` - Unique identifier
    - `subtier_code` - Sub-tier agency code
@@ -2438,6 +2440,7 @@ This table contains information about sub-tier federal agencies (bureaus).
 This table contains geographic location information.
 
 **Key fields for capture managers:**
+
 
 1. **Location Identification**
 
@@ -2516,6 +2519,7 @@ This table contains information about CFDA (Catalog of Federal Domestic Assistan
 
 **Key fields for capture managers:**
 
+
 1. **Program Identification**
 
    - `program_number` - CFDA program number
@@ -2576,6 +2580,7 @@ This table contains information about NAICS (North American Industry Classificat
 
 **Key fields for capture managers:**
 
+
 1. **Code Information**
    - `code` - NAICS code
    - `description` - Description of the NAICS code
@@ -2604,6 +2609,7 @@ This table contains information about NAICS (North American Industry Classificat
 This table contains information about PSC (Product or Service Code) codes.
 
 **Key fields for capture managers:**
+
 
 1. **Code Information**
 
@@ -2646,6 +2652,7 @@ This table contains country codes and names.
 
 **Key fields for capture managers:**
 
+
 1. **Country Information**
    - `country_code` - ISO country code
    - `country_name` - Country name
@@ -2676,6 +2683,7 @@ This table contains country codes and names.
 This table contains Disaster Emergency Fund Codes (DEFCs) for tracking emergency spending.
 
 **Key fields for capture managers:**
+
 
 1. **Code Information**
 
@@ -2714,6 +2722,214 @@ This table contains Disaster Emergency Fund Codes (DEFCs) for tracking emergency
 - Reference data for emergency funding tracking
 - Used for COVID-19 and Infrastructure investments reporting
 - Enables tracking of special appropriations across agencies
+
+#### `usaspending_subawards`
+
+This table contains subaward (subcontract and subgrant) data as reported by prime awardees to USAspending.gov.
+
+**Key fields for capture managers by category:**
+
+1. **Subaward Identification**
+
+   - `subaward_id` - Unique identifier for the subaward
+   - `subaward_number` - Number assigned to the subaward by the prime recipient
+   - `award_id` - ID of the prime award this subaward is under
+   - `award_type` - Type of the prime award (procurement or assistance)
+
+2. **Subaward Details**
+
+   - `subaward_amount` - Dollar value of the subaward
+   - `subaward_description` - Description of the work or purpose
+   - `subaward_action_date` - Date the subaward was made
+   - `subaward_report_year` - Fiscal year of the subaward report
+   - `subaward_report_month` - Month of the subaward report
+
+3. **Prime Award Information**
+
+   - `prime_award_piid` - Procurement Instrument Identifier for prime contract
+   - `prime_award_parent_piid` - Parent PIID for prime contract
+   - `prime_award_fain` - Federal Award Identification Number for prime assistance award
+   - `prime_award_amount` - Amount of the prime award
+
+4. **Prime Recipient Information**
+
+   - `prime_awardee_name` - Name of the prime awardee
+   - `prime_awardee_duns` - DUNS number of the prime recipient
+   - `prime_awardee_uei` - Unique Entity Identifier of the prime recipient
+   - `prime_awardee_parent_duns` - Parent DUNS of the prime recipient
+   - `prime_awardee_parent_uei` - Parent UEI of the prime recipient
+
+5. **Subawardee Information**
+
+   - `subawardee_name` - Name of the subcontractor or subgrantee
+   - `subawardee_duns` - DUNS number of the subawardee
+   - `subawardee_uei` - Unique Entity Identifier of the subawardee
+   - `subawardee_parent_duns` - Parent DUNS of the subawardee
+   - `subawardee_parent_uei` - Parent UEI of the subawardee
+   - `subawardee_business_types` - Business size and socioeconomic categories of subawardee
+
+6. **Location Information**
+
+   - `subaward_primary_place_of_performance_city` - City where subaward work is performed
+   - `subaward_primary_place_of_performance_state` - State where subaward work is performed
+   - `subaward_primary_place_of_performance_country` - Country where subaward work is performed
+   - `subaward_primary_place_of_performance_zip_4` - ZIP code where subaward work is performed
+   - `subaward_primary_place_of_performance_congressional_district` - Congressional district of performance
+
+7. **Federal Oversight Information**
+
+   - `funding_agency_name` - Name of the funding agency
+   - `funding_agency_id` - ID of the funding agency
+   - `awarding_agency_name` - Name of the awarding agency
+   - `awarding_agency_id` - ID of the awarding agency
+
+8. **Classification Information**
+
+   - `cfda_number` - Assistance Listings (CFDA) number for grants
+   - `cfda_title` - Title of the CFDA program
+   - `product_or_service_code` - Product or Service Code for contracts
+   - `product_or_service_description` - Description of the PSC
+
+**All columns:**
+
+- `id` - Integer, primary key, not null - Auto-incrementing unique identifier
+- `created_at` - Timestamp with time zone - Creation timestamp of the record
+- `updated_at` - Timestamp with time zone - Last update timestamp of the record
+- `fetch_date` - Date - Date the record was fetched from USAspending.gov
+- `subaward_id` - Text - Unique identifier for the subaward from USAspending.gov
+- `subaward_number` - Text - Number assigned to the subaward by the prime recipient
+- `award_id` - Text - ID of the prime award this subaward is under
+- `award_type` - Text - Type of the prime award (procurement or assistance)
+- `subaward_amount` - Text - Dollar value of the subaward
+- `subaward_action_date` - Text - Date the subaward was made
+- `subaward_report_year` - Text - Fiscal year of the subaward report
+- `subaward_report_month` - Text - Month of the subaward report
+- `subaward_description` - Text - Description of the work or purpose
+- `subaward_fsrs_report_id` - Text - FSRS (Federal Subaward Reporting System) report ID
+- `subawardee_name` - Text - Name of the subcontractor or subgrantee
+- `subawardee_duns` - Text - DUNS number of the subawardee
+- `subawardee_uei` - Text - Unique Entity Identifier of the subawardee
+- `subawardee_parent_duns` - Text - Parent DUNS of the subawardee
+- `subawardee_parent_uei` - Text - Parent UEI of the subawardee
+- `subawardee_address_line_1` - Text - First line of subawardee address
+- `subawardee_address_line_2` - Text - Second line of subawardee address
+- `subawardee_address_line_3` - Text - Third line of subawardee address
+- `subawardee_city_name` - Text - Subawardee city name
+- `subawardee_state_code` - Text - Subawardee state code
+- `subawardee_state_name` - Text - Subawardee state name
+- `subawardee_zip_4` - Text - Subawardee ZIP+4 code
+- `subawardee_zip_code` - Text - Subawardee ZIP code
+- `subawardee_congressional_district` - Text - Subawardee congressional district
+- `subawardee_country_code` - Text - Subawardee country code
+- `subawardee_country_name` - Text - Subawardee country name
+- `subawardee_foreign_postal_code` - Text - Subawardee foreign postal code
+- `subawardee_business_types` - Text - Business size and socioeconomic categories of subawardee
+- `top_paid_fulltime_officers` - Text - Information about top paid officers in the subawardee organization
+- `subaward_primary_place_of_performance_address_line_1` - Text - First line of subaward performance address
+- `subaward_primary_place_of_performance_address_line_2` - Text - Second line of subaward performance address
+- `subaward_primary_place_of_performance_address_line_3` - Text - Third line of subaward performance address
+- `subaward_primary_place_of_performance_city` - Text - City where subaward work is performed
+- `subaward_primary_place_of_performance_state` - Text - State where subaward work is performed
+- `subaward_primary_place_of_performance_country` - Text - Country where subaward work is performed
+- `subaward_primary_place_of_performance_zip_4` - Text - ZIP+4 code where subaward work is performed
+- `subaward_primary_place_of_performance_congressional_district` - Text - Congressional district of performance
+- `subaward_primary_place_of_performance_foreign_location` - Text - Foreign location description if applicable
+- `prime_award_id` - Text - ID of the prime award in USAspending.gov
+- `prime_award_piid` - Text - Procurement Instrument Identifier for prime contract
+- `prime_award_parent_piid` - Text - Parent PIID for prime contract
+- `prime_award_fain` - Text - Federal Award Identification Number for prime assistance award
+- `prime_award_uri` - Text - Uniform Resource Identifier for prime assistance award
+- `prime_award_type` - Text - Type of the prime award
+- `prime_award_amount` - Text - Total amount of the prime award
+- `prime_award_base_and_all_options_value` - Text - Base and all options value of prime contract
+- `prime_award_base_exercised_options_val` - Text - Base exercised options value of prime contract
+- `prime_award_description` - Text - Description of the prime award
+- `prime_award_action_date` - Text - Date of the prime award action
+- `prime_award_action_type` - Text - Type of action for the prime award
+- `prime_award_action_type_description` - Text - Description of the prime award action type
+- `prime_award_modification_number` - Text - Modification number of the prime award
+- `prime_award_period_of_performance_start_date` - Text - Start date of prime award performance period
+- `prime_award_period_of_performance_current_end_date` - Text - Current end date of prime award performance period
+- `prime_awardee_name` - Text - Name of the prime awardee
+- `prime_awardee_duns` - Text - DUNS number of the prime recipient
+- `prime_awardee_uei` - Text - Unique Entity Identifier of the prime recipient
+- `prime_awardee_parent_duns` - Text - Parent DUNS of the prime recipient
+- `prime_awardee_parent_uei` - Text - Parent UEI of the prime recipient
+- `prime_awardee_address_line_1` - Text - First line of prime awardee address
+- `prime_awardee_address_line_2` - Text - Second line of prime awardee address
+- `prime_awardee_address_line_3` - Text - Third line of prime awardee address
+- `prime_awardee_city_name` - Text - Prime awardee city name
+- `prime_awardee_state_code` - Text - Prime awardee state code
+- `prime_awardee_state_name` - Text - Prime awardee state name
+- `prime_awardee_zip_4` - Text - Prime awardee ZIP+4 code
+- `prime_awardee_zip_code` - Text - Prime awardee ZIP code
+- `prime_awardee_congressional_district` - Text - Prime awardee congressional district
+- `prime_awardee_country_code` - Text - Prime awardee country code
+- `prime_awardee_country_name` - Text - Prime awardee country name
+- `prime_awardee_business_types` - Text - Business types of prime awardee
+- `prime_award_primary_place_of_performance_city` - Text - City of prime award performance
+- `prime_award_primary_place_of_performance_state` - Text - State of prime award performance
+- `prime_award_primary_place_of_performance_country` - Text - Country of prime award performance
+- `prime_award_primary_place_of_performance_zip_4` - Text - ZIP+4 code of prime award performance
+- `prime_award_primary_place_of_performance_congressional_district` - Text - Congressional district of prime award performance
+- `awarding_agency_id` - Text - ID of the awarding agency
+- `awarding_agency_name` - Text - Name of the awarding agency
+- `awarding_sub_tier_agency_id` - Text - ID of the awarding sub-tier agency
+- `awarding_sub_tier_agency_name` - Text - Name of the awarding sub-tier agency
+- `awarding_office_id` - Text - ID of the awarding office
+- `awarding_office_name` - Text - Name of the awarding office
+- `funding_agency_id` - Text - ID of the funding agency
+- `funding_agency_name` - Text - Name of the funding agency
+- `funding_sub_tier_agency_id` - Text - ID of the funding sub-tier agency
+- `funding_sub_tier_agency_name` - Text - Name of the funding sub-tier agency
+- `funding_office_id` - Text - ID of the funding office
+- `funding_office_name` - Text - Name of the funding office
+- `product_or_service_code` - Text - Product or Service Code for contracts
+- `product_or_service_description` - Text - Description of the PSC
+- `naics_code` - Text - North American Industry Classification System code
+- `naics_description` - Text - Description of the NAICS code
+- `cfda_number` - Text - Assistance Listings (CFDA) number for grants
+- `cfda_title` - Text - Title of the CFDA program
+- `high_comp_officer1_full_name` - Text - Full name of 1st highest compensated officer
+- `high_comp_officer1_amount` - Text - Compensation amount for 1st highest officer
+- `high_comp_officer2_full_name` - Text - Full name of 2nd highest compensated officer
+- `high_comp_officer2_amount` - Text - Compensation amount for 2nd highest officer
+- `high_comp_officer3_full_name` - Text - Full name of 3rd highest compensated officer
+- `high_comp_officer3_amount` - Text - Compensation amount for 3rd highest officer
+- `high_comp_officer4_full_name` - Text - Full name of 4th highest compensated officer
+- `high_comp_officer4_amount` - Text - Compensation amount for 4th highest officer
+- `high_comp_officer5_full_name` - Text - Full name of 5th highest compensated officer
+- `high_comp_officer5_amount` - Text - Compensation amount for 5th highest officer
+- `unique_award_key` - Text - Unique identifier for the award across USAspending.gov
+- `broker_subaward_id` - Text - ID of the subaward in the broker system
+- `last_modified_date` - Text - Date the record was last modified in source system
+
+**Indexes:**
+
+- Primary key on `id`
+- Index on `subaward_id`
+- Index on `award_id`
+- Index on `subawardee_duns`
+- Index on `subawardee_uei`
+- Index on `prime_awardee_duns`
+- Index on `prime_awardee_uei`
+- Index on `subaward_action_date`
+
+**Transformation notes:**
+
+- Data is loaded directly from the USAspending.gov bulk download API
+- Both subcontracts and subgrants are included in this table
+- Monetary amounts are stored as text and may need conversion for calculations
+- Foreign keys to related tables like awards and recipients enable relational queries
+- Contains subaward data reported by prime recipients as required by FFATA
+- Regular updates capture new subawards as they are reported
+
+This subaward data helps identify capability gaps and competitive discriminators by revealing:
+- Which capabilities competitors outsource vs. perform in-house
+- Recurring partnership patterns between primes and subcontractors
+- Division of work within competitor teams
+- Geographic distribution of work across team members
+- Small business utilization strategies
 
 ## Common Transformations
 
