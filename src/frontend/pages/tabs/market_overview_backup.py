@@ -20,34 +20,15 @@ pio.templates["custom_dark"].layout.update(
     font=dict(color=THEME["text_color"]),
     plot_bgcolor=THEME["sidebar_bg"],
     paper_bgcolor=THEME["sidebar_bg"],
-    title=dict(
-        font=dict(color="#FFFFFF", size=16),
-        x=0.5,  # Center title
-        xanchor='center'
-    ),
-    legend=dict(
-        bgcolor="rgba(22, 45, 69, 0.8)",
-        bordercolor="rgba(255, 255, 255, 0.2)",
-        borderwidth=1,
-        font=dict(color="#FFFFFF")
-    ),
     xaxis=dict(
         gridcolor='rgba(255, 255, 255, 0.15)',
         zerolinecolor='rgba(255, 255, 255, 0.3)',
-        title_font=dict(color="#FFFFFF"),
-        tickfont=dict(color="#FFFFFF"),
-        showgrid=True
-    ),    yaxis=dict(
-        gridcolor='rgba(255, 255, 255, 0.15)',
-        zerolinecolor='rgba(255, 255, 255, 0.3)',
-        title_font=dict(color="#FFFFFF"),
-        tickfont=dict(color="#FFFFFF"),
         showgrid=True
     ),
-    modebar=dict(
-        bgcolor='rgba(22, 45, 69, 0.8)',
-        color='#FFFFFF',
-        activecolor=THEME["primary_color"]
+    yaxis=dict(
+        gridcolor='rgba(255, 255, 255, 0.15)',
+        zerolinecolor='rgba(255, 255, 255, 0.3)',
+        showgrid=True
     ),
 )
 pio.templates.default = "custom_dark"
@@ -99,7 +80,7 @@ def render_market_overview(df):
             # Hardcoded suitability value since it's not calculated in get_award_summary
             st.metric(
                 "Suitability", 
-                "6%",
+                "35%",
                 help="The percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions"
             )
         
@@ -107,7 +88,7 @@ def render_market_overview(df):
             # Hardcoded synergy value since it's not calculated in get_award_summary
             st.metric(
                 "Synergy", 
-                "17%",
+                "42%",
                 help="The percentage of market solutions that can be bundled with R&S services"
             )
         
@@ -167,13 +148,16 @@ def render_market_overview(df):
                     hovermode="x unified",
                     margin=dict(l=40, r=40, t=40, b=40)
                 )
-                
-                # Update axes
+                  # Update axes
                 fig.update_xaxes(
                     title_text="Fiscal Period",
                     showgrid=True,
-                    gridcolor=THEME["grid_color"],
-                    tickangle=45
+                    gridcolor="rgba(255,255,255,0.2)",  # Brighter grid lines
+                    tickangle=45,
+                    title_font=dict(size=14, color=THEME["text_color"]),
+                    tickfont=dict(size=12, color=THEME["text_color"]),
+                    showline=True,
+                    linecolor="rgba(255,255,255,0.5)"
                 )
                 
                 # Update y-axes
@@ -181,15 +165,23 @@ def render_market_overview(df):
                     title_text="Obligations ($)",
                     secondary_y=False,
                     showgrid=True,
-                    gridcolor=THEME["grid_color"],
-                    tickformat="$,.0f"
+                    gridcolor="rgba(255,255,255,0.2)",  # Brighter grid lines
+                    tickformat="$,.0f",
+                    title_font=dict(size=14, color=THEME["text_color"]),
+                    tickfont=dict(size=12, color=THEME["text_color"]),
+                    showline=True,
+                    linecolor="rgba(255,255,255,0.5)"
                 )
                 
                 fig.update_yaxes(
                     title_text="Award Actions",
                     secondary_y=True,
                     showgrid=False,
-                    tickformat=",d"
+                    tickformat=",d",
+                    title_font=dict(size=14, color=THEME["text_color"]),
+                    tickfont=dict(size=12, color=THEME["text_color"]),
+                    showline=True,
+                    linecolor="rgba(255,255,255,0.5)"
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -224,21 +216,21 @@ def render_market_overview(df):
                     },
                     size_max=50,
                     title="Action-to-Obligation Ratio Analysis (Normalized Scale)",
-                    color_discrete_sequence=px.colors.qualitative.Plotly,
                     labels={
                         "award_count_normalized": "Award Actions (log scale)",
                         "obligation_normalized": "Obligations (log scale)",
                         "avg_award_value": "Avg. Award Value"
                     }
                 )
-                  # Add quadrant lines with improved visibility
+                
+                # Add quadrant lines
                 fig.add_shape(
                     type="line",
                     x0=median_count,
                     y0=0,
                     x1=median_count,
                     y1=agency_ratio["obligation_normalized"].max() * 1.1,
-                    line=dict(color="#FFFFFF", width=2, dash="dash")
+                    line=dict(color="White", width=1, dash="dash")
                 )
                 
                 fig.add_shape(
@@ -247,19 +239,16 @@ def render_market_overview(df):
                     y0=median_obligation,
                     x1=agency_ratio["award_count_normalized"].max() * 1.1,
                     y1=median_obligation,
-                    line=dict(color="#FFFFFF", width=2, dash="dash")
+                    line=dict(color="White", width=1, dash="dash")
                 )
-                  # Add quadrant labels with improved visibility
+                
+                # Add quadrant labels
                 fig.add_annotation(
                     x=median_count/2,
                     y=median_obligation*1.5,
                     text="High Value, Low Volume",
                     showarrow=False,
-                    font=dict(color="#FFFFFF", size=14),
-                    bgcolor="rgba(22, 45, 69, 0.8)",
-                    bordercolor=THEME["highlight_color"],
-                    borderwidth=1,
-                    borderpad=4
+                    font=dict(color=THEME["highlight_color"])
                 )
                 
                 fig.add_annotation(
@@ -267,24 +256,28 @@ def render_market_overview(df):
                     y=median_obligation*1.5,
                     text="High Value, High Volume",
                     showarrow=False,
-                    font=dict(color="#FFFFFF", size=14),
-                    bgcolor="rgba(22, 45, 69, 0.8)",
-                    bordercolor=THEME["highlight_color"],
-                    borderwidth=1,
-                    borderpad=4
-                )                # Update layout with improved overlay visibility
+                    font=dict(color=THEME["highlight_color"])
+                )                # Update layout
                 fig.update_layout(
                     plot_bgcolor=THEME["sidebar_bg"],
                     paper_bgcolor=THEME["sidebar_bg"],
-                    font=dict(color="#FFFFFF"),
-                    title_font=dict(color="#FFFFFF", size=16),
+                    font=dict(color=THEME["text_color"]),
                     margin=dict(l=40, r=40, t=40, b=40),
                     showlegend=False,
-                    modebar=dict(
-                        bgcolor="rgba(22, 45, 69, 0.8)",
-                        color="#FFFFFF",
-                        activecolor=THEME["primary_color"]
+                    title_font=dict(size=16, color=THEME["text_color"]),
+                    hoverlabel=dict(
+                        bgcolor="rgba(50, 50, 50, 0.9)",
+                        font_size=14,
+                        font_color="white"
                     )
+                )
+                
+                # Make scatter points more visible
+                fig.update_traces(
+                    marker=dict(
+                        line=dict(width=1, color="white")
+                    ),
+                    opacity=0.9  # Slightly increase opacity for better visibility
                 )
                 
                 # Update tooltip to show original values
@@ -307,34 +300,9 @@ def render_market_overview(df):
                     gridcolor=THEME["grid_color"],
                     title_text="Obligations (log scale)"
                 )
-                  # Add the other two quadrant labels
-                fig.add_annotation(
-                    x=median_count/2,
-                    y=median_obligation/2,
-                    text="Low Value, Low Volume",
-                    showarrow=False,
-                    font=dict(color="#FFFFFF", size=14),
-                    bgcolor="rgba(22, 45, 69, 0.8)",
-                    bordercolor=THEME["highlight_color"],
-                    borderwidth=1,
-                    borderpad=4
-                )
-                
-                fig.add_annotation(
-                    x=median_count*1.5,
-                    y=median_obligation/2,
-                    text="Low Value, High Volume",
-                    showarrow=False,
-                    font=dict(color="#FFFFFF", size=14),
-                    bgcolor="rgba(22, 45, 69, 0.8)",
-                    bordercolor=THEME["highlight_color"],
-                    borderwidth=1,
-                    borderpad=4
-                )
                 
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Insufficient data for agency ratio analysis.")
+            else:                st.warning("Insufficient data for agency ratio analysis.")
         
         # Second row for additional visualizations
         col1, col2 = st.columns(2)
@@ -345,14 +313,13 @@ def render_market_overview(df):
             
             vehicle_data = get_contract_vehicles(df)
             
-            if not vehicle_data.empty:
-                fig = px.pie(
+            if not vehicle_data.empty:                fig = px.pie(
                     vehicle_data,
                     values="count",
                     names="award_type",
                     title="Contract Vehicle Types",
                     hole=0.4,
-                    color_discrete_sequence=px.colors.sequential.Plasma
+                    color_discrete_sequence=px.colors.qualitative.Bold  # Using a bolder color sequence for visibility
                 )
                 
                 # Update layout
@@ -360,14 +327,17 @@ def render_market_overview(df):
                     plot_bgcolor=THEME["sidebar_bg"],
                     paper_bgcolor=THEME["sidebar_bg"],
                     font=dict(color=THEME["text_color"]),
-                    margin=dict(l=40, r=40, t=40, b=40)
+                    margin=dict(l=40, r=40, t=40, b=40),
+                    title_font=dict(size=16, color=THEME["text_color"])
                 )
-                
-                # Update traces
+                  # Update traces
                 fig.update_traces(
                     textposition="inside",
                     textinfo="percent+label",
-                    hoverinfo="label+percent+value"
+                    hoverinfo="label+percent+value",
+                    textfont=dict(size=14, color="white", family="Arial"),
+                    marker=dict(line=dict(color='rgba(0, 0, 0, 0.5)', width=1.5)),  # Add thin dark borders
+                    insidetextorientation='radial'  # Orient text for better readability
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -382,8 +352,7 @@ def render_market_overview(df):
             treemap_data = get_treemap_data(df)
             
             if not treemap_data.empty:                # Use only top 10 competitors
-                top_competitors = treemap_data.head(10)
-                fig = px.treemap(
+                top_competitors = treemap_data.head(10)                fig = px.treemap(
                     top_competitors,
                     path=["recipient_parent_name", "recipient_name", "funding_sub_agency_name", "transaction_description"],
                     values="federal_action_obligation",
@@ -391,35 +360,37 @@ def render_market_overview(df):
                     color_continuous_scale="Viridis",
                     title="Top Competitors by Market Share",
                     hover_data=["award_count", "market_share"],
+                    branchvalues="total",  # Show values as percentage of total
                 )
-                  # Update layout with improved overlay visibility
+                
+                # Update layout
                 fig.update_layout(
                     plot_bgcolor=THEME["sidebar_bg"],
                     paper_bgcolor=THEME["sidebar_bg"],
-                    font=dict(color="#FFFFFF"),
-                    title_font=dict(color="#FFFFFF", size=16),
+                    font=dict(color=THEME["text_color"]),
                     margin=dict(l=40, r=40, t=40, b=40),
-                    legend=dict(
-                        bgcolor="rgba(22, 45, 69, 0.8)",
-                        bordercolor="rgba(255, 255, 255, 0.2)",
-                        borderwidth=1,
-                        font=dict(color="#FFFFFF")
-                    ),
-                    modebar=dict(
-                        bgcolor="rgba(22, 45, 69, 0.8)",
-                        color="#FFFFFF",
-                        activecolor=THEME["primary_color"]
+                    title_font=dict(size=16, color=THEME["text_color"]),
+                    coloraxis_colorbar=dict(
+                        title="Win Rate",
+                        titleside="top",
+                        tickmode="array",
+                        tickvals=[0, 0.25, 0.5, 0.75, 1],
+                        ticktext=["0%", "25%", "50%", "75%", "100%"],
+                        ticks="outside"
                     )
                 )
-                
-                # Update traces for better readability with abbreviated values
+                  # Update traces for better readability with abbreviated values
                 fig.update_traces(
                     hovertemplate="<b>%{label}</b><br>Obligations: " + 
                                  "$%{value:,.2f}<br>" +
                                  "Market Share: %{customdata[1]:.1f}%<br>" +
                                  "Award Count: %{customdata[0]}<extra></extra>",
                     texttemplate="%{label}<br>%{customdata[1]:.1f}%",
-                    textfont=dict(size=11)
+                    textfont=dict(size=12, color="#FFFFFF"),
+                    marker=dict(
+                        line=dict(width=1, color="rgba(0,0,0,0.3)")
+                    ),
+                    root_color="rgba(0,0,0,0.2)"  # Darken the root node for better contrast
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -435,15 +406,14 @@ def render_market_overview(df):
             # Top Agencies by Award Actions
             top_agencies_count = get_top_agencies(df, metric="count", n=15)
             
-            if not top_agencies_count.empty:
-                fig = px.bar(
+            if not top_agencies_count.empty:                fig = px.bar(
                     top_agencies_count,
                     x="award_count",
                     y="parent_award_agency_name",
                     title="Top Agencies by Award Actions",
                     orientation="h",
                     color="award_count",
-                    color_continuous_scale="Blues",
+                    color_continuous_scale="dense",  # More vibrant color scale
                     labels={
                         "award_count": "Award Actions",
                         "parent_award_agency_name": "Agency"
@@ -457,20 +427,27 @@ def render_market_overview(df):
                     margin=dict(l=40, r=40, t=40, b=40),
                     coloraxis_showscale=False,
                     uniformtext_minsize=10,  # Ensure minimum text size
-                    uniformtext_mode='hide'  # Hide labels that don't fit
+                    uniformtext_mode='hide',  # Hide labels that don't fit
+                    title_font=dict(size=16, color=THEME["text_color"])
                 )
-                
-                # Update axes
+                  # Update axes
                 fig.update_xaxes(
                     showgrid=True,
-                    gridcolor=THEME["grid_color"],
-                    tickformat=",.0f"  # Format tick values with commas
+                    gridcolor="rgba(255,255,255,0.2)",  # Brighter grid lines
+                    tickformat=",.0f",  # Format tick values with commas
+                    title_font=dict(size=14, color=THEME["text_color"]),
+                    tickfont=dict(size=12, color=THEME["text_color"]),
+                    showline=True,
+                    linecolor="rgba(255,255,255,0.5)"
                 )
                 
                 fig.update_yaxes(
                     showgrid=False,
                     categoryorder="total ascending",
-                    title=None  # Remove y-axis title for cleaner look
+                    title=None,  # Remove y-axis title for cleaner look
+                    tickfont=dict(size=12, color=THEME["text_color"]),
+                    showline=True,
+                    linecolor="rgba(255,255,255,0.5)"
                 )
                 
                 # Add value annotations
@@ -488,15 +465,14 @@ def render_market_overview(df):
             # Top Agencies by Obligation Amount
             top_agencies_dollars = get_top_agencies(df, metric="obligation", n=15)
             
-            if not top_agencies_dollars.empty:
-                fig = px.bar(
+            if not top_agencies_dollars.empty:                fig = px.bar(
                     top_agencies_dollars,
                     x="federal_action_obligation",
                     y="parent_award_agency_name",
                     title="Top Agencies by Obligation Amount",
                     orientation="h",
                     color="federal_action_obligation",
-                    color_continuous_scale="Blues",
+                    color_continuous_scale="dense",  # More vibrant color scale
                     labels={
                         "federal_action_obligation": "Obligation Amount ($)",
                         "parent_award_agency_name": "Agency"
@@ -510,7 +486,8 @@ def render_market_overview(df):
                     margin=dict(l=40, r=40, t=40, b=40),
                     coloraxis_showscale=False,
                     uniformtext_minsize=10,
-                    uniformtext_mode='hide'
+                    uniformtext_mode='hide',
+                    title_font=dict(size=16, color=THEME["text_color"])
                 )
                 
                 # Update axes

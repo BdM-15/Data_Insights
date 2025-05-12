@@ -64,12 +64,18 @@ def render_competitive_analysis(df):
                 
                 # Update layout
                 fig.update_layout(
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
+                    plot_bgcolor=THEME["sidebar_bg"],
+                    paper_bgcolor=THEME["sidebar_bg"],
+                    font=dict(color="#FFFFFF"),
+                    title_font=dict(color="#FFFFFF", size=16),
                     margin=dict(l=10, r=10, t=40, b=10),
                     yaxis={'categoryorder': 'total ascending'},
-                    coloraxis_showscale=False
+                    coloraxis_showscale=False,
+                    modebar=dict(
+                        bgcolor="rgba(22, 45, 69, 0.8)",
+                        color="#FFFFFF",
+                        activecolor=THEME["primary_color"]
+                    )
                 )
                 
                 # Add value annotations
@@ -101,12 +107,18 @@ def render_competitive_analysis(df):
                 
                 # Update layout
                 fig.update_layout(
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
+                    plot_bgcolor=THEME["sidebar_bg"],
+                    paper_bgcolor=THEME["sidebar_bg"],
+                    font=dict(color="#FFFFFF"),
+                    title_font=dict(color="#FFFFFF", size=16),
                     margin=dict(l=10, r=10, t=40, b=10),
                     yaxis={'categoryorder': 'total ascending'},
-                    coloraxis_showscale=False
+                    coloraxis_showscale=False,
+                    modebar=dict(
+                        bgcolor="rgba(22, 45, 69, 0.8)",
+                        color="#FFFFFF",
+                        activecolor=THEME["primary_color"]
+                    )
                 )
                 
                 # Add value annotations
@@ -166,7 +178,11 @@ def render_competitive_analysis(df):
                 y=top_competitors['win_rate'].max() * 0.8,
                 text="High Win Rate, Low Market Share",
                 showarrow=False,
-                font=dict(color=THEME["highlight_color"])
+                font=dict(color="#FFFFFF", size=14),
+                bgcolor="rgba(22, 45, 69, 0.8)",
+                bordercolor=THEME["highlight_color"],
+                borderwidth=1,
+                borderpad=4
             )
             
             fig.add_annotation(
@@ -174,7 +190,11 @@ def render_competitive_analysis(df):
                 y=top_competitors['win_rate'].max() * 0.8,
                 text="Market Leaders",
                 showarrow=False,
-                font=dict(color=THEME["highlight_color"])
+                font=dict(color="#FFFFFF", size=14),
+                bgcolor="rgba(22, 45, 69, 0.8)",
+                bordercolor=THEME["highlight_color"],
+                borderwidth=1,
+                borderpad=4
             )
             
             fig.add_annotation(
@@ -182,7 +202,11 @@ def render_competitive_analysis(df):
                 y=median_win_rate/2,
                 text="Struggling Competitors",
                 showarrow=False,
-                font=dict(color=THEME["text_color"])
+                font=dict(color="#FFFFFF", size=14),
+                bgcolor="rgba(22, 45, 69, 0.8)",
+                bordercolor=THEME["highlight_color"],
+                borderwidth=1,
+                borderpad=4
             )
             
             fig.add_annotation(
@@ -190,7 +214,11 @@ def render_competitive_analysis(df):
                 y=median_win_rate/2,
                 text="High Volume, Low Win Rate",
                 showarrow=False,
-                font=dict(color=THEME["text_color"])
+                font=dict(color="#FFFFFF", size=14),
+                bgcolor="rgba(22, 45, 69, 0.8)",
+                bordercolor=THEME["highlight_color"],
+                borderwidth=1,
+                borderpad=4
             )
             
             # Update axes titles
@@ -213,10 +241,16 @@ def render_competitive_analysis(df):
             
             # Update layout
             fig.update_layout(
-                plot_bgcolor=THEME["bg_color"],
-                paper_bgcolor=THEME["bg_color"],
-                font=dict(color=THEME["text_color"]),
-                margin=dict(l=10, r=10, t=40, b=10)
+                plot_bgcolor=THEME["sidebar_bg"],
+                paper_bgcolor=THEME["sidebar_bg"],
+                font=dict(color="#FFFFFF"),
+                title_font=dict(color="#FFFFFF", size=16),
+                margin=dict(l=10, r=10, t=40, b=10),
+                modebar=dict(
+                    bgcolor="rgba(22, 45, 69, 0.8)",
+                    color="#FFFFFF",
+                    activecolor=THEME["primary_color"]
+                )
             )
             
             # Update hover template

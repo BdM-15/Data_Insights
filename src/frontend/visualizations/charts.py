@@ -43,16 +43,30 @@ def create_quarterly_spending_chart(
         'Fiscal Quarter': fiscal_quarters,
         'Spending': spending_data
     })
-    
-    # Create line chart
+      # Create line chart
     fig = px.line(
         df, 
         x='Fiscal Quarter', 
         y='Spending',
         markers=True,
         title=title,
-        labels={'Spending': 'Obligations ($)'},
-        template='plotly_white'
+        labels={'Spending': 'Obligations ($)'}
+    )
+      # Apply custom theme settings with better overlay visibility
+    fig.update_layout(
+        plot_bgcolor='#051B30',
+        paper_bgcolor='#051B30',
+        font_color='#FFFFFF',
+        title_font=dict(color='#FFFFFF', size=16),
+        legend=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            bordercolor='rgba(255, 255, 255, 0.2)',
+            borderwidth=1
+        ),
+        modebar=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            color='#FFFFFF'
+        )
     )
     
     # Reason: Add a trend line using moving average to show overall trends
@@ -104,23 +118,31 @@ def create_agency_distribution_chart(
     
     # Sort by spending amount in descending order and limit to top N
     data = data.sort_values('Amount', ascending=False).head(limit)
-    
-    # Create bar chart
+      # Create bar chart
     fig = px.bar(
         data,
         x='Agency',
         y='Amount',
         title=f'Top {limit} Agencies by Spending',
-        text_auto='.2s',  # Automatically format text on bars
-        template='plotly_white'
+        text_auto='.2s'  # Automatically format text on bars
     )
-    
-    # Update layout for readability
+      # Update layout for readability with better overlay visibility
     fig.update_layout(
         xaxis_title='Agency',
         yaxis_title='Total Obligations ($)',
-        height=500,
-        margin=dict(l=50, r=50, t=80, b=120)
+        plot_bgcolor='#051B30',
+        paper_bgcolor='#051B30',
+        font_color='#FFFFFF',
+        title_font=dict(color='#FFFFFF', size=16),
+        legend=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            bordercolor='rgba(255, 255, 255, 0.2)',
+            borderwidth=1
+        ),
+        modebar=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            color='#FFFFFF'
+        )
     )
     
     # Rotate x-axis labels for better readability with long agency names
@@ -156,23 +178,31 @@ def create_expiring_contracts_chart(
     
     # Group by month and sum contract values
     monthly_data = data.groupby(pd.Grouper(key=date_column, freq='M')).sum().reset_index()
-    
-    # Create bar chart
+      # Create bar chart
     fig = px.bar(
         monthly_data,
         x=date_column,
         y=value_column,
         title='Contracts Expiring by Month',
-        text_auto='.2s',
-        template='plotly_white'
+        text_auto='.2s'
     )
-    
-    # Update layout for readability
+      # Update layout for readability with better overlay visibility
     fig.update_layout(
         xaxis_title='Month',
         yaxis_title='Contract Value ($)',
-        height=500,
-        margin=dict(l=50, r=50, t=80, b=50)
+        plot_bgcolor='#051B30',
+        paper_bgcolor='#051B30',
+        font_color='#FFFFFF',
+        title_font=dict(color='#FFFFFF', size=16),
+        legend=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            bordercolor='rgba(255, 255, 255, 0.2)',
+            borderwidth=1
+        ),
+        modebar=dict(
+            bgcolor='rgba(22, 45, 69, 0.8)',
+            color='#FFFFFF'
+        )
     )
     
     # Update y-axis to use currency format
@@ -195,15 +225,17 @@ def create_expiring_contracts_chart(
             line=dict(width=0),
             layer="below"
         )
-        
-        # Add annotation for highlighted region
+          # Add annotation for highlighted region with improved visibility
         fig.add_annotation(
             x=(today + (one_year_from_now - today) / 2),
             y=monthly_data[value_column].max() * 0.95,
             text="Next 12 Months",
             showarrow=False,
-            font=dict(size=14, color="red"),
-            bgcolor="rgba(255, 255, 255, 0.8)"
+            font=dict(size=14, color="#FFFFFF"),
+            bgcolor="rgba(22, 45, 69, 0.9)",
+            bordercolor="rgba(255, 0, 0, 0.8)",
+            borderwidth=2,
+            borderpad=4
         )
     
     return fig

@@ -3,3 +3,8 @@
 
 [theme]
     base="dark"
+    primaryColor="#00C3FF"
+    backgroundColor="#010A14"
+    secondaryBackgroundColor="#051B30"
+    textColor="#FFFFFF"
+    font="sans-serif"
