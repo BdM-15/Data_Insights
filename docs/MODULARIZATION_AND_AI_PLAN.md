@@ -10,6 +10,9 @@ This document outlines a comprehensive plan for:
 
 ## Code Modularization Plan
 
+**Performance Principle:**
+- Each modularization step will be validated for performance to ensure no degradation in speed or responsiveness. Optimization for efficient data access, caching, and minimal overhead is a priority throughout the process.
+
 The current codebase has grown significantly, with large files handling multiple responsibilities. This plan outlines how to restructure the code to improve maintainability, reusability, and testing.
 
 ### 1. Centralize Theme Configuration
@@ -20,11 +23,13 @@ The current codebase has grown significantly, with large files handling multiple
 - Reusable CSS generation is in `src/frontend/styles/custom_css.py`.
 - The dashboard imports and injects theme/CSS from these modules, with all logic and visuals unchanged.
 - The dashboard was tested after this step and confirmed to work with no visual or functional changes.
+- **Performance was validated and no slowdown was observed.**
 
 **Rationale:**
 - This approach ensures a single source of truth for all theme-related values, making future updates and maintenance easier.
 - By using a function to generate CSS, we avoid code duplication and make it easier to apply consistent styles across all pages.
 - Modularizing theme and CSS logic is a low-risk, high-impact first step that does not affect business logic or data processing, so it is ideal for validating the modularization process incrementally.
+- Performance is monitored after each step to ensure the user experience remains optimal.
 
 ```
 src/
