@@ -58,6 +58,32 @@ def format_currency(value: float) -> str:
         return "N/A"
     return f"${value:,.2f}"
 
+def format_value(value, is_currency=False):
+    """
+    Format large numbers with K, M, B suffixes for better readability.
+    
+    Args:
+        value: Number to format
+        is_currency: Whether to add a dollar sign
+        
+    Returns:
+        Formatted string
+    """
+    if abs(value) >= 1_000_000_000:
+        formatted = f"{value/1_000_000_000:.2f}B"
+    elif abs(value) >= 1_000_000:
+        formatted = f"{value/1_000_000:.2f}M"
+    elif abs(value) >= 1_000:
+        formatted = f"{value/1_000:.1f}K"
+    else:
+        formatted = f"{value:.2f}"
+    
+    # Remove trailing zeros after decimal
+    if "." in formatted:
+        formatted = formatted.rstrip("0").rstrip(".")
+    
+    return f"${formatted}" if is_currency else formatted
+
 def extract_rules_from_planning(content: str) -> Dict[str, Any]:
     """
     Extract rules and guidelines from planning document content.

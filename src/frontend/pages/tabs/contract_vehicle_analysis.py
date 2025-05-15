@@ -6,6 +6,7 @@ This module provides visualization functions for the Contract Vehicle Analysis t
 
 import streamlit as st
 from src.frontend.styles.theme import THEME
+from src.backend.data.processors.awards import get_contract_vehicles # Corrected import
 
 
 def render_contract_vehicle_analysis(df):

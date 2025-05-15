@@ -10,6 +10,8 @@ import pandas as pd
 from sqlalchemy import create_engine, Table, Column, MetaData, String, text
 from sqlalchemy.exc import SQLAlchemyError
 import logging
+import streamlit as st # Added for sidebar messages
+import traceback # Added for error logging
 
 # Add the project root to the path to ensure imports work correctly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
@@ -44,6 +46,44 @@ def get_db_engine():
     except Exception as e:
         logger.error(f"Failed to create database engine: {str(e)}")
         raise
+
+# Get database connection with debugging
+def get_db_connection():
+    """Get SQLAlchemy engine for database connection."""
+    try:
+        # Get database configuration
+        db_config = get_db_config()
+        
+        # Create engine for database connection
+        engine = get_db_engine()
+        
+        # Test connection
+        try:
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                result = conn.execute(text("SELECT 1")).fetchone()
+                logger.info(f"Database connection successful: {result}")
+                
+                # Check if the table exists
+                result = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaprime_cleaned')")).fetchone()
+                if result and result[0]:
+                    logger.info("Table 'usaprime_cleaned' exists")
+                else:
+                    logger.warning("Table 'usaprime_cleaned' doesn't exist")
+                    # List available tables to help debugging
+                    tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).fetchall()
+                    if tables:
+                        table_list = [t[0] for t in tables]
+                        logger.info(f"Available tables: {', '.join(table_list)}")
+        except Exception as e:
+            logger.error(f"Error executing test query: {str(e)}")
+            return None
+            
+        return engine
+    except Exception as e:
+        logger.error(f"Error connecting to database: {str(e)}")
+        logger.error(traceback.format_exc())
+        return None
 
 def get_engine():
     """
