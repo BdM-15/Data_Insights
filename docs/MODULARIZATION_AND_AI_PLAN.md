@@ -3,14 +3,16 @@
 ## Overview
 
 This document outlines a comprehensive plan for:
+
 1. **Code Modularization** - Restructuring the codebase for better maintainability and scalability
 2. **AI Integration** - Incrementally adding AI capabilities including Model Context Protocol (MCP), chatbot functionality, and LLM integration
 
-*Last updated: May 8, 2025*
+_Last updated: May 8, 2025_
 
 ## Code Modularization Plan
 
 **Performance Principle:**
+
 - Each modularization step will be validated for performance to ensure no degradation in speed or responsiveness. Optimization for efficient data access, caching, and minimal overhead is a priority throughout the process.
 
 The current codebase has grown significantly, with large files handling multiple responsibilities. This plan outlines how to restructure the code to improve maintainability, reusability, and testing.
@@ -26,6 +28,7 @@ The current codebase has grown significantly, with large files handling multiple
 - **Performance was validated and no slowdown was observed.**
 
 **Rationale:**
+
 - This approach ensures a single source of truth for all theme-related values, making future updates and maintenance easier.
 - By using a function to generate CSS, we avoid code duplication and make it easier to apply consistent styles across all pages.
 - Modularizing theme and CSS logic is a low-risk, high-impact first step that does not affect business logic or data processing, so it is ideal for validating the modularization process incrementally.
@@ -40,6 +43,7 @@ src/
 ```
 
 **Implementation Steps:**
+
 1. Extract theme colors and constants from the dashboard file
 2. Create theme.py with color definitions and style constants
 3. Create custom_css.py with functions that generate appropriate CSS
@@ -47,6 +51,7 @@ src/
 5. Replace hardcoded styles with imports from theme module
 
 **Benefits:**
+
 - Consistent theme across all pages
 - Easier theme updates and customization
 - Reduced code duplication
@@ -64,13 +69,14 @@ src/
     └── data/
         ├── processors/
         │   ├── awards.py     # Award data processing functions
-        │   ├── agencies.py   # Agency data processing functions 
+        │   ├── agencies.py   # Agency data processing functions
         │   └── competition.py # Competition analysis functions
         └── models/
             └── data_models.py # Pydantic models for data validation
 ```
 
 **Implementation Steps:**
+
 1. Identify database operations in dashboard files
 2. Move SQL queries to queries.py, organized by domain
 3. Create processor modules for different data types
@@ -78,6 +84,7 @@ src/
 5. Update dashboard to use these modules
 
 **Benefits:**
+
 - Separation of database logic from UI code
 - Reusable data transformations across different pages
 - Better testability of data processing logic
@@ -104,6 +111,7 @@ src/
 ```
 
 **Implementation Steps:**
+
 1. Identify common visualization patterns
 2. Extract each chart type to its own function
 3. Standardize function signatures (data, config, theme)
@@ -111,6 +119,7 @@ src/
 5. Replace inline chart code with component calls
 
 **Benefits:**
+
 - Standardized visualization components
 - Easier maintenance when updating chart styles
 - Component-level caching for performance
@@ -128,11 +137,12 @@ src/
         └── tabs/
             ├── market_overview.py  # Tab 1 content
             ├── future_opportunities.py # Tab 2 content
-            ├── agency_intelligence.py # Tab 3 content 
+            ├── agency_intelligence.py # Tab 3 content
             └── competitive_analysis.py # Tab 4 content
 ```
 
 **Implementation Steps:**
+
 1. Create a module for each tab
 2. Extract tab-specific functionality to these modules
 3. Create standardized function signatures for tab rendering
@@ -140,6 +150,7 @@ src/
 5. Implement state management between tabs
 
 **Benefits:**
+
 - Reduced file size of main dashboard
 - Independent development of different tabs
 - Better code organization and maintainability
@@ -164,6 +175,7 @@ src/
 ```
 
 **Implementation Steps:**
+
 1. Identify repeating layout patterns
 2. Create standardized functions for common layouts
 3. Extract filter components to reusable modules
@@ -171,6 +183,7 @@ src/
 5. Update pages to use these components
 
 **Benefits:**
+
 - Consistent UI patterns across the application
 - Reduced code duplication
 - Easier maintenance when updating UI components
@@ -181,6 +194,7 @@ src/
 **Goal:** Leverage Streamlit's built-in configuration system.
 
 **Implementation Steps:**
+
 1. Update .streamlit/config.toml:
    ```toml
    [theme]
@@ -195,9 +209,33 @@ src/
 3. Create a config loader utility to merge custom and Streamlit config
 
 **Benefits:**
+
 - Better integration with Streamlit's theming
 - More consistent UI appearance
 - Simplified CSS management
+
+## Recent Progress: Dashboard Modularization & AI Integration
+
+- **Theme modularization is complete:** All theme colors and CSS are now centralized in `src/frontend/styles/theme.py` and `custom_css.py`. The dashboard imports these modules for consistent styling.
+- **Backend data processing is fully modularized:** All data processing and database logic have been moved out of the Streamlit frontend and into backend modules (`src/backend/data/processors/awards.py`, `agencies.py`, `competition.py`).
+- **Frontend is UI-only:** The Streamlit dashboard now only handles UI and calls backend functions for all data and processing. No business/data logic remains in the frontend.
+- **Sidebar diagnostics restored and improved:** Diagnostics for DB connection, table existence, and row count for `usaprime_cleaned` are now robust and match the original backup dashboard style.
+- **File-based logging implemented:** All major operations and errors are logged to `logs/dashboard.log` for traceability and debugging.
+- **Tested and validated:** The dashboard runs successfully, diagnostics and logging work, and all data is sourced exclusively from `usaprime_cleaned`.
+- **Database connection logic is backend-only:** All database connection and diagnostics logic is now in `src/backend/core/database.py` (see `get_db_connection_with_status`). The frontend only handles UI feedback.
+- **Tab logic is fully modularized:** All tab content and logic are in `src/frontend/pages/tabs/`, with each tab importing backend processors as needed.
+- **Pydantic model integration planned:** Next step is to define canonical Pydantic models for all backend data returned to the frontend, ensuring type safety and consistency across the application.
+
+## Roadmap: Next Steps
+
+- **Develop and integrate Pydantic data models:** Define and implement Pydantic models for all backend data returned to the frontend (awards, agencies, competition, etc.).
+- **Refactor backend processors to return models:** Update backend processor functions to return lists of Pydantic models (or DataFrames validated by models).
+- **Refactor frontend chart/tab code to use models:** Update frontend tab/chart code to expect and use these models, not raw DataFrames/dicts.
+- **Develop and integrate specialized MCP agents** for web intelligence, document creation, visualization, and advanced analytics.
+- **Implement the AI-assisted capture profile generator,** leveraging local LLMs for narrative and strategic analysis.
+- **Continue to modularize and document new features** as they are added, ensuring maintainability and scalability.
+
+---
 
 ## AI Integration Roadmap
 
@@ -210,11 +248,13 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Set up Ollama for local LLM inference**
+
    - Install Ollama server locally
    - Configure for optimized performance on NVIDIA GTX 4060
    - Add langchain/llama-index integration utilities
 
 2. **Create base LLM interaction module**
+
    ```
    src/
    └── backend/
@@ -225,6 +265,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 3. **Implement basic context management**
+
    - Create utilities for handling context windows
    - Add memory management for conversation history
    - Implement simple prompt template system
@@ -241,6 +282,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Create structured data models**
+
    ```
    src/
    └── backend/
@@ -252,11 +294,13 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 2. **Implement extraction patterns**
+
    - Create parsers for contract descriptions
    - Add extractors for competitive intelligence
    - Implement validators for extracted data
 
 3. **Connect to existing data pipeline**
+
    - Create transformation utilities between Pydantic and Pandas
    - Add data enrichment functions with AI-extracted fields
    - Implement cache management for LLM extraction results
@@ -273,6 +317,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Create chatbot backend**
+
    ```
    src/
    └── backend/
@@ -285,6 +330,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 2. **Implement chat UI component**
+
    ```
    src/
    └── frontend/
@@ -296,6 +342,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 3. **Connect to contract database**
+
    - Create natural language to SQL translation
    - Add parameterized query templates
    - Implement result formatting for chat interface
@@ -312,6 +359,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Set up MCP server infrastructure**
+
    ```
    src/
    └── backend/
@@ -327,6 +375,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 2. **Integrate existing MCP servers**
+
    - **Crawl4AI MCP Server**: Implement for web intelligence gathering and RAG
    - **Vectorize**: Add for advanced retrieval and document analysis
    - **Data Exploration**: Integrate for autonomous data analysis
@@ -334,16 +383,19 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    - **MongoDB/PostgreSQL Connectors**: Adapt for database integration
 
 3. **Create AI agent definitions**
+
    - Implement specialized agents for different tasks
    - Define tool permissions and capabilities
    - Create agent orchestration systems
 
 4. **Add web intelligence capabilities**
+
    - Implement web scraping tools for market research
    - Add content extraction and summarization
    - Create knowledge base integration for web data
 
 5. **Implement document creation tools**
+
    - Add report generation capabilities
    - Create proposal outline generators
    - Implement capture document templates
@@ -360,16 +412,19 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Implement AI-powered dashboard insights**
+
    - Add automated analysis of trends
    - Create AI-generated opportunity recommendations
    - Implement competitive intelligence briefings
 
 2. **Create advanced visualization tools**
+
    - Add natural language to visualization conversion
    - Implement predictive analytics visualizations
    - Create interactive what-if analysis tools
 
 3. **Full capture profile generation**
+
    - Implement comprehensive capture document generation
    - Create win strategy recommendation engine
    - Add competitive positioning analysis
@@ -386,6 +441,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Create Shipley milestone framework integration**
+
    ```
    src/
    └── backend/
@@ -399,11 +455,13 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 2. **Implement MCP-based competitive analysis**
+
    - Create competitor database ingestion tools
    - Design capability gap analysis system
    - Implement competitive position mapping
 
 3. **Advanced price-to-win modeling**
+
    - Integrate BLS wage data analysis
    - Create statistical pricing models
    - Implement scenario-based pricing analysis
@@ -420,6 +478,7 @@ This section outlines a step-by-step approach to integrating AI capabilities int
 **Implementation Steps:**
 
 1. **Create advanced external data connectors**
+
    ```
    src/
    └── backend/
@@ -433,11 +492,13 @@ This section outlines a step-by-step approach to integrating AI capabilities int
    ```
 
 2. **Implement MCP data fusion capabilities**
+
    - Create cross-source data connectors
    - Design entity resolution system
    - Implement relationship mapping tools
 
 3. **Advanced market intelligence dashboard**
+
    - Create agency spending predictors
    - Implement contract expiration timelines
    - Design recompete opportunity trackers
@@ -475,8 +536,9 @@ Based on the project requirements and available MCP servers, here are the specif
 ### 1. Web Intelligence & Data Collection
 
 - **[Crawl4AI MCP Server](https://github.com/crawl4ai/mcp-server)**
+
   - **Purpose:** Web scraping for market research and competitive intelligence
-  - **Key Features:** 
+  - **Key Features:**
     - Clean markdown generation for RAG pipelines
     - Structured data extraction from web pages
     - Advanced browser control for complex government websites
@@ -495,6 +557,7 @@ Based on the project requirements and available MCP servers, here are the specif
 ### 2. Database & Data Analysis
 
 - **[PostgreSQL MCP Connector](https://github.com/dencold/mcp-postgres)** (adapt from MySQL or MongoDB patterns)
+
   - **Purpose:** Native MCP integration with the project's PostgreSQL databases
   - **Key Features:**
     - Direct SQL query capabilities from LLM agents

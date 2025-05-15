@@ -433,6 +433,19 @@ Both databases can be accessed separately through their respective connection de
 
 Connection details for both databases are stored in the `.env` file. See `docs/DATABASE_SETUP.md` for comprehensive database configuration information.
 
+## Recent Progress: Modularization & AI Integration
+
+- The Streamlit dashboard (`src/frontend/pages/strategic_dashboard.py`) now imports all key data processing functions (`get_quarterly_trends`, `get_award_summary`, `get_top_agencies`) from backend modules only. No local definitions remain, ensuring a single source of truth and improved maintainability.
+- Backend data processing is fully modularized, with canonical implementations in `src/backend/data/processors/awards.py` and related modules.
+- Modular architecture is enforced across frontend and backend, with clear separation of UI, data processing, and database logic.
+- AI integration is underway: local LLM inference via Ollama is functional, and the codebase is structured for future MCP agent integration (web intelligence, document creation, visualization, analysis).
+
+## Next Steps
+
+- Expand MCP agent development for specialized tasks (web scraping, document generation, advanced analytics).
+- Begin implementation of the AI-assisted capture profile generator, leveraging local LLMs for narrative and analysis.
+- Continue to modularize and document new features as they are added.
+
 ## Next Steps
 
 ### Short Term

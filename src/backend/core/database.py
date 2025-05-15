@@ -476,3 +476,45 @@ def table_exists(table_name: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to check if table {table_name} exists: {str(e)}")
         return False
+
+def get_db_connection_with_status():
+    """
+    Get SQLAlchemy engine for database connection and perform connection diagnostics.
+    Returns a tuple: (engine, status_dict)
+    status_dict contains keys: 'success', 'messages' (list of str), 'error' (str or None)
+    This function does not use Streamlit; UI should be handled in the frontend.
+    """
+    from sqlalchemy import text
+    import traceback
+    status = {"success": False, "messages": [], "error": None}
+    try:
+        db_config = get_db_config()
+        status["messages"].append(f"Host: {db_config['PG_HOST']}")
+        status["messages"].append(f"Port: {db_config['PG_PORT']}")
+        status["messages"].append(f"Database: {db_config['PG_DBNAME']}")
+        engine = get_db_engine()
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1")).fetchone()
+                status["messages"].append(f"[+] Database connection successful: {result}")
+                # Check if the table exists
+                result = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaprime_cleaned')")).fetchone()
+                if result and result[0]:
+                    status["messages"].append("[+] Table 'usaprime_cleaned' exists")
+                else:
+                    status["messages"].append("[-] Table 'usaprime_cleaned' doesn't exist")
+                    tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).fetchall()
+                    if tables:
+                        table_list = [t[0] for t in tables]
+                        status["messages"].append(f"Available tables: {', '.join(table_list)}")
+            status["success"] = True
+        except Exception as e:
+            status["error"] = f"Error executing test query: {str(e)}"
+            status["messages"].append(status["error"])
+            return None, status
+        return engine, status
+    except Exception as e:
+        status["error"] = f"Error connecting to database: {str(e)}"
+        status["messages"].append(status["error"])
+        status["messages"].append(traceback.format_exc())
+        return None, status
