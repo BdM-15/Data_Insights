@@ -90,3 +90,25 @@ class CompetitorPerformance(BaseModel):
     market_share: float # Percentage
     win_rate: float # Percentage
     federal_action_obligation: float # Total obligations for this recipient
+
+class FutureOpportunity(BaseModel):
+    """Represents a future government contracting opportunity (e.g., from SAM.gov, NATO NSPA)."""
+    opportunity_id: str
+    title: str
+    agency: str
+    sub_agency: Optional[str] = None
+    office: Optional[str] = None
+    naics_code: Optional[str] = None
+    naics_description: Optional[str] = None
+    solicitation_number: Optional[str] = None
+    type_of_set_aside: Optional[str] = None
+    contract_type: Optional[str] = None
+    estimated_value: Optional[float] = None
+    posted_date: Optional[date] = None
+    response_due_date: Optional[date] = None
+    anticipated_award_date: Optional[date] = None
+    status: Optional[str] = None
+    synopsis: Optional[str] = None
+    url: Optional[str] = None
+    source: Optional[str] = None  # e.g., 'SAM.gov', 'NATO NSPA'
+    # Add more fields as needed for future extensibility

@@ -10,16 +10,19 @@ Future layout patterns can be added here as needed.
 
 import streamlit as st
 from typing import Any, Callable, List, Optional
+from src.frontend.styles.theme import THEME
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, AgGridTheme
+import pandas as pd
 
 # --- Grid Layouts ---
-def two_column_grid(left_content: Callable[[], Any], right_content: Callable[[], Any], gap: int = 2):
+def two_column_grid(left_content: Callable[[], Any], right_content: Callable[[], Any], gap: str = "medium"):
     """
     Render a two-column grid layout.
 
     Args:
         left_content: Function to render content in the left column.
         right_content: Function to render content in the right column.
-        gap: Spacing between columns (Streamlit columns argument).
+        gap: Spacing between columns ("small", "medium", or "large").
     """
     col1, col2 = st.columns(2, gap=gap)
     with col1:
@@ -32,7 +35,7 @@ def three_column_grid(
     left_content: Callable[[], Any],
     center_content: Callable[[], Any],
     right_content: Callable[[], Any],
-    gap: int = 2
+    gap: str = "medium"
 ):
     """
     Render a three-column grid layout.
@@ -41,7 +44,7 @@ def three_column_grid(
         left_content: Function to render content in the left column.
         center_content: Function to render content in the center column.
         right_content: Function to render content in the right column.
-        gap: Spacing between columns (Streamlit columns argument).
+        gap: Spacing between columns ("small", "medium", or "large").
     """
     col1, col2, col3 = st.columns(3, gap=gap)
     with col1:
@@ -194,6 +197,66 @@ def stepper_bar(steps: List[str], current_step: int):
             f"<span style='padding:0.5em 1em;border-radius:20px;background-color:{'#00C3FF' if i==current_step else '#203040'};color:#fff;margin-right:8px'>{step}</span>"
             for i, step in enumerate(steps)
         ]) + "</div>", unsafe_allow_html=True)
+
+# --- Themed AgGrid Table ---
+def themed_aggrid(
+    df: pd.DataFrame,
+    selection_mode: str = "multiple",
+    use_checkbox: bool = True,
+    height: int = 350,
+    update_mode=GridUpdateMode.NO_UPDATE,
+    columns: list = None,
+    fit_columns_on_grid_load: bool = True,
+    key: str = None,
+    **kwargs
+):
+    """
+    Render an AgGrid table styled to match the dashboard theme.
+
+    Args:
+        df: DataFrame to display.
+        selection_mode: 'single' or 'multiple' row selection.
+        use_checkbox: Show checkboxes for selection.
+        height: Table height in pixels.
+        update_mode: When to trigger grid updates (default: NO_UPDATE).
+        columns: Optional list of columns to display.
+        fit_columns_on_grid_load: Auto-fit columns to grid width.
+        key: Optional Streamlit key for the component.
+        **kwargs: Additional AgGrid arguments.
+    Returns:
+        AgGrid response object (for selected rows, etc.)
+    """
+    import numpy as np
+    if columns is not None:
+        data = df[columns]
+    else:
+        data = df
+    gb = GridOptionsBuilder.from_dataframe(data)
+    gb.configure_selection(selection_mode=selection_mode, use_checkbox=use_checkbox)
+    grid_options = gb.build()
+    custom_css = {
+        ".ag-root-wrapper": {"background-color": f"{THEME['bg_color']} !important"},
+        ".ag-header, .ag-row, .ag-cell": {
+            "background-color": f"{THEME['bg_color']} !important",
+            "color": f"{THEME['text_color']} !important"
+        },
+        ".ag-header-cell-label": {"color": f"{THEME['text_color']} !important"},
+        ".ag-row-selected": {"background-color": f"{THEME['primary']} !important"},
+    }
+    return AgGrid(
+        data,
+        gridOptions=grid_options,
+        theme=AgGridTheme.STREAMLIT,
+        update_mode=update_mode,
+        allow_unsafe_jscode=False,
+        enable_enterprise_modules=False,
+        fit_columns_on_grid_load=fit_columns_on_grid_load,
+        use_container_width=True,
+        height=height,
+        custom_css=custom_css,
+        key=key,
+        **kwargs
+    )
 
 # --- Future Layout Patterns ---
 # Add more layouts as needed (e.g., tabbed containers, sidebar layouts, etc.)
