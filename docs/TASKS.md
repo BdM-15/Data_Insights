@@ -106,11 +106,13 @@
   - ✅ Created Market Share Analysis visualization with horizontal bar chart
   - ✅ Implemented Win Rate Analysis with competitors visualization
   - ✅ Developed quadrant-based Market Position Analysis scatter plot
-  - ✅ Added Competitor-Agency Relationships heatmap visualization
-  - ✅ Created Contract Type competition intensity analysis
+  - ✅ Added Competitor-Agency Relationships heatmap visualization (now consistently readable)
+  - ✅ Created Contract Type competition intensity analysis (with correct contract type labeling)
   - ✅ Implemented dual-axis Contract Type Value Analysis chart
   - ✅ Added actionable Competitive Strategy Insights section
-  - Status: **COMPLETE** (April 2025)
+  - ✅ Incorporated "number_of_offers_received" data for competition intensity
+  - ✅ Added PWin modeling based on competitive analysis
+  - Status: **COMPLETE** (May 2025)
 - **Implement Future Opportunities Tab**:
   - ✅ Added "Future Opportunities" tab between "Market Overview" and "Agency Intelligence"
   - ✅ Created placeholder with informational text explaining the tab's purpose
