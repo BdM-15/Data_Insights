@@ -45,7 +45,52 @@ def render_tab(df: pd.DataFrame):
         st.subheader("Executive Summary")
         summary: List[AwardSummaryItem] = get_award_summary(df)
         expiring_contracts = get_expiring_contracts(df, months_ahead=24)
-        display_summary_metrics(summary, len(expiring_contracts), THEME)
+        from src.frontend.visualizations.components.metric_cards import metric_card
+        # Center the metric cards row
+        st.markdown("""
+            <div style='display: flex; justify-content: center; align-items: flex-end; width: 100%; margin-bottom: 0.5rem;'>
+        """, unsafe_allow_html=True)
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+        summary_dict = {item.category: item for item in summary}
+        with col1:
+            metric_card(
+                label="Total Obligations",
+                value=format_value(summary_dict['total_obligations'].value, is_currency=True)
+            )
+        with col2:
+            metric_card(
+                label="Total Award Actions",
+                value=format_value(summary_dict['total_award_actions'].value)
+            )
+        with col3:
+            metric_card(
+                label="Average Award Value",
+                value=format_value(summary_dict['avg_award_value'].value, is_currency=True)
+            )
+        with col4:
+            metric_card(
+                label="Active Contracts",
+                value=format_value(summary_dict['active_contracts'].value)
+            )
+        with col5:
+            metric_card(
+                label="Expiring Contracts",
+                value=format_value(len(expiring_contracts)),
+                help_text="Number of contracts expiring in the next 6 to 24 months from today"
+            )
+        with col6:
+            metric_card(
+                label="Suitability",
+                value="35%",
+                help_text="The percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions"
+            )
+        with col7:
+            metric_card(
+                label="Synergy",
+                value="55%",
+                help_text="The percentage of expiring contracts suitable across MTS based on comparing company capabilities to expiring contract descriptions"
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # Obligations and Award Actions Trend
         col1, col2 = st.columns(2)

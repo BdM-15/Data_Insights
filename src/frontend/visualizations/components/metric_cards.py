@@ -6,27 +6,39 @@ Each function is modular, type-annotated, and documented for clarity.
 """
 
 import streamlit as st
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+from src.frontend.styles.theme import THEME
+from src.frontend.styles import custom_css
 
+class MetricCard(BaseModel):
+    """
+    Pydantic model for a dashboard metric card.
 
-def display_metric_cards(metrics: List[Dict[str, Any]], theme: Dict[str, Any]) -> None:
+    Attributes:
+        label: The label/title for the metric (e.g., 'Expiring Contracts')
+        value: The value to display (e.g., '9.2K', '$2.78M')
+        help: Optional tooltip/help text for the label
+        delta: Optional delta value for change indication
+    """
+    label: str
+    value: str
+    help: Optional[str] = None
+    delta: Optional[str] = None
+
+def display_metric_cards(metrics: List[MetricCard], theme: Dict[str, Any]) -> None:
     """
     Display KPI metric cards in a row.
 
     Args:
-        metrics: List of dicts with 'label', 'value', and optional 'delta'.
+        metrics: List of MetricCard instances.
         theme: Theme dictionary for colors and styles.
     """
     # Reason: Use Streamlit columns for responsive metric display.
     cols = st.columns(len(metrics))
     for i, metric in enumerate(metrics):
         with cols[i]:
-            st.metric(
-                label=metric['label'],
-                value=metric['value'],
-                delta=metric.get('delta'),
-                help=metric.get('help')
-            )
+            metric_card(metric=metric)
 
 def display_summary_metrics(summary: List[Any], expiring_contracts_count: int, theme: Dict[str, Any]) -> None:
     """
@@ -38,43 +50,53 @@ def display_summary_metrics(summary: List[Any], expiring_contracts_count: int, t
         theme: Theme dictionary for colors and styles.
     """
     from src.frontend.utils.formatting import format_value
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     summary_dict = {item.category: item for item in summary}
-    with col1:
-        st.metric(
+    metrics = [
+        MetricCard(
             label="Total Obligations",
-            value=format_value(summary_dict['total_obligations'].value, is_currency=True),
-        )
-    with col2:
-        st.metric(
+            value=format_value(summary_dict['total_obligations'].value, is_currency=True)
+        ),
+        MetricCard(
             label="Total Award Actions",
-            value=format_value(summary_dict['total_award_actions'].value),
-        )
-    with col3:
-        st.metric(
+            value=format_value(summary_dict['total_award_actions'].value)
+        ),
+        MetricCard(
             label="Average Award Value",
-            value=format_value(summary_dict['avg_award_value'].value, is_currency=True),
-        )
-    with col4:
-        st.metric(
+            value=format_value(summary_dict['avg_award_value'].value, is_currency=True)
+        ),
+        MetricCard(
             label="Active Contracts",
-            value=format_value(summary_dict['active_contracts'].value),
-        )
-    with col5:
-        st.metric(
+            value=format_value(summary_dict['active_contracts'].value)
+        ),
+        MetricCard(
             label="Expiring Contracts",
             value=format_value(expiring_contracts_count),
             help="Number of contracts expiring in the next 6 to 24 months from today"
-        )
-    with col6:
-        st.metric(
+        ),
+        MetricCard(
             label="Suitability",
             value="35%",
             help="The percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions"
-        )
-    with col7:
-        st.metric(
+        ),
+        MetricCard(
             label="Synergy",
             value="55%",
             help="The percentage of expiring contracts suitable across MTS based on comparing company capabilities to expiring contract descriptions"
-        )
+        ),
+    ]
+    display_metric_cards(metrics, theme)
+
+# Backward-compatible wrapper for legacy calls using keyword arguments
+def metric_card(label: str = None, value: str = None, help_text: str = None, metric: 'MetricCard' = None):
+    """
+    Render a metric card with either legacy keyword arguments or a MetricCard Pydantic model.
+    Args:
+        label: The label/title for the metric (legacy usage)
+        value: The value to display (legacy usage)
+        help_text: Optional tooltip/help text for the label (legacy usage)
+        metric: MetricCard instance (preferred usage)
+    """
+    if metric is not None:
+        st.metric(label=metric.label, value=metric.value, help=metric.help, delta=metric.delta)
+    else:
+        st.metric(label=label, value=value, help=help_text)

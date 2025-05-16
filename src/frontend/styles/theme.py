@@ -6,12 +6,15 @@ Defines color palette and style constants for consistent theming.
 
 THEME = {
     'bg_color': '#051B30',         # Deep navy background
-    'primary_color': '#00C3FF',    # Electric blue for primary elements
+    'primary': '#00C3FF',          # Electric blue for primary elements (for UI consistency)
+    'primary_color': '#00C3FF',    # Electric blue for primary elements (legacy)
     'highlight_color': '#38ECFF',  # Bright cyan for highlights
     'accent1_color': '#5271FF',    # Electric indigo
     'accent2_color': '#FF2EDF',    # Electric pink/magenta
     'text_color': '#FFFFFF',       # White text
-    'grid_color': 'rgba(0,195,255,0.15)' # Subtle electric blue grid lines
+    'grid_color': 'rgba(0,195,255,0.15)', # Subtle electric blue grid lines
+    'card_bg': '#0A223A',          # Card background (matches dashboard cards)
+    'text_secondary': '#B8D8F8'    # Secondary text for card labels
 }
 
 # Chart settings for Plotly/Streamlit

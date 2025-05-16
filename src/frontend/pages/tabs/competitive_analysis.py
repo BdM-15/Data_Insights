@@ -45,7 +45,6 @@ def render_tab(df: pd.DataFrame):
             # Market Share and Win Rate
             col1, col2 = st.columns(2)
             with col1:
-                st.subheader("Market Share Analysis")
                 fig = plot_market_share_bar(
                     top_competitors,
                     value_col='market_share',
@@ -55,7 +54,6 @@ def render_tab(df: pd.DataFrame):
                 )
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
-                st.subheader("Win Rate Analysis")
                 fig = plot_market_share_bar(
                     top_competitors,
                     value_col='win_rate',
@@ -69,11 +67,9 @@ def render_tab(df: pd.DataFrame):
             st.subheader("Market Position & Agency Relationships")
             col1, col2 = st.columns([1, 1])
             with col1:
-                st.markdown("**Competitive Positioning: Win Rate vs Market Share**")
                 fig = plot_competitive_position_scatter(top_competitors, THEME)
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
-                st.markdown("**Top Competitor-Agency Relationships**")
                 if 'parent_award_agency_name' in df.columns and not df.empty:
                     competitor_agency = df.groupby(['recipient_name', 'parent_award_agency_name'])['federal_action_obligation'].sum().reset_index()
                     top_5_competitors = competitors_df.nlargest(5, 'market_share')['recipient_name'].tolist()
@@ -117,7 +113,6 @@ def render_tab(df: pd.DataFrame):
             st.subheader("Contract Type Analysis")
             col1, col2 = st.columns([1, 1])
             with col1:
-                st.markdown("**Competition Intensity by Contract Type**")
                 if 'type_of_contract_pricing' in df.columns and not df.empty:
                     contract_type_competition = df.groupby('type_of_contract_pricing')['recipient_name'].nunique().reset_index()
                     contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
@@ -137,7 +132,6 @@ def render_tab(df: pd.DataFrame):
                 else:
                     st.info("Contract type data not available for analysis.")
             with col2:
-                st.markdown("**Contract Type Value Analysis**")
                 if 'type_of_contract_pricing' in df.columns and not df.empty:
                     contract_type_value = df.groupby('type_of_contract_pricing')['federal_action_obligation'].sum().reset_index()
                     contract_type_value.columns = ['Contract Type', 'Total Obligation']
