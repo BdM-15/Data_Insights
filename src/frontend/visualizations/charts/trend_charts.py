@@ -96,6 +96,7 @@ def plot_quarterly_trends(
         plot_bgcolor=theme["bg_color"],
         paper_bgcolor=theme["bg_color"],
         font=dict(color=theme["text_color"]),
+        # (Removed hovermode="x" to revert to previous behavior)
     )
     fig.update_xaxes(title_text="Fiscal Period", showgrid=True, gridcolor=theme["grid_color"], tickangle=45)
     fig.update_yaxes(title_text="Obligations ($)", secondary_y=False, showgrid=True, gridcolor=theme["grid_color"], tickprefix="$", tickformat=",.")

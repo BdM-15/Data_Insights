@@ -119,12 +119,6 @@ def plot_capture_intensity_scatter(
         showarrow=False,
         font=dict(color=theme["highlight_color"])
     )
-    fig.update_traces(
-        hovertemplate="<b>%{hovertext}</b><br>"
-                     "Award Actions: %{customdata[0]:,.0f}<br>"
-                     "Obligations: %{customdata[1]:$,.0f}<br>"
-                     "Avg Award: %{customdata[2]:$,.0f}"
-    )
     fig.update_xaxes(showgrid=True, gridcolor=theme["grid_color"], title_text="Award Actions (log scale)")
     fig.update_yaxes(showgrid=True, gridcolor=theme["grid_color"], title_text="Obligations (log scale)")
     fig.update_layout(
@@ -132,8 +126,11 @@ def plot_capture_intensity_scatter(
         paper_bgcolor=theme["bg_color"],
         font=dict(color=theme["text_color"]),
         margin=dict(l=40, r=40, t=40, b=40),
-        showlegend=False
+        showlegend=False,
+        title=config.get('title', 'Action-to-Obligation Ratio Analysis (Normalized Scale)') if config else 'Action-to-Obligation Ratio Analysis (Normalized Scale)'
     )
+    from src.frontend.visualizations.utils.plotly_helpers import apply_plotly_theme
+    apply_plotly_theme(fig, theme)
     return fig
 
 

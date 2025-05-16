@@ -250,29 +250,42 @@ def plot_contract_type_competition_bar(
     config: Dict[str, Any] = None
 ) -> go.Figure:
     """
-    Create a horizontal bar chart for competition intensity by contract type.
+    Create a horizontal bar chart for competition intensity by contract type, with hover for long names.
 
     Args:
         contract_type_competition: DataFrame with contract type and number of competitors.
         theme: Theme dictionary for colors and styles.
-        config: Optional chart configuration (e.g., title).
+        config: Optional chart configuration (e.g., title, hover_col).
 
     Returns:
         Plotly Figure object.
     """
     import plotly.express as px
+    hover_col = config.get('hover_col', None) if config else None
+    y_col = 'Contract Type Display' if 'Contract Type Display' in contract_type_competition.columns else 'Contract Type'
+    # Add COMBINATION logic for display and hover
+    contract_type_competition = contract_type_competition.copy()
+    contract_type_competition['Contract Type Display'] = contract_type_competition['Contract Type Display'].apply(
+        lambda x: 'COMBINATION' if x.startswith('COMBINATION') else x
+    ) if 'Contract Type Display' in contract_type_competition.columns else contract_type_competition['Contract Type']
+    contract_type_competition['Contract Type Hover'] = contract_type_competition.apply(
+        lambda row: row['Contract Type Hover'] if row['Contract Type Display'] == 'ORDER DEPENDENT' else (
+            row['Contract Type'][row['Contract Type'].find('(')+1:row['Contract Type'].find(')')] if row['Contract Type'].startswith('COMBINATION') and '(' in row['Contract Type'] and ')' in row['Contract Type'] else ''
+        ), axis=1
+    )
     fig = px.bar(
         contract_type_competition,
         x='Number of Competitors',
-        y='Contract Type',
+        y='Contract Type Display',
         orientation='h',
         color='Number of Competitors',
         color_continuous_scale="Blues",
         labels={
             'Number of Competitors': 'Number of Unique Competitors',
-            'Contract Type': 'Contract Type'
+            'Contract Type Display': 'Contract Type'
         },
-        title=config.get('title', 'Competition Intensity by Contract Type') if config else 'Competition Intensity by Contract Type'
+        title=config.get('title', 'Competition Intensity by Contract Type') if config else 'Competition Intensity by Contract Type',
+        hover_data=["Contract Type Hover"]
     )
     fig.update_layout(
         coloraxis_showscale=False,
@@ -285,7 +298,7 @@ def plot_contract_type_competition_bar(
     fig.update_traces(
         texttemplate='%{x:.0f}',
         textposition='outside',
-        hovertemplate='<b>%{y}</b><br>Competitors: %{x:.0f}<extra></extra>'
+        hovertemplate='<b>%{y}</b><br>%{customdata[0]}<br>Competitors: %{x:.0f}<extra></extra>'
     )
     apply_plotly_theme(fig, theme)
     return fig
@@ -297,36 +310,45 @@ def plot_contract_type_value_analysis(
     config: Dict[str, Any] = None
 ) -> go.Figure:
     """
-    Create a dual-axis bar and line chart for contract type value analysis.
+    Create a dual-axis bar and line chart for contract type value analysis, with hover for long names and label replacement for EPA.
 
     Args:
         top_value_types: DataFrame with contract type, total obligation, and average obligation.
         theme: Theme dictionary for colors and styles.
-        config: Optional chart configuration (e.g., title).
+        config: Optional chart configuration (e.g., title, hover_col).
 
     Returns:
         Plotly Figure object.
     """
     from plotly.subplots import make_subplots
     import plotly.graph_objs as go
+    hover_col = config.get('hover_col', None) if config else None
+    x_col = 'Contract Type Display' if 'Contract Type Display' in top_value_types.columns else 'Contract Type'
+    # Replace 'FIXED PRICE WITH ECONOMIC PRICE ADJUSTMENT' with 'FIXED PRICE WITH EPA'
+    top_value_types = top_value_types.copy()
+    top_value_types[x_col] = top_value_types[x_col].replace('FIXED PRICE WITH ECONOMIC PRICE ADJUSTMENT', 'FIXED PRICE WITH EPA')
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
         go.Bar(
-            x=top_value_types['Contract Type'],
+            x=top_value_types[x_col],
             y=top_value_types['Total Obligation'],
             name='Total Obligation',
-            marker_color=theme["primary_color"]
+            marker_color=theme["primary_color"],
+            customdata=top_value_types[[hover_col]].values if hover_col else None,
+            hovertemplate='<b>%{x}</b><br>%{customdata[0]}<br>Total Obligation: $%{y:,.0f}<extra></extra>' if hover_col else '<b>%{x}</b><br>Total Obligation: $%{y:,.0f}<extra></extra>'
         ),
         secondary_y=False
     )
     fig.add_trace(
         go.Scatter(
-            x=top_value_types['Contract Type'],
+            x=top_value_types[x_col],
             y=top_value_types['Average Obligation'],
             name='Avg Obligation per Competitor',
             mode='lines+markers',
             marker=dict(color=theme["accent2_color"]),
-            line=dict(width=3)
+            line=dict(width=3),
+            customdata=top_value_types[[hover_col]].values if hover_col else None,
+            hovertemplate='<b>%{x}</b><br>%{customdata[0]}<br>Avg Obligation: $%{y:,.0f}<extra></extra>' if hover_col else '<b>%{x}</b><br>Avg Obligation: $%{y:,.0f}<extra></extra>'
         ),
         secondary_y=True
     )
@@ -342,4 +364,148 @@ def plot_contract_type_value_analysis(
     fig.update_yaxes(title_text="Total Obligation ($)", secondary_y=False, tickprefix="$", tickformat=",.")
     fig.update_yaxes(title_text="Avg Obligation per Competitor ($)", secondary_y=True, tickprefix="$", tickformat=",.")
     apply_plotly_theme(fig, theme)
+    return fig
+
+
+def plot_competitor_agency_heatmap(
+    normalized_pivot: pd.DataFrame,
+    theme: Dict[str, Any],
+    config: Dict[str, Any] = None
+) -> go.Figure:
+    """
+    Create a heatmap for top competitor-agency relationships.
+
+    Args:
+        normalized_pivot: DataFrame (pivoted) with competitors as index and agencies as columns.
+        theme: Theme dictionary for colors and styles.
+        config: Optional chart configuration (e.g., title, height, legend_font_size).
+
+    Returns:
+        Plotly Figure object.
+    """
+    import plotly.express as px
+    height = config.get('height', 600) if config else 600
+    legend_font_size = config.get('legend_font_size', 14) if config else 14
+    fig = px.imshow(
+        normalized_pivot,
+        color_continuous_scale="Blues",
+        labels=dict(x="Agency", y="Competitor", color="Relationship Strength"),
+        title=config.get('title', 'Top Competitor-Agency Relationships') if config else 'Top Competitor-Agency Relationships',
+        aspect="auto",
+        height=height
+    )
+    fig.update_traces(
+        hovertemplate="<b>%{y}</b> - <b>%{x}</b><br>Relationship Strength: %{z:.2f}<br><extra></extra>"
+    )
+    fig.update_layout(
+        margin=dict(l=10, r=20, t=40, b=10),
+        xaxis={'side': 'top'},
+        coloraxis_colorbar=dict(
+            title="Relationship Strength",
+            orientation="v",
+            x=1.02,
+            y=0.5,
+            len=0.8,
+            thickness=20,
+            tickfont=dict(size=legend_font_size),
+            titlefont=dict(size=legend_font_size)
+        ),
+        plot_bgcolor=theme.get('plot_bgcolor', '#051B30'),
+        paper_bgcolor=theme.get('paper_bgcolor', '#051B30'),
+        font=dict(color=theme.get('font_color', '#FFFFFF'))
+    )
+    apply_plotly_theme(fig, theme)
+    return fig
+
+
+def plot_competitive_position_scatter(
+    df: pd.DataFrame,
+    theme: Dict[str, Any],
+    config: Dict[str, Any] = None
+) -> go.Figure:
+    """
+    Create a scatter plot for competitive positioning (win rate vs. market share).
+
+    Args:
+        df: DataFrame with competitor data.
+        theme: Theme dictionary for colors and styles.
+        config: Optional chart configuration (e.g., title).
+
+    Returns:
+        Plotly Figure object.
+    """
+    import plotly.express as px
+    median_market_share = df['market_share'].median()
+    median_win_rate = df['win_rate'].median()
+    fig = px.scatter(
+        df,
+        x='market_share',
+        y='win_rate',
+        size='federal_action_obligation',
+        color='recipient_name',
+        hover_name='recipient_name',
+        title=config.get('title', 'Competitive Positioning: Win Rate vs Market Share') if config else 'Competitive Positioning: Win Rate vs Market Share',
+        labels={
+            'market_share': 'Market Share (%)',
+            'win_rate': 'Win Rate (%)',
+            'federal_action_obligation': 'Total Obligations ($)'
+        },
+        size_max=50
+    )
+    fig.add_shape(
+        type="line",
+        x0=median_market_share,
+        y0=0,
+        x1=median_market_share,
+        y1=df['win_rate'].max() * 1.1,
+        line=dict(color="White", width=1, dash="dash")
+    )
+    fig.add_shape(
+        type="line",
+        x0=0,
+        y0=median_win_rate,
+        x1=df['market_share'].max() * 1.1,
+        y1=median_win_rate,
+        line=dict(color="White", width=1, dash="dash")
+    )
+    fig.add_annotation(
+        x=median_market_share/2,
+        y=df['win_rate'].max() * 0.8,
+        text="High Win Rate, Low Market Share",
+        showarrow=False,
+        font=dict(color=theme["highlight_color"])
+    )
+    fig.add_annotation(
+        x=median_market_share*1.5,
+        y=df['win_rate'].max() * 0.8,
+        text="Market Leaders",
+        showarrow=False,
+        font=dict(color=theme["highlight_color"])
+    )
+    fig.add_annotation(
+        x=median_market_share/2,
+        y=median_win_rate/2,
+        text="Struggling Competitors",
+        showarrow=False,
+        font=dict(color=theme["text_color"])
+    )
+    fig.add_annotation(
+        x=median_market_share*1.5,
+        y=median_win_rate/2,
+        text="High Volume, Low Win Rate",
+        showarrow=False,
+        font=dict(color=theme["text_color"])
+    )
+    fig.update_traces(
+        hovertemplate=None  # Use default Plotly Express hover behavior
+    )
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor=theme.get('plot_bgcolor', '#051B30'),
+        paper_bgcolor=theme.get('paper_bgcolor', '#051B30'),
+        font=dict(color=theme.get('font_color', '#FFFFFF')),
+    )
+    from src.frontend.visualizations.utils.plotly_helpers import apply_plotly_theme
+    apply_plotly_theme(fig, theme)
+    # Restore default legend behavior (do not forcibly remove legend)
     return fig
