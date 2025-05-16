@@ -102,7 +102,11 @@ def render_tab(df: pd.DataFrame):
                             fill_value=0
                         )
                         normalized_pivot = pivot_df.div(pivot_df.max(axis=1), axis=0)
-                        fig = plot_competitor_agency_heatmap(normalized_pivot, THEME, config={"height": 600, "legend_font_size": 14})
+                        fig = plot_competitor_agency_heatmap(normalized_pivot, THEME, config={"height": 600, "legend_font_size": 14, "title": None})
+                        # Remove chart title from the Plotly figure (handles px.imshow bug)
+                        fig.update_layout(title=None, title_text=None)
+                        if hasattr(fig.layout, 'title'):
+                            fig.layout.title.text = ''
                         st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.info("Insufficient data to generate competitor-agency relationships.")
@@ -119,6 +123,9 @@ def render_tab(df: pd.DataFrame):
                     contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
                     # Shorten long contract type names for display, add hover for full description
                     contract_type_competition['Contract Type Display'] = contract_type_competition['Contract Type'].apply(
+                        lambda x: 'FIXED PRICE WITH EPA' if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in x.upper() else x
+                    )
+                    contract_type_competition['Contract Type Display'] = contract_type_competition['Contract Type Display'].apply(
                         lambda x: 'ORDER DEPENDENT' if x.startswith('ORDER DEPENDENT') else x
                     )
                     contract_type_competition['Contract Type Hover'] = contract_type_competition['Contract Type'].apply(
@@ -140,6 +147,9 @@ def render_tab(df: pd.DataFrame):
                     contract_type_analysis['Average Obligation'] = contract_type_analysis['Total Obligation'] / contract_type_analysis['Number of Competitors']
                     # Shorten long contract type names for display, add hover for full description
                     contract_type_analysis['Contract Type Display'] = contract_type_analysis['Contract Type'].apply(
+                        lambda x: 'FIXED PRICE WITH EPA' if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in x.upper() else x
+                    )
+                    contract_type_analysis['Contract Type Display'] = contract_type_analysis['Contract Type Display'].apply(
                         lambda x: 'ORDER DEPENDENT' if x.startswith('ORDER DEPENDENT') else x
                     )
                     contract_type_analysis['Contract Type Hover'] = contract_type_analysis['Contract Type'].apply(

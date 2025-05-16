@@ -324,9 +324,11 @@ def plot_contract_type_value_analysis(
     import plotly.graph_objs as go
     hover_col = config.get('hover_col', None) if config else None
     x_col = 'Contract Type Display' if 'Contract Type Display' in top_value_types.columns else 'Contract Type'
-    # Replace 'FIXED PRICE WITH ECONOMIC PRICE ADJUSTMENT' with 'FIXED PRICE WITH EPA'
+    # Always replace any variant of 'FIXED PRICE WITH ECONOMIC PRICE ADJUSMENT' or 'ADJUSTMENT' with 'FIXED PRICE WITH EPA'
     top_value_types = top_value_types.copy()
-    top_value_types[x_col] = top_value_types[x_col].replace('FIXED PRICE WITH ECONOMIC PRICE ADJUSTMENT', 'FIXED PRICE WITH EPA')
+    top_value_types[x_col] = top_value_types[x_col].replace({
+        'FIXED PRICE WITH ECONOMIC PRICE ADJUSTMENT': 'FIXED PRICE WITH EPA',
+    })
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
         go.Bar(
@@ -390,16 +392,22 @@ def plot_competitor_agency_heatmap(
         normalized_pivot,
         color_continuous_scale="Blues",
         labels=dict(x="Agency", y="Competitor", color="Relationship Strength"),
-        title=config.get('title', 'Top Competitor-Agency Relationships') if config else 'Top Competitor-Agency Relationships',
         aspect="auto",
         height=height
     )
+    # Remove any layout title forcibly (handles px.imshow bug)
+    fig.update_layout(title=None, title_text=None)
+    if hasattr(fig.layout, 'title'):
+        fig.layout.title.text = ''
     fig.update_traces(
         hovertemplate="<b>%{y}</b> - <b>%{x}</b><br>Relationship Strength: %{z:.2f}<br><extra></extra>"
     )
     fig.update_layout(
         margin=dict(l=10, r=20, t=40, b=10),
-        xaxis={'side': 'top'},
+        xaxis={'side': 'top', 'tickangle': 45, 'automargin': True, 'tickfont': dict(size=14)},
+        yaxis={'automargin': True, 'tickfont': dict(size=14)},
+        autosize=True,
+        width=None,  # Let Streamlit/Plotly handle responsive width
         coloraxis_colorbar=dict(
             title="Relationship Strength",
             orientation="v",
