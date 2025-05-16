@@ -12,6 +12,8 @@ from typing import List
 from src.backend.data.processors.competition import get_competitive_landscape
 from src.backend.data.models.data_models import CompetitorPerformance
 from src.frontend.styles.theme import THEME
+from src.frontend.visualizations.charts.comparison_charts import plot_market_share_bar, plot_contract_type_competition_bar, plot_contract_type_value_analysis
+from src.frontend.visualizations.charts.distribution_charts import plot_competitive_position_scatter, plot_competitor_agency_heatmap
 
 def render_tab(df: pd.DataFrame):
     """
@@ -44,130 +46,28 @@ def render_tab(df: pd.DataFrame):
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("Market Share Analysis")
-                fig = px.bar(
+                fig = plot_market_share_bar(
                     top_competitors,
-                    x='market_share',
-                    y='recipient_name',
-                    orientation='h',
-                    title="Top 10 Competitors by Market Share",
-                    color='market_share',
-                    color_continuous_scale="Blues",
-                    labels={'market_share': 'Market Share (%)', 'recipient_name': 'Competitor'}
-                )
-                fig.update_layout(
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    yaxis={'categoryorder': 'total ascending'},
-                    coloraxis_showscale=False
-                )
-                fig.update_traces(
-                    texttemplate='%{x:.1f}%',
-                    textposition='outside',
-                    hovertemplate='<b>%{y}</b><br>Market Share: %{x:.2f}%<extra></extra>'
+                    value_col='market_share',
+                    label_col='recipient_name',
+                    theme=THEME,
+                    config={"title": "Top 10 Competitors by Market Share", "x_label": "Market Share (%)", "y_label": "Competitor", "color_scale": "Blues"}
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
             with col2:
                 st.subheader("Win Rate Analysis")
-                fig = px.bar(
+                fig = plot_market_share_bar(
                     top_competitors,
-                    x='win_rate',
-                    y='recipient_name',
-                    orientation='h',
-                    title="Top 10 Competitors by Win Rate",
-                    color='win_rate',
-                    color_continuous_scale="Teal",
-                    labels={'win_rate': 'Win Rate (%)', 'recipient_name': 'Competitor'}
-                )
-                fig.update_layout(
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    yaxis={'categoryorder': 'total ascending'},
-                    coloraxis_showscale=False
-                )
-                fig.update_traces(
-                    texttemplate='%{x:.1f}%',
-                    textposition='outside',
-                    hovertemplate='<b>%{y}</b><br>Win Rate: %{x:.2f}%<extra></extra>'
+                    value_col='win_rate',
+                    label_col='recipient_name',
+                    theme=THEME,
+                    config={"title": "Top 10 Competitors by Win Rate", "x_label": "Win Rate (%)", "y_label": "Competitor", "color_scale": "Teal"}
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
             # Market Position Analysis
             st.subheader("Market Position Analysis")
-            fig = px.scatter(
-                top_competitors,
-                x='market_share',
-                y='win_rate',
-                size='federal_action_obligation',
-                color='recipient_name',
-                hover_name='recipient_name',
-                title="Competitive Positioning: Win Rate vs Market Share",
-                labels={
-                    'market_share': 'Market Share (%)',
-                    'win_rate': 'Win Rate (%)',
-                    'federal_action_obligation': 'Total Obligations ($)'
-                },
-                size_max=50
-            )
-            median_market_share = top_competitors['market_share'].median()
-            median_win_rate = top_competitors['win_rate'].median()
-            fig.add_shape(
-                type="line",
-                x0=median_market_share,
-                y0=0,
-                x1=median_market_share,
-                y1=top_competitors['win_rate'].max() * 1.1,
-                line=dict(color="White", width=1, dash="dash")
-            )
-            fig.add_shape(
-                type="line",
-                x0=0,
-                y0=median_win_rate,
-                x1=top_competitors['market_share'].max() * 1.1,
-                y1=median_win_rate,
-                line=dict(color="White", width=1, dash="dash")
-            )
-            fig.add_annotation(
-                x=median_market_share/2,
-                y=top_competitors['win_rate'].max() * 0.8,
-                text="High Win Rate, Low Market Share",
-                showarrow=False,
-                font=dict(color=THEME["highlight_color"])
-            )
-            fig.add_annotation(
-                x=median_market_share*1.5,
-                y=top_competitors['win_rate'].max() * 0.8,
-                text="Market Leaders",
-                showarrow=False,
-                font=dict(color=THEME["highlight_color"])
-            )
-            fig.add_annotation(
-                x=median_market_share/2,
-                y=median_win_rate/2,
-                text="Struggling Competitors",
-                showarrow=False,
-                font=dict(color=THEME["text_color"])
-            )
-            fig.add_annotation(
-                x=median_market_share*1.5,
-                y=median_win_rate/2,
-                text="High Volume, Low Win Rate",
-                showarrow=False,
-                font=dict(color=THEME["text_color"])
-            )
-            fig.update_layout(
-                plot_bgcolor=THEME["bg_color"],
-                paper_bgcolor=THEME["bg_color"],
-                font=dict(color=THEME["text_color"]),
-                margin=dict(l=10, r=10, t=40, b=10)
-            )
-            fig.update_traces(
-                hovertemplate="<b>%{hovertext}</b><br>Market Share: %{x:.2f}%<br>Win Rate: %{y:.2f}%<br>Total Obligations: $%{marker.size:,.0f}<extra></extra>"
-            )
+            fig = plot_competitive_position_scatter(top_competitors, THEME)
             st.plotly_chart(fig, use_container_width=True)
 
             # Competitor-Agency Relationships
@@ -200,22 +100,7 @@ def render_tab(df: pd.DataFrame):
                         fill_value=0
                     )
                     normalized_pivot = pivot_df.div(pivot_df.max(axis=1), axis=0)
-                    fig = px.imshow(
-                        normalized_pivot,
-                        color_continuous_scale="Blues",
-                        labels=dict(x="Agency", y="Competitor", color="Relationship Strength"),
-                        title="Top Competitor-Agency Relationships"
-                    )
-                    fig.update_layout(
-                        plot_bgcolor=THEME["bg_color"],
-                        paper_bgcolor=THEME["bg_color"],
-                        font=dict(color=THEME["text_color"]),
-                        margin=dict(l=10, r=20, t=40, b=10),
-                        xaxis={'side': 'top'}
-                    )
-                    fig.update_traces(
-                        hovertemplate="<b>%{y}</b> - <b>%{x}</b><br>Relationship Strength: %{z:.2f}<br><extra></extra>"
-                    )
+                    fig = plot_competitor_agency_heatmap(normalized_pivot, THEME)
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("Insufficient data to generate competitor-agency relationships.")
@@ -229,32 +114,7 @@ def render_tab(df: pd.DataFrame):
                 contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
                 contract_type_competition = contract_type_competition.sort_values('Number of Competitors', ascending=False)
                 top_contract_types = contract_type_competition.head(10)
-                fig = px.bar(
-                    top_contract_types,
-                    x='Number of Competitors',
-                    y='Contract Type',
-                    orientation='h',
-                    title="Competition Intensity by Contract Type",
-                    color='Number of Competitors',
-                    color_continuous_scale="Blues",
-                    labels={
-                        'Number of Competitors': 'Number of Unique Competitors',
-                        'Contract Type': 'Contract Type'
-                    }
-                )
-                fig.update_layout(
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    yaxis={'categoryorder': 'total ascending'},
-                    coloraxis_showscale=False
-                )
-                fig.update_traces(
-                    texttemplate='%{x:.0f}',
-                    textposition='outside',
-                    hovertemplate='<b>%{y}</b><br>Competitors: %{x:.0f}<extra></extra>'
-                )
+                fig = plot_contract_type_competition_bar(top_contract_types, THEME)
                 st.plotly_chart(fig, use_container_width=True)
 
                 contract_type_value = df.groupby('type_of_contract_pricing')['federal_action_obligation'].sum().reset_index()
@@ -262,47 +122,39 @@ def render_tab(df: pd.DataFrame):
                 contract_type_analysis = pd.merge(contract_type_competition, contract_type_value, on='Contract Type')
                 contract_type_analysis['Average Obligation'] = contract_type_analysis['Total Obligation'] / contract_type_analysis['Number of Competitors']
                 top_value_types = contract_type_analysis.nlargest(10, 'Total Obligation')
-                fig = make_subplots(specs=[[{"secondary_y": True}]])
-                fig.add_trace(
-                    go.Bar(
-                        x=top_value_types['Contract Type'],
-                        y=top_value_types['Total Obligation'],
-                        name='Total Obligation',
-                        marker_color=THEME["primary_color"]
-                    ),
-                    secondary_y=False
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=top_value_types['Contract Type'],
-                        y=top_value_types['Average Obligation'],
-                        name='Avg Obligation per Competitor',
-                        mode='lines+markers',
-                        marker=dict(color=THEME["accent2_color"]),
-                        line=dict(width=3)
-                    ),
-                    secondary_y=True
-                )
-                fig.update_layout(
-                    title_text="Contract Type Value Analysis",
-                    plot_bgcolor=THEME["bg_color"],
-                    paper_bgcolor=THEME["bg_color"],
-                    font=dict(color=THEME["text_color"]),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1
-                    )
-                )
-                fig.update_xaxes(title_text="Contract Type", tickangle=45)
-                fig.update_yaxes(title_text="Total Obligation ($)", secondary_y=False, tickprefix="$", tickformat=",.")
-                fig.update_yaxes(title_text="Avg Obligation per Competitor ($)", secondary_y=True, tickprefix="$", tickformat=",.")
+                fig = plot_contract_type_value_analysis(top_value_types, THEME)
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Contract type data not available for analysis.")
+
+            # Winning Strategy Suggestions (Restored original two-column layout)
+            st.subheader("Winning Strategy Suggestions based on Competitive Analysis")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(
+                    """
+                    **Market Positioning**
+                    
+                    - Target high-value, high-volume agencies for growth.
+                    - Focus on agencies where your win rate is below average.
+                    - Monitor expiring contracts for recompete opportunities.
+                    - Diversify contract types to balance risk and opportunity.
+                    """
+                )
+            with col2:
+                st.markdown(
+                    """
+                    **Differentiation Opportunities**
+                    
+                    - Analyze top competitors to identify differentiators.
+                    - Leverage teaming partners to fill capability gaps.
+                    - Build relationships with key agency stakeholders.
+                    - Invest in capabilities that align with agency priorities.
+                    """
+                )
+            st.info(
+                "_This section will provide AI-generated recommendations for improving win rates and market position based on the competitive landscape. In the future, this will be powered by an LLM/AI agent._"
+            )
         else:
             st.warning("Insufficient data for competitive analysis. Try expanding your filter criteria.")
 
