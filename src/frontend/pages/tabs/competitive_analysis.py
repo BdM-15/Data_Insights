@@ -7,10 +7,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from typing import List
 
 from src.backend.data.processors.competition import get_competitive_landscape
+from src.backend.data.models.data_models import CompetitorPerformance
 from src.frontend.styles.theme import THEME
-
 
 def render_tab(df: pd.DataFrame):
     """
@@ -31,11 +32,13 @@ def render_tab(df: pd.DataFrame):
             """
         )
 
-        competitors_data = get_competitive_landscape(df)
+        competitors_data: List[CompetitorPerformance] = get_competitive_landscape(df)
 
-        if not competitors_data.empty:
+        if competitors_data:
+            # Convert list of CompetitorPerformance models to DataFrame for visualization
+            competitors_df = pd.DataFrame([c.dict() for c in competitors_data])
             # Top 10 competitors by market share
-            top_competitors = competitors_data.nlargest(10, 'market_share')
+            top_competitors = competitors_df.nlargest(10, 'market_share')
 
             # Market Share and Win Rate
             col1, col2 = st.columns(2)
@@ -171,7 +174,7 @@ def render_tab(df: pd.DataFrame):
             st.subheader("Competitor-Agency Relationships")
             if 'parent_award_agency_name' in df.columns and not df.empty:
                 competitor_agency = df.groupby(['recipient_name', 'parent_award_agency_name'])['federal_action_obligation'].sum().reset_index()
-                top_5_competitors = competitors_data.nlargest(5, 'market_share')['recipient_name'].tolist()
+                top_5_competitors = competitors_df.nlargest(5, 'market_share')['recipient_name'].tolist()
                 competitor_agency = competitor_agency[competitor_agency['recipient_name'].isin(top_5_competitors)]
                 competitor_top_agencies = {}
                 for competitor in top_5_competitors:
@@ -300,34 +303,6 @@ def render_tab(df: pd.DataFrame):
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Contract type data not available for analysis.")
-
-            # Competitive Strategy Insights
-            st.subheader("Competitive Strategy Insights")
-            insights_container = st.container()
-            with insights_container:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(
-                        """
-                        ### Market Positioning
-                        Based on the competitive analysis, consider these strategies:
-                        - **Focus on high win-rate, low market share quadrant** agencies where your company can efficiently compete
-                        - **Identify partnering opportunities** with complementary contractors
-                        - **Target contract vehicles** with lower competitive intensity
-                        - **Develop specialized offerings** for agencies with diverse contractor bases
-                        """
-                    )
-                with col2:
-                    st.markdown(
-                        """
-                        ### Differentiation Opportunities
-                        Competitive analysis suggests these differentiation approaches:
-                        - **Pricing strategies** tailored to specific contract types
-                        - **Agency-specific expertise** development where competitors are weaker
-                        - **Contract vehicle specialization** in less congested segments
-                        - **Past performance emphasis** in areas with strong incumbent presence
-                        """
-                    )
         else:
             st.warning("Insufficient data for competitive analysis. Try expanding your filter criteria.")
 

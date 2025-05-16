@@ -4,8 +4,9 @@ Move all agency-related data processing logic here for modularization.
 """
 
 import pandas as pd
+from src.backend.data.models.data_models import TopAgencyByCount, TopAgencyByObligation
 
-def get_top_agencies_by_award_count(df, n=15):
+def get_top_agencies_by_award_count(df, n=15) -> list:
     """
     Get top agencies by award count (base awards only).
 
@@ -14,10 +15,10 @@ def get_top_agencies_by_award_count(df, n=15):
         n: Number of top agencies to return
 
     Returns:
-        DataFrame with top agencies by award count
+        List of TopAgencyByCount models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
 
     # Filter to base awards only (no modifications)
     base_df = df[df['modification_number'] == '0']
@@ -26,10 +27,10 @@ def get_top_agencies_by_award_count(df, n=15):
     agency_data = base_df.groupby('parent_award_agency_name').size().reset_index(name='award_count')
     agency_data = agency_data.sort_values('award_count', ascending=False).head(n)
 
-    return agency_data
+    return [TopAgencyByCount(**row) for row in agency_data.to_dict(orient='records')]
 
 
-def get_top_agencies_by_obligation(df, n=15):
+def get_top_agencies_by_obligation(df, n=15) -> list:
     """
     Get top agencies by obligation amount.
 
@@ -38,13 +39,13 @@ def get_top_agencies_by_obligation(df, n=15):
         n: Number of top agencies to return
 
     Returns:
-        DataFrame with top agencies by obligation amount
+        List of TopAgencyByObligation models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
 
     # Group by agency and sum obligations
     agency_data = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().reset_index()
     agency_data = agency_data.sort_values('federal_action_obligation', ascending=False).head(n)
 
-    return agency_data
+    return [TopAgencyByObligation(**row) for row in agency_data.to_dict(orient='records')]

@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from typing import List
 
 from src.frontend.utils.formatting import format_value
 from src.backend.data.processors.awards import (
@@ -19,8 +20,10 @@ from src.backend.data.processors.awards import (
     get_unique_naics_codes,
 )
 from src.backend.data.processors.competition import get_treemap_data
+from src.backend.data.models.data_models import (
+    AwardSummaryItem, TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, ContractVehicleSummary, TreemapPathElement
+)
 from src.frontend.styles.theme import THEME
-
 
 def render_tab(df: pd.DataFrame):
     """
@@ -34,19 +37,22 @@ def render_tab(df: pd.DataFrame):
         # Executive Summary Metrics
         st.subheader("Executive Summary")
         col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+        # Use Pydantic model for summary
+        summary: List[AwardSummaryItem] = get_award_summary(df)
+        summary_dict = {item.category: item for item in summary}
         with col1:
-            st.metric("Total Obligations", format_value(get_award_summary(df)['total_obligations'], is_currency=True))
+            st.metric("Total Obligations", format_value(summary_dict['total_obligations'].value, is_currency=True))
         with col2:
-            st.metric("Total Award Actions", format_value(get_award_summary(df)['total_award_actions']))
+            st.metric("Total Award Actions", format_value(summary_dict['total_award_actions'].value))
         with col3:
-            st.metric("Average Award Value", format_value(get_award_summary(df)['avg_award_value'], is_currency=True))
+            st.metric("Average Award Value", format_value(summary_dict['avg_award_value'].value, is_currency=True))
         with col4:
-            st.metric("Active Contracts", format_value(get_award_summary(df)['active_contracts']))
+            st.metric("Active Contracts", format_value(summary_dict['active_contracts'].value))
         with col5:
             expiring_contracts = get_expiring_contracts(df, months_ahead=24)
             st.metric(
                 "Expiring Contracts",
-                format_value(expiring_contracts),
+                format_value(len(expiring_contracts)),
                 help="Number of contracts expiring in the next 6 to 24 months from today"
             )
         with col6:
@@ -67,12 +73,14 @@ def render_tab(df: pd.DataFrame):
         with col1:
             st.subheader("Obligations and Award Actions Trend")
             quarterly_data = get_quarterly_trends(df)
-            if not quarterly_data.empty:
+            # Now quarterly_data is a list of QuarterlyTrend models
+            if quarterly_data:
+                qtr_df = pd.DataFrame([q.dict() for q in quarterly_data])
                 fig = make_subplots(specs=[[{"secondary_y": True}]])
                 fig.add_trace(
                     go.Scatter(
-                        x=quarterly_data["fiscal_period"],
-                        y=quarterly_data["federal_action_obligation"],
+                        x=qtr_df["quarter"],
+                        y=qtr_df["total_obligation"],
                         name="Obligations",
                         line=dict(color=THEME["primary_color"], width=3),
                         mode="lines+markers",
@@ -83,8 +91,8 @@ def render_tab(df: pd.DataFrame):
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=quarterly_data["fiscal_period"],
-                        y=quarterly_data["award_count"],
+                        x=qtr_df["quarter"],
+                        y=qtr_df["award_count"],
                         name="Award Actions",
                         line=dict(color=THEME["accent2_color"], width=3),
                         mode="lines+markers",
@@ -110,12 +118,13 @@ def render_tab(df: pd.DataFrame):
 
         with col2:
             st.subheader("Capture Intensity")
-            agency_ratio = get_agency_obligation_ratio(df)
-            if not agency_ratio.empty and len(agency_ratio) > 1:
-                median_count = agency_ratio["award_count_normalized"].median()
-                median_obligation = agency_ratio["obligation_normalized"].median()
+            agency_ratio: List[AgencyRatioMetrics] = get_agency_obligation_ratio(df)
+            if agency_ratio and len(agency_ratio) > 1:
+                agency_df = pd.DataFrame([a.dict() for a in agency_ratio])
+                median_count = agency_df["award_count_normalized"].median()
+                median_obligation = agency_df["obligation_normalized"].median()
                 fig = px.scatter(
-                    agency_ratio,
+                    agency_df,
                     x="award_count_normalized",
                     y="obligation_normalized",
                     size="scatter_size",
@@ -141,14 +150,14 @@ def render_tab(df: pd.DataFrame):
                     x0=median_count,
                     y0=0,
                     x1=median_count,
-                    y1=agency_ratio["obligation_normalized"].max() * 1.1,
+                    y1=agency_df["obligation_normalized"].max() * 1.1,
                     line=dict(color="White", width=1, dash="dash")
                 )
                 fig.add_shape(
                     type="line",
                     x0=0,
                     y0=median_obligation,
-                    x1=agency_ratio["award_count_normalized"].max() * 1.1,
+                    x1=agency_df["award_count_normalized"].max() * 1.1,
                     y1=median_obligation,
                     line=dict(color="White", width=1, dash="dash")
                 )
@@ -189,12 +198,13 @@ def render_tab(df: pd.DataFrame):
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Contract Vehicle Distribution")
-            vehicle_data = get_contract_vehicles(df)
-            if not vehicle_data.empty:
+            vehicle_data: List[ContractVehicleSummary] = get_contract_vehicles(df)
+            if vehicle_data:
+                vehicle_df = pd.DataFrame([v.dict() for v in vehicle_data])
                 fig = px.pie(
-                    vehicle_data,
-                    values="count",
-                    names="award_type",
+                    vehicle_df,
+                    values="award_count",
+                    names="contract_vehicle",
                     title="Contract Vehicle Types",
                     hole=0.4,
                     color_discrete_sequence=px.colors.sequential.Plasma
@@ -216,9 +226,10 @@ def render_tab(df: pd.DataFrame):
 
         with col2:
             st.subheader("Competitive Landscape")
-            treemap_data = get_treemap_data(df)
-            if not treemap_data.empty:
-                top_competitors = treemap_data.head(10)
+            treemap_data: List[TreemapPathElement] = get_treemap_data(df)
+            if treemap_data:
+                treemap_df = pd.DataFrame([t.dict() for t in treemap_data])
+                top_competitors = treemap_df.head(10)
                 fig = px.treemap(
                     top_competitors,
                     path=["recipient_parent_name", "recipient_name", "funding_sub_agency_name", "transaction_description"],
@@ -247,10 +258,11 @@ def render_tab(df: pd.DataFrame):
         st.subheader("Top Agencies Analysis")
         col1, col2 = st.columns(2)
         with col1:
-            top_agencies_count = get_top_agencies(df, metric="count", n=15)
-            if not top_agencies_count.empty:
+            top_agencies_count: List[TopAgencyByCount] = get_top_agencies(df, metric="count", n=15)
+            if top_agencies_count:
+                count_df = pd.DataFrame([a.dict() for a in top_agencies_count])
                 fig = px.bar(
-                    top_agencies_count,
+                    count_df,
                     x="award_count",
                     y="parent_award_agency_name",
                     title="Top Agencies by Award Actions",
@@ -279,10 +291,11 @@ def render_tab(df: pd.DataFrame):
                 st.warning("Insufficient data for top agencies by award actions.")
 
         with col2:
-            top_agencies_dollars = get_top_agencies(df, metric="obligation", n=15)
-            if not top_agencies_dollars.empty:
+            top_agencies_dollars: List[TopAgencyByObligation] = get_top_agencies(df, metric="obligation", n=15)
+            if top_agencies_dollars:
+                dollars_df = pd.DataFrame([a.dict() for a in top_agencies_dollars])
                 fig = px.bar(
-                    top_agencies_dollars,
+                    dollars_df,
                     x="federal_action_obligation",
                     y="parent_award_agency_name",
                     title="Top Agencies by Obligation Amount",
@@ -307,7 +320,7 @@ def render_tab(df: pd.DataFrame):
                 fig.update_yaxes(showgrid=False, categoryorder="total ascending", title=None)
                 # Add formatted value annotations
                 annotations = []
-                for i, row in top_agencies_dollars.iterrows():
+                for i, row in dollars_df.iterrows():
                     annotations.append({
                         'x': row['federal_action_obligation'],
                         'y': row['parent_award_agency_name'],

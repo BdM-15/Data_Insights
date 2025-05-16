@@ -5,8 +5,9 @@ Move all competition-related data processing logic here for modularization.
 
 import pandas as pd
 import numpy as np
+from src.backend.data.models.data_models import TreemapPathElement, CompetitorPerformance
 
-def get_treemap_data(df):
+def get_treemap_data(df: pd.DataFrame) -> list:
     """
     Prepare data for the competitive landscape treemap.
 
@@ -14,10 +15,10 @@ def get_treemap_data(df):
         df: DataFrame containing award data
 
     Returns:
-        DataFrame specifically formatted for the treemap visualization
+        List of TreemapPathElement models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
 
     # Create a deep copy to avoid modifying original
     filtered_df = df.copy()
@@ -142,10 +143,10 @@ def get_treemap_data(df):
     # Sort by market share
     treemap_data = treemap_data.sort_values('market_share', ascending=False)
 
-    return treemap_data
+    return [TreemapPathElement(**row) for row in treemap_data.to_dict(orient='records')]
 
 
-def get_competitive_landscape(df):
+def get_competitive_landscape(df: pd.DataFrame) -> list:
     """
     Analyze competitive landscape among contractors.
 
@@ -153,10 +154,10 @@ def get_competitive_landscape(df):
         df: DataFrame containing award data
 
     Returns:
-        DataFrame with competitor analysis
+        List of CompetitorPerformance models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
 
     # Use only exact string comparison for modification_number
     base_awards = df[df['modification_number'] == '0']
@@ -181,4 +182,4 @@ def get_competitive_landscape(df):
     # Sort by market share
     competitors = competitors.sort_values('market_share', ascending=False)
 
-    return competitors
+    return [CompetitorPerformance(**row) for row in competitors.to_dict(orient='records')]

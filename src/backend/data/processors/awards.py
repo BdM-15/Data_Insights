@@ -6,22 +6,25 @@ Move all award-related data processing logic here for modularization.
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from src.backend.data.models.data_models import (
+    TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, AwardSummaryItem, QuarterlyTrend, ContractVehicleSummary, RecipientAwardCount, RecipientObligation, ExpiringContract
+)
 
-def get_award_summary(df: pd.DataFrame) -> dict:
+def get_award_summary(df: pd.DataFrame) -> list:
     """
     Calculate summary metrics from the data.
     Args:
         df: DataFrame containing award data
     Returns:
-        Dictionary of summary metrics
+        List of AwardSummaryItem models
     """
     if df.empty:
-        return {
-            "total_obligations": 0,
-            "total_award_actions": 0,
-            "avg_award_value": 0,
-            "active_contracts": 0
-        }
+        return [
+            AwardSummaryItem(category="total_obligations", value=0),
+            AwardSummaryItem(category="total_award_actions", value=0),
+            AwardSummaryItem(category="avg_award_value", value=0),
+            AwardSummaryItem(category="active_contracts", value=0)
+        ]
     # Filter for base awards (no modifications)
     base_awards = df[df['modification_number'] == '0']
     # Calculate metrics
@@ -29,14 +32,14 @@ def get_award_summary(df: pd.DataFrame) -> dict:
     total_award_actions = len(base_awards)
     avg_award_value = total_obligations / total_award_actions if total_award_actions > 0 else 0
     active_contracts = len(base_awards)
-    return {
-        "total_obligations": total_obligations,
-        "total_award_actions": total_award_actions,
-        "avg_award_value": avg_award_value,
-        "active_contracts": active_contracts
-    }
+    return [
+        AwardSummaryItem(category="total_obligations", value=total_obligations),
+        AwardSummaryItem(category="total_award_actions", value=total_award_actions),
+        AwardSummaryItem(category="avg_award_value", value=avg_award_value),
+        AwardSummaryItem(category="active_contracts", value=active_contracts)
+    ]
 
-def get_top_agencies(df: pd.DataFrame, metric: str = "count", n: int = 15) -> pd.DataFrame:
+def get_top_agencies(df: pd.DataFrame, metric: str = "count", n: int = 15) -> list:
     """
     Get top agencies by award count or obligation amount.
     Args:
@@ -44,66 +47,61 @@ def get_top_agencies(df: pd.DataFrame, metric: str = "count", n: int = 15) -> pd
         metric: 'count' for award actions, 'obligation' for dollar amount
         n: Number of top agencies to return
     Returns:
-        DataFrame with top agencies
+        List of TopAgencyByCount or TopAgencyByObligation models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
     if metric == "count":
-        # Filter to base awards only (no modifications)
         base_df = df[df['modification_number'] == '0']
-        # Group by agency and count
         agency_data = base_df.groupby('parent_award_agency_name').size().reset_index(name='award_count')
         agency_data = agency_data.sort_values('award_count', ascending=False).head(n)
-        return agency_data
+        return [TopAgencyByCount(**row) for row in agency_data.to_dict(orient='records')]
     else:
-        # Group by agency and sum obligations
         agency_data = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().reset_index()
         agency_data = agency_data.sort_values('federal_action_obligation', ascending=False).head(n)
-        return agency_data
+        return [TopAgencyByObligation(**row) for row in agency_data.to_dict(orient='records')]
 
-def get_quarterly_trends(df: pd.DataFrame) -> pd.DataFrame:
+def get_quarterly_trends(df: pd.DataFrame) -> list:
     """
     Calculate quarterly trends for obligations and award actions.
     Both obligations and award actions should be cumulative within each fiscal year.
     Args:
         df: DataFrame containing award data
     Returns:
-        DataFrame with quarterly aggregates
+        List of QuarterlyTrend Pydantic models
     """
     if df.empty:
-        return pd.DataFrame()
-    # Convert action_date to datetime
+        return []
     df['action_date'] = pd.to_datetime(df['action_date'])
-    # Calculate fiscal year (Oct 1 to Sep 30)
     df['fiscal_year'] = df['action_date'].dt.year
     df.loc[df['action_date'].dt.month >= 10, 'fiscal_year'] = df['action_date'].dt.year + 1
-    # Map calendar quarters to fiscal quarters
     month_to_fiscal_quarter = {
-        1: 2, 2: 2, 3: 2,  # Calendar Q1 = Fiscal Q2
-        4: 3, 5: 3, 6: 3,  # Calendar Q2 = Fiscal Q3
-        7: 4, 8: 4, 9: 4,  # Calendar Q3 = Fiscal Q4
-        10: 1, 11: 1, 12: 1  # Calendar Q4 = Fiscal Q1
+        1: 2, 2: 2, 3: 2,
+        4: 3, 5: 3, 6: 3,
+        7: 4, 8: 4, 9: 4,
+        10: 1, 11: 1, 12: 1
     }
     df['fiscal_quarter'] = df['action_date'].dt.month.map(month_to_fiscal_quarter)
-    # Create fiscal period label
     df['fiscal_period'] = df['fiscal_year'].astype(str) + '-Q' + df['fiscal_quarter'].astype(str)
-    # Filter base awards for award count
     base_awards = df[df['modification_number'] == '0']
-    # Group by fiscal period for award counts
     award_counts = base_awards.groupby(['fiscal_year', 'fiscal_quarter', 'fiscal_period']).size().reset_index(name='award_count')
-    # Group by fiscal period for obligations
     obligations = df.groupby(['fiscal_year', 'fiscal_quarter', 'fiscal_period'])['federal_action_obligation'].sum().reset_index()
-    # Sort by fiscal year and quarter
     award_counts = award_counts.sort_values(['fiscal_year', 'fiscal_quarter'])
     obligations = obligations.sort_values(['fiscal_year', 'fiscal_quarter'])
-    # Calculate cumulative sum for BOTH obligations AND award counts by fiscal year
     obligations['federal_action_obligation'] = obligations.groupby('fiscal_year')['federal_action_obligation'].cumsum()
     award_counts['award_count'] = award_counts.groupby('fiscal_year')['award_count'].cumsum()
-    # Merge the two datasets
     quarterly_data = pd.merge(award_counts, obligations, on=['fiscal_year', 'fiscal_quarter', 'fiscal_period'], how='outer').fillna(0)
-    # Sort by fiscal year and quarter for display
     quarterly_data = quarterly_data.sort_values(['fiscal_year', 'fiscal_quarter'])
-    return quarterly_data
+    # Convert to list of QuarterlyTrend models
+    result = []
+    for _, row in quarterly_data.iterrows():
+        result.append(QuarterlyTrend(
+            quarter=row['fiscal_period'],
+            year=int(row['fiscal_year']),
+            total_obligation=float(row['federal_action_obligation']),
+            award_count=int(row['award_count'])
+        ))
+    return result
 
 def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
     """
@@ -202,24 +200,22 @@ def get_unique_naics_codes(engine, table_names=None):
     except Exception:
         return ["561210", "All"]
 
-def get_agency_obligation_ratio(df):
+def get_agency_obligation_ratio(df: pd.DataFrame) -> list:
     """
-    Calculate action-to-obligation ratio for the scatter plot analysis.
-    Uses normalization to prevent outliers from bunching the visualization.
+    Calculate agency obligation ratio metrics for scatter plot analysis.
     Args:
         df: DataFrame containing award data
     Returns:
-        DataFrame with agency metrics for ratio analysis
+        List of AgencyRatioMetrics models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
     base_awards = df[df['modification_number'] == '0']
-    agency_counts = base_awards.groupby('parent_award_agency_name').size().reset_index(name='award_count')
-    agency_obligations = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().reset_index()
-    agency_ratio = pd.merge(agency_counts, agency_obligations, on='parent_award_agency_name', how='outer').fillna(0)
+    agency_ratio = base_awards.groupby('parent_award_agency_name').agg(
+        award_count=('parent_award_agency_name', 'count'),
+        federal_action_obligation=('federal_action_obligation', 'sum')
+    ).reset_index()
     agency_ratio['avg_award_value'] = agency_ratio['federal_action_obligation'] / agency_ratio['award_count']
-    agency_ratio['avg_award_value'] = agency_ratio['avg_award_value'].fillna(0)
-    agency_ratio['avg_award_value'] = agency_ratio['avg_award_value'].replace([np.inf, -np.inf], 0)
     agency_ratio['scatter_size'] = np.abs(agency_ratio['avg_award_value'])
     size_cap = agency_ratio['scatter_size'].quantile(0.95)
     agency_ratio['scatter_size'] = agency_ratio['scatter_size'].clip(upper=size_cap)
@@ -229,74 +225,67 @@ def get_agency_obligation_ratio(df):
     agency_ratio['obligation_normalized'] = np.log1p(agency_ratio['federal_action_obligation'])
     agency_ratio['award_count_original'] = agency_ratio['award_count']
     agency_ratio['obligation_original'] = agency_ratio['federal_action_obligation']
-    return agency_ratio
+    return [AgencyRatioMetrics(**row) for row in agency_ratio.to_dict(orient='records')]
 
-def get_contract_vehicles(df):
+def get_contract_vehicles(df: pd.DataFrame) -> list:
     """
     Analyze contract vehicle distribution.
     Args:
         df: DataFrame containing award data
     Returns:
-        DataFrame with contract vehicle distribution
+        List of ContractVehicleSummary models
     """
     if df.empty or 'award_type' not in df.columns:
-        return pd.DataFrame()
+        return []
     vehicle_counts = df[df['modification_number'] == '0'].groupby('award_type').size().reset_index(name='count')
     total = vehicle_counts['count'].sum()
     vehicle_counts['percentage'] = vehicle_counts['count'] / total * 100 if total > 0 else 0.0
-    return vehicle_counts
+    vehicle_counts = vehicle_counts.rename(columns={'award_type': 'contract_vehicle', 'count': 'award_count'})
+    return [ContractVehicleSummary(**row) for row in vehicle_counts.to_dict(orient='records')]
 
-def get_recipient_award_counts(df):
+def get_recipient_award_counts(df: pd.DataFrame) -> list:
     """
     Get award counts by recipient (base awards only).
     Args:
         df: DataFrame containing award data
     Returns:
-        DataFrame with recipient award counts
+        List of RecipientAwardCount models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
     base_awards = df[df['modification_number'] == '0']
     award_counts = base_awards.groupby('recipient_name').size().reset_index(name='award_count')
-    return award_counts
+    award_counts = award_counts.rename(columns={'recipient_name': 'recipient_identifier'})
+    return [RecipientAwardCount(**row) for row in award_counts.to_dict(orient='records')]
 
-def get_recipient_obligations(df):
+def get_recipient_obligations(df: pd.DataFrame) -> list:
     """
     Get total obligations by recipient (all awards including modifications).
     Args:
         df: DataFrame containing award data
     Returns:
-        DataFrame with recipient obligations
+        List of RecipientObligation models
     """
     if df.empty:
-        return pd.DataFrame()
+        return []
     obligations = df.groupby('recipient_name')['federal_action_obligation'].sum().reset_index()
-    return obligations
+    obligations = obligations.rename(columns={'recipient_name': 'recipient_identifier', 'federal_action_obligation': 'total_obligation'})
+    return [RecipientObligation(**row) for row in obligations.to_dict(orient='records')]
 
-def get_expiring_contracts(df, months_ahead=24):
+def get_expiring_contracts(df: pd.DataFrame, months_ahead: int = 24) -> list:
     """
-    Calculate the number of contracts expiring in the specified months ahead.
-
+    Get contracts expiring in the specified months ahead.
     Args:
         df: DataFrame containing award data
         months_ahead: Number of months ahead to check for expiring contracts
-
     Returns:
-        Number of contracts expiring in the given timeframe
+        List of ExpiringContract models
     """
     if df.empty or 'action_date' not in df.columns:
-        return 0
-
-    # Convert action_date to datetime for date calculations
+        return []
     df['action_date'] = pd.to_datetime(df['action_date'])
-
-    # Get today's date
     today = datetime.now().date()
-
-    # Calculate the end date (e.g., 24 months from today)
     end_date = today + pd.Timedelta(days=30.44 * months_ahead)
-
-    # Identify which column to use for contract end date
     perf_end_date_col = None
     possible_cols = [
         'period_of_performance_end_date',
@@ -308,35 +297,42 @@ def get_expiring_contracts(df, months_ahead=24):
         if col in df.columns:
             perf_end_date_col = col
             break
-
-    # Normalize modification_number for base award identification
     df['modification_number'] = df['modification_number'].astype(str).str.strip().str.lower()
     base_patterns = ['^0+$', '^none$', '^$', '^original$', '^base$']
     df['is_base_award'] = df['modification_number'].str.match('|'.join(base_patterns))
-
-    # Filter for base awards only
     base_awards = df[df['is_base_award'] == True]
-
-    # If a valid end date column exists, use it for expiration calculation
     if perf_end_date_col:
-        # Convert end date column to datetime
         base_awards[perf_end_date_col] = pd.to_datetime(base_awards[perf_end_date_col], errors='coerce')
-
-        # Filter for contracts expiring within the window
         future_expiring = base_awards[
             (base_awards[perf_end_date_col] <= pd.Timestamp(end_date)) &
             (base_awards[perf_end_date_col] > pd.Timestamp(today))
         ]
+        contracts = []
+        for _, row in future_expiring.iterrows():
+            contracts.append(ExpiringContract(
+                contract_award_unique_key=row.get('award_id_piid', ''),
+                recipient_name=row.get('recipient_name'),
+                period_of_performance_current_end_date=row[perf_end_date_col].date() if pd.notnull(row[perf_end_date_col]) else None,
+                potential_total_value_of_award=row.get('potential_total_value_of_award'),
+                days_to_expiration=(row[perf_end_date_col].date() - today).days if pd.notnull(row[perf_end_date_col]) else None
+            ))
+        return contracts
     else:
-        # Fallback: estimate end date as action_date + 1 year
         estimated_end_date = base_awards['action_date'] + pd.DateOffset(years=1)
         future_expiring = base_awards[
             (estimated_end_date <= pd.Timestamp(end_date)) &
             (estimated_end_date > pd.Timestamp(today))
         ]
-
-    # Return the number of expiring contracts
-    return len(future_expiring)
+        contracts = []
+        for _, row in future_expiring.iterrows():
+            contracts.append(ExpiringContract(
+                contract_award_unique_key=row.get('award_id_piid', ''),
+                recipient_name=row.get('recipient_name'),
+                period_of_performance_current_end_date=(row['action_date'] + pd.DateOffset(years=1)).date(),
+                potential_total_value_of_award=row.get('potential_total_value_of_award'),
+                days_to_expiration=((row['action_date'] + pd.DateOffset(years=1)).date() - today).days
+            ))
+        return contracts
 
 def format_value(value, is_currency=False):
     """
