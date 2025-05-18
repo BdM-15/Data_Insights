@@ -8,7 +8,7 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 
 ### Features
 
-- **Dynamic Filtering**: Filter contract data by date range, agency, contractor, NAICS/PSC codes, contract type, extent competed, and set-aside type.
+- **Dynamic Filtering**: Filter contract data by date range, agency, contractor, NAICS/PSC codes, contract type, extent competed, and set-aside type. All filter logic is now centralized in `src/frontend/components/filters.py` for maintainability and robust state management. The Clear Filters button now fully resets the dashboard to its default state.
 - **Interactive DataFrame**: Display query results (top 100 rows) with formatted monetary columns and a CSV download option.
 - **Visualizations**:
   - Expandable sections for all visualizations, providing a cleaner interface
@@ -17,14 +17,18 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Top recipients by total awards made and obligation amount
   - Top NAICS codes by award actions and obligation amount
   - Top funding offices, sub-agencies, and awarding agencies statistics
-- **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations.
-- **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights.
-- **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making.
+  - **Consistent, human-readable heatmaps and improved axis labeling**
+  - **All charts use THEME colors and formatting from `src/frontend/styles/theme.py`**
+- **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations. Layout and chart rendering are optimized for large datasets and fast UI response.
+- **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights. Scaffolding for additional connectors is in place.
+- **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making. Scaffolding for local LLM and MCP agent integration is in place.
 - **Full USAspending.gov Database**: Direct access to the complete USAspending.gov database (1.1TB) through a dedicated PostgreSQL instance on port 5433.
+- **Modularized UI and Backend**: All business/data logic is in backend modules, and the frontend is UI-only. Layout, filter, and visualization components are fully modular and reusable.
+- **Logging and Diagnostics**: File-based logging and robust sidebar diagnostics are implemented for traceability and debugging.
 
 ### Project Structure
 
-The project has been reorganized to follow a modular approach for better code organization and maintainability:
+The project has been reorganized to follow a modular approach for better code organization, maintainability, and AI extensibility:
 
 ```
 Data_Insights/
@@ -38,7 +42,7 @@ Data_Insights/
 ├── logs/                         # Log files
 ├── tests/                        # Unit tests
 └── src/                          # Source code
-    ├── backend/                  # Backend functionality
+    ├── backend/                  # Backend functionality (all business/data logic)
     │   ├── core/                 # Core backend functionality
     │   │   ├── database.py       # Database connection and utilities
     │   │   ├── maintenance.py    # Database maintenance utilities
@@ -53,14 +57,17 @@ Data_Insights/
     │   │   ├── nato_nspa.py      # NATO NSPA data acquisition
     │   │   ├── usaspending.py    # USAspending.gov current data
     │   │   └── usaspending_historical.py # USAspending.gov historical data
-    │   └── ai/                   # AI integration
-    │       └── mcp/              # Model Context Protocol integration
-    └── frontend/                 # Frontend UI functionality
+    │   └── ai/                   # AI integration and agent scaffolding
+    │       └── mcp/              # Model Context Protocol (MCP) agent integration (web intelligence, doc gen, etc.)
+    └── frontend/                 # Frontend UI functionality (UI-only, all business logic in backend)
         ├── pages/                # Streamlit multipage components
-        ├── components/           # Reusable UI components
-        ├── visualizations/       # Visualization components
-        └── capture/              # Capture management features
+        ├── components/           # Reusable UI components (filters, layout, cards, etc.)
+        ├── visualizations/       # Visualization/chart modules (heatmaps, comparison charts, etc.)
+        ├── styles/               # Theme and CSS logic (THEME colors, formatting)
+        └── capture/              # Capture management and profile generation (AI-powered scaffolding)
 ```
+
+All new features, modularization, and AI scaffolding are documented in the relevant docs (see `MODULARIZATION_AND_AI_PLAN.md`, `PLANNING.md`, `TASKS.md`, and `strategic_dashboard_implementation.md`).
 
 ### Module Descriptions
 

@@ -1,5 +1,21 @@
 # PLANNING.md
 
+## Table of Contents
+
+1. [Purpose](#purpose)
+2. [High-Level Vision](#high-level-vision)
+3. [Architecture](#architecture)
+4. [Tech Stack & Tools](#tech-stack--tools)
+5. [Database Optimization](#database-optimization)
+6. [User Interface & UX Enhancements](#user-interface--ux-enhancements)
+7. [AI/ML & Agent Integration](#aiml--agent-integration)
+8. [Opportunity Research & Capture Workflow](#opportunity-research--capture-workflow)
+9. [Company & Competitor Capabilities Modeling](#company--competitor-capabilities-modeling)
+10. [Planned Features & Improvements](#planned-features--improvements)
+11. [Implementation Status & Roadmap](#implementation-status--roadmap)
+
+---
+
 ## Purpose
 
 The **USAspending.gov Data Explorer** is a Streamlit-based web application designed to help users explore, filter, and visualize government spending data from the USAspending.gov dataset. The app aims to provide actionable insights for business development, competitive analysis, and opportunity identification by allowing users to query contract data, view spending trends, and identify expiring contracts.
@@ -69,13 +85,9 @@ Data_Insights/
 - **External Data Sources**: API integrations with SAM.gov, SBA's SubNet, GovWin IQ, Bloomberg Government, and potential Salesforce REST API for CRM integration.
 - **AI Agent Platform**: Microsoft VSCode Toolkit for Model Context Protocol (MCP) integration to build and deploy local AI tools.
 
-## Constraints
+## Tech Stack & Tools
 
-- **Privacy**: All processing must be local to handle private information securely. No external API calls for AI or data processing.
-- **Hardware**: The app must run on the user’s system with 64GB RAM, a NVIDIA GTX 4060 GPU, and CUDA installed for local LLM inference.
-- **Performance**: Optimize database queries and data loading to handle large datasets and create visuals efficiently. Please feel free to recommend other libraries, UIs, databases, that can be used to increase performance.
-
-## Tech Stack
+### Tech Stack
 
 - **Python Libraries** (as per `requirements.txt`):
   - `streamlit`: For the web interface.
@@ -88,7 +100,7 @@ Data_Insights/
 - **Database**: PostgreSQL (migrated from SQLite) for improved performance with large datasets.
 - **Hardware**: GTX 4060 with CUDA for GPU-accelerated LLM inference.
 
-## Tools
+### Tools
 
 - **Development**: Python 3.x, Visual Studio Code (or similar IDE).
 - **Version Control**: Git (repository at `C:\GitHub\Opp_Sem_Search`).
@@ -104,7 +116,457 @@ Data_Insights/
   - Visualization Tool: AI-enhanced tool for generating insightful visualizations of contract data
   - Analysis and Reasoning Tool: AI agent to perform complex analysis on multi-source government contract data
 
-## Planned Features
+## Database Optimization
+
+- **Database Migration**:
+  - Migrated from SQLite to PostgreSQL for improved performance with large datasets
+  - Optimized PostgreSQL configuration for high-performance queries
+- **Data Cleansing Optimizations**:
+  - Dramatically improved data cleansing performance using direct SQL transformations
+  - Reduced processing time from 3.5+ hours to under 12 minutes for 22 million records
+  - Achieved processing speeds of ~29,000 rows per second
+  - Eliminated Python overhead by performing transformations directly in PostgreSQL
+  - Removed 3.6 million duplicate records (16.58% of the original data)
+  - Implemented proper type handling and data normalization in a single SQL operation
+- **SAM.gov Integration Improvements**:
+  - Implemented robust rate limiting with exponential backoff for API requests
+  - Added automatic retry mechanism with configurable maximum retries
+  - Enhanced error handling for rate limit, connection, and general errors
+  - Created detailed logging system with timestamps for troubleshooting
+  - Implemented daily request quota tracking to manage API usage limits
+  - Added cache invalidation and session refresh mechanisms
+  - Successfully enabled fetching of future opportunity data from SAM.gov, a critical step toward our vision of combining historical contract data with upcoming opportunities
+  - Established a foundation for the integrated data environment that will power capture management workflows
+  - Resolved HTTP 429 "Too Many Requests" errors with intelligent backoff strategy
+- **External Data Source Schema Handling Improvements**:
+  - Implemented automated schema migration system for external data sources
+  - Created dynamic schema detection that identifies new fields in data sources
+  - Added ability to automatically evolve database tables when source data formats change
+  - Preserved exact field names and formats from original data sources (XML, CSV, JSON)
+  - Implemented case-insensitive column matching to prevent field duplication
+  - Eliminated need for manual table deletion when data formats change
+  - Added automated logging of schema changes for tracking source data evolution
+  - Applied to NATO NSPA data source with immediate reliability improvements
+  - Prepared foundation for seamless integration of future data sources
+- **PostgreSQL Tables**:
+  - `usaprime_cleaned`: Main table with contract data
+  - `filter_values_*`: Precomputed filter values for each column
+  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency)
+  - `quarterly_data`: Pre-aggregated data for visualizations
+- **Indexes**:
+  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`
+  - Composite index: `idx_filter_composite` on frequently filtered columns
+  - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+
+## User Interface & UX Enhancements
+
+### Multipage Application Structure
+
+- **Implement Streamlit Multipage Framework**:
+
+  - Leverage Streamlit's built-in multipage functionality by organizing content into distinct pages
+  - Create a dedicated `pages/` directory to house separate Python scripts for each section
+  - Support automatic sidebar navigation between application sections
+  - Ensure consistent styling and navigation experience across pages
+
+- **Logical Page Organization**:
+  - **Home/Dashboard**: Strategic overview dashboard with key metrics and insights
+  - **Data Explorer**: Advanced filtering and detailed contract data exploration
+  - **Visualizations**: Comprehensive visualization library with interactive elements
+  - **Capture Profiles**: Interface for generating and customizing capture profiles
+  - **AI Tools**: Access to AI-powered features via Model Context Protocol integration
+  - **Admin**: Administrative tools for data refresh and system maintenance (restricted access)
+
+### Tabbed Interface Components
+
+- **Implement Tabbed Content Organization**:
+
+  - Use `st.tabs` to organize related content within each page
+  - Apply consistent tab naming and organization patterns across the application
+  - Maintain optimal number of tabs per page (3-5) to prevent overwhelming users
+
+- **Strategic Tab Implementation**:
+  - **Visualization Tabs**: Separate different visualization types (timelines, charts, maps)
+  - **Analysis Tabs**: Group different analytical perspectives (financial, competitive, historical)
+  - **Configuration Tabs**: Organize advanced settings and customization options
+  - **Results Tabs**: Present query results in different formats (table, summary, dashboard)
+
+### Advanced Streamlit Features
+
+- **Session State Management**:
+
+  - Implement `st.session_state` to persist user selections between interactions
+  - Create memory-efficient caching for expensive data operations
+  - Enable cross-page data sharing while maintaining clean code separation
+
+- **Interactive Elements**:
+
+  - Add interactive callbacks for dynamic content updates without full page refreshes
+  - Implement progressive disclosure patterns for complex functionality
+  - Use tooltips and contextual help elements to improve usability
+
+- **Performance Optimizations**:
+
+  - Apply `@st.cache_data` and `@st.cache_resource` decorators for efficient data loading
+  - Implement lazy loading patterns for computationally expensive visualizations
+  - Optimize layout to minimize recomputation during user interaction
+
+- **Visual Enhancements**:
+  - Create custom header and footer components for consistent branding
+  - Implement animations for state changes and transitions
+  - Use consistent color schemes and visual hierarchy to improve information processing
+
+## AI/ML & Agent Integration
+
+### AI Integration Strategies
+
+#### PydanticAI Implementation Strategy
+
+PydanticAI provides a type-safe agent framework for building production-grade AI applications. The following implementation strategy will ensure successful integration with our Data_Insights project:
+
+##### Phase 1: Core Foundation
+
+1. **Core Domain Models**:
+
+   - Define Pydantic models for key federal contract entities
+   - Implement models for awards, agencies, opportunities, and contracts
+   - Create validation rules specific to federal contracting data
+   - Design specialized validators for monetary values, NAICS codes, and agency identifiers
+
+2. **Simple Analysis Agent**:
+
+   - Build a basic contract analysis agent as proof of concept
+   - Connect to Ollama for local LLM inference
+   - Implement structured response validation
+   - Test with sample contract data queries
+   - Measure performance and accuracy metrics
+
+3. **Database Integration**:
+   - Implement dependency injection for PostgreSQL database context
+   - Create data providers for USAspending database
+   - Design caching mechanisms for expensive database operations
+   - Build type-safe query result mappers to Pydantic models
+   - Implement transaction management for agent operations
+
+##### Phase 2: MCP Tool Integration
+
+4. **Capability Identifier Tool**:
+
+   - Define structured output models for capability identification
+   - Implement competitor capability modeling
+   - Create gap analysis schema with validated outputs
+   - Design structured competitiveness assessment metrics
+   - Build win probability estimation models
+
+5. **Document Creator Agent**:
+
+   - Develop document schema models for different output types
+   - Implement structured section generators
+   - Create validation for narrative sections
+   - Design templating system with typed parameters
+   - Build export validation for different formats
+
+6. **Web Intelligence Scraper**:
+
+   - Design models for intelligence sources and findings
+   - Implement entity detection with validation
+   - Create structured intelligence digest schema
+   - Build search result validation models
+   - Develop models for competitive intelligence analysis
+
+7. **Visualization Tool Enhancement**:
+   - Implement chart configuration models
+   - Create visualization recommendation schemas
+   - Design data validation for visualization inputs
+   - Build query-to-visualization converter models
+   - Implement annotation and metadata schemas
+
+##### Phase 3: Advanced Features
+
+8. **Agent Composition**:
+
+   - Implement modular agent design with composition patterns
+   - Create agent pipelines with validated intermediate outputs
+   - Design typed communication protocols between agent components
+   - Build testing framework for agent interactions
+   - Implement error handling and recovery strategies
+
+9. **Domain-Specific Models**:
+
+   - Create structured models for opportunity qualification
+   - Implement capture planning document schemas
+   - Design competitive analysis report structures
+   - Build price-to-win models with structured components
+   - Develop proposal strategy recommendation schemas
+
+10. **Integration with Langfuse**:
+    - Implement tracing for structured outputs
+    - Create evaluation metrics based on model validation
+    - Design test datasets for agent validation
+    - Build performance dashboards using structure definitions
+    - Implement A/B testing framework for model variants
+
+#### Implementation Guidelines
+
+1. **Start Small**: Begin with core models and a simple agent to test the integration framework
+2. **Incremental Adoption**: Gradually incorporate PydanticAI into each MCP tool
+3. **Type Safety First**: Leverage Python type hints throughout the implementation
+4. **Test-Driven Development**: Create comprehensive tests for all models and agents
+5. **Consistent Patterns**: Establish standard patterns for dependency injection and error handling
+6. **Documentation**: Document all models and their validation rules for future reference
+
+This implementation strategy aligns with the project's focus on local processing, strong validation, and domain-specific AI capabilities for federal contract analysis.
+
+### AI/ML Training and Integration Plan
+
+#### Training AI on USAspending.gov Data
+
+To maximize the value of the USAspending.gov database, we will train local AI and machine learning models directly on the cleansed and transformed contract data stored in PostgreSQL. This approach ensures all sensitive data remains on-premises, in line with project privacy requirements.
+
+##### Local AI/LLM Fine-Tuning
+
+- Fine-tune local large language models (LLMs) such as Llama2 or Mistral using contract text, award narratives, and historical outcomes.
+- Use Ollama to run and fine-tune models on the user's hardware (GTX 4060 with CUDA), enabling:
+  - More accurate, context-aware contract analysis and summarization
+  - Generation of tailored capture profile narratives and win strategies
+  - Improved natural language query support for the dashboard
+- All training and inference will be performed locally, with no external API calls.
+
+##### Machine Learning Integration
+
+- Develop classical ML models (e.g., scikit-learn, XGBoost, LightGBM) for:
+  - Predicting contract win probability (PWin) based on historical award data
+  - Forecasting spending trends and contract expirations
+  - Clustering contracts/agencies for market segmentation
+  - Anomaly detection to flag unusual contract activity or data quality issues
+- Integrate these models into backend processors for real-time analytics and dashboard visualizations.
+- Enable users to run ML-powered analyses (e.g., "Show me likely expiring contracts" or "Cluster similar opportunities") via the Streamlit UI.
+
+##### Example Use Cases
+
+- AI-generated executive summaries for selected contracts
+- Automated classification of contract types, agencies, or recipients
+- Predictive analytics for opportunity qualification and pipeline management
+- Outlier detection for compliance and risk analysis
+- Interactive, ML-driven visualizations (e.g., clustering, trend forecasting)
+
+##### Implementation Roadmap
+
+- Phase 1: Prepare and document training datasets from the PostgreSQL database
+- Phase 2: Fine-tune LLMs and train ML models locally; validate outputs
+- Phase 3: Integrate models into backend processors and Streamlit UI
+- Phase 4: Expand AI/ML features based on user feedback and new data sources
+
+This plan will be documented and tracked in MODULARIZATION_AND_AI_PLAN.md and referenced in TASKS.md and README.md as features are implemented.
+
+### MCP Tools Integration for Streamlit App
+
+- **Create dedicated "AI Tools" tab with multi-tab interface in Streamlit**
+- **Add conversational AI assistant embedded in the Streamlit sidebar**
+- **Implement capture profile generation UI with customization options**
+- **Create web intelligence dashboard for market intelligence gathering**
+- **Add AI-assisted visualization recommendation engine**
+- **Implement natural language query-to-visualization converter**
+
+## Opportunity Research & Capture Workflow
+
+### Overview
+
+The user journey is designed to start broad and progressively narrow down to actionable intelligence and capture profile generation:
+
+1. **Market Overview**: Users begin with a high-level dashboard showing overall government spending, top agencies, NAICS/PSC codes, and expiring contracts.
+2. **Future Opportunities**: Users identify upcoming opportunities (e.g., from SAM.gov, NATO NSPA) and expiring contracts. The main table allows row selection (using AgGrid) for one or more opportunities.
+3. **Drilldown to Agency Intelligence**: Selecting a contract row in "Future Opportunities" triggers downstream tabs (Agency Intelligence, Competitor Analysis, etc.) to focus on the selected opportunity's context (agency, NAICS, etc.), using robust Pydantic models for data flow and validation.
+4. **Competitor & Market Analysis**: Users can further explore competitive landscape, teaming, and historical performance for the selected agency or opportunity.
+5. **Capture Profile Generation**: For any selected opportunity, users can generate a detailed capture profile (Word document) with AI-generated narrative, visuals, and recommendations.
+
+### Technical/UX Implementation
+
+- **Tab Coordination**: When a user selects a row in "Future Opportunities," the selected contract's details (as a Pydantic model) are passed to downstream tabs (Agency Intelligence, Competitor Analysis, etc.) via session state.
+- **Contextual Tabs**: Downstream tabs auto-focus on the selected opportunity/agency, hiding or disabling their own selectors if context is set.
+- **Pydantic Models**: All opportunity, agency, and contract data passed between tabs uses strict Pydantic models for type safety and extensibility.
+- **Capture Profile Button**: Each opportunity row includes a "Generate Capture Profile" button, which triggers the document creation workflow.
+
+### Visual Workflow (MCP + Mermaid/Sankey)
+
+- **Model Context Protocol (MCP)**: Plan to use MCP for orchestrating AI agents (web scraping, document creation, visualization, analysis) and for diagramming workflows.
+- **Mermaid/Sankey Diagrams**: Will use Mermaid (and possibly Sankey diagrams) to visually represent the user workflow and data flow between dashboard components and AI agents. This will help with both documentation and future automation/orchestration.
+
+#### Example Mermaid Sankey Diagram (planned):
+
+```mermaid
+sankey-beta
+Market Overview,Future Opportunities,100
+Future Opportunities,Agency Intelligence,80
+Agency Intelligence,Competitor Analysis,60
+Agency Intelligence,Capture Profile Generation,40
+```
+
+### Next Steps
+
+- Implement session state and tab coordination for opportunity selection and downstream context.
+- Integrate Pydantic models for all inter-tab data flow.
+- Prototype Mermaid/Sankey diagram generation for workflow documentation and orchestration.
+- Plan for MCP-based agent orchestration for future automation.
+
+## Company & Competitor Capabilities Modeling
+
+### Capabilities Assessment Tab (Planned)
+
+- **Purpose:** Establish a structured, queryable foundation of your company's (KBR and subsidiaries) capabilities, awards, and business model for use in all downstream research, gap analysis, and AI-driven workflows.
+- **Data Sources:**
+  - USAspending.gov: All prime awards and subcontracts for KBR (parent and all subsidiary UEIs)
+  - Data elements: price/cost, transaction/parent descriptions, NAICS/PSC codes and descriptions
+  - Web crawl: Company websites to extract business model, capabilities, and service areas
+  - Social media: X.com (Twitter) posts for recent news, positioning, and partnerships
+  - BloombergGov API: Additional company intelligence and market positioning
+- **AI/Agent Workflow:**
+  - All data is processed through the Prime AI Agent, which orchestrates MCP tools and other AI agents for web crawling, semantic search, and summarization.
+  - Extracted data is used to generate key words/phrases for semantic search and future competitor research.
+
+### Initial Company Capabilities Pull
+
+- **Purpose:** Establish a structured, queryable foundation of your company's (KBR and subsidiaries) capabilities, awards, and business model for use in all downstream research, gap analysis, and AI-driven workflows.
+- **Data Sources:**
+  - USAspending.gov: All prime awards and subcontracts for KBR (parent and all subsidiary UEIs)
+  - Data elements: price/cost, transaction/parent descriptions, NAICS/PSC codes and descriptions
+  - Web crawl: Company websites to extract business model, capabilities, and service areas
+  - Social media: X.com (Twitter) posts for recent news, positioning, and partnerships
+  - BloombergGov API: Additional company intelligence and market positioning
+- **AI/Agent Workflow:**
+  - All data is processed through the Prime AI Agent, which orchestrates MCP tools and other AI agents for web crawling, semantic search, and summarization.
+  - Extracted data is used to generate key words/phrases for semantic search and future competitor research.
+
+### Storage Format Recommendation
+
+- **JSON is recommended** for storing company capabilities in PostgreSQL:
+  - Supports structured, nested data (e.g., capabilities, awards, relationships, news, etc.)
+  - Enables efficient querying, filtering, and updating (using PostgreSQL's JSONB features)
+  - Easily extensible for new data fields and future AI-driven enrichment
+  - Markdown is best for human-readable reports, but not for structured, programmatic access
+- **Workflow:**
+  - Store the canonical company capabilities profile as a JSONB column in a dedicated table (e.g., `company_capabilities`)
+  - Optionally, generate markdown or Word/PDF reports from the JSON for human consumption
+
+### Suggestions & Best Practices
+
+- Use a Pydantic model to define the schema for company capabilities (and competitor profiles) to ensure type safety and extensibility
+- Build a pipeline to periodically refresh company capabilities from all sources (scheduled or on-demand)
+- Use the same pipeline and schema for competitor research, enabling direct comparison and gap analysis
+- Leverage AI agents for entity resolution (matching subsidiaries, UEIs, etc.) and for extracting/normalizing capabilities from unstructured sources
+- Store provenance/metadata for each data element (source, date, confidence, etc.)
+- Use semantic search embeddings (e.g., via local LLM) to enable fast, relevant retrieval of capabilities and news
+
+### Company & Competitor Capabilities Data Model and Storage Plan (2025)
+
+#### Pydantic Model Scaffold
+
+```python
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
+from datetime import date
+
+class SubcontractorRelationship(BaseModel):
+    name: str
+    uei: Optional[str]
+    relationship_type: Optional[str]  # e.g., "JV", "Sub", "Mentor-Protégé"
+    start_date: Optional[date]
+    end_date: Optional[date]
+    description: Optional[str]
+
+class AwardSummary(BaseModel):
+    award_id: str
+    agency: str
+    naics_code: str
+    psc_code: Optional[str]
+    description: Optional[str]
+    value: float
+    start_date: Optional[date]
+    end_date: Optional[date]
+    is_prime: bool
+
+class NewsItem(BaseModel):
+    title: str
+    url: Optional[str]
+    date: Optional[date]
+    summary: Optional[str]
+    source: Optional[str]
+
+class CapabilityKeyword(BaseModel):
+    keyword: str
+    weight: Optional[float] = 1.0  # For semantic search
+
+class CompanyCapabilitiesProfile(BaseModel):
+    company_name: str
+    parent_uei: str
+    subsidiary_ueis: List[str] = []
+    business_model: Optional[str]
+    core_capabilities: List[str]
+    naics_codes: List[str]
+    psc_codes: List[str]
+    awards: List[AwardSummary]
+    subcontractors: List[SubcontractorRelationship]
+    news: List[NewsItem]
+    capability_keywords: List[CapabilityKeyword]
+    last_updated: date
+    provenance: Optional[Dict[str, str]] = None  # e.g., {"awards": "usaspending.gov", ...}
+```
+
+#### Sample JSON Schema
+
+See the previous answer for a full sample. This is the structure that will be stored in the database.
+
+#### PostgreSQL Table Design & Storage Best Practices
+
+- **One company per row**: Each company (KBR, or a competitor) gets one row in the table.
+- **JSONB column**: All structured data (capabilities, awards, news, etc.) is stored in a single `profile` column of type `jsonb`.
+- **Relational columns**: Add a few regular columns for fast lookup and filtering, e.g.:
+  - `company_name` (text)
+  - `parent_uei` (text)
+  - `last_updated` (date)
+- **Table example:**
+
+```sql
+CREATE TABLE company_capabilities (
+  id SERIAL PRIMARY KEY,
+  company_name TEXT,
+  parent_uei TEXT,
+  profile JSONB,
+  last_updated DATE
+);
+```
+
+- **Indexing**: Use a GIN index on the `profile` column for fast JSONB search:
+
+```sql
+CREATE INDEX idx_company_profile ON company_capabilities USING GIN (profile);
+```
+
+- **Querying**: You can query inside the JSONB, e.g.:
+
+```sql
+SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
+```
+
+- **Segmentation**: For most use cases, keep all company data in the `profile` JSONB column. If you have very large arrays (e.g., thousands of awards), you can later move those to a separate table, but this is rarely needed at first.
+
+#### Competitor Analysis Schema
+
+- You can use the **same table and schema** for both your company and competitors. Just add a column like `is_competitor BOOLEAN` or a `profile_type` column (e.g., 'company', 'competitor') if you want to distinguish them.
+- If you expect to store a very large number of competitors or want to keep them separate, you can create a second table (e.g., `competitor_capabilities`) with the same structure.
+- **Recommendation:** Start with a single table for both, and only split if you run into performance or organizational issues.
+
+#### Simple Explanation
+
+- **One row = one company or competitor.**
+- **All structured data (capabilities, awards, news, etc.) is stored as a single JSON object in the `profile` column.**
+- **You can add regular columns for fast search (e.g., company name, UEI).**
+- **PostgreSQL's JSONB type is designed for this use case and is very efficient for both storage and querying.**
+- **If you ever need to split out a large sub-object (like awards), you can do so later without changing the rest of your design.**
+
+## Planned Features & Improvements
+
+### Planned Features
 
 - **Strategic Default Dashboard**:
 
@@ -207,116 +669,18 @@ Data_Insights/
   - Integrate competition intensity metrics into opportunity qualification scoring
   - Create specialized visualizations showing competitive density across federal market segments
 
-## Potential Improvements
+### Potential Improvements
 
 - Add pagination or lazy loading to the DataFrame to handle large datasets more efficiently.
 - Enhance visualizations with interactive features (e.g., tooltips, drill-downs).
 - Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
 - Optimize database queries further if performance issues arise with larger datasets.
 
-## User Interface Enhancements
+## Implementation Status & Roadmap
 
-### Multipage Application Structure
+### Implementation Status
 
-- **Implement Streamlit Multipage Framework**:
-
-  - Leverage Streamlit's built-in multipage functionality by organizing content into distinct pages
-  - Create a dedicated `pages/` directory to house separate Python scripts for each section
-  - Support automatic sidebar navigation between application sections
-  - Ensure consistent styling and navigation experience across pages
-
-- **Logical Page Organization**:
-  - **Home/Dashboard**: Strategic overview dashboard with key metrics and insights
-  - **Data Explorer**: Advanced filtering and detailed contract data exploration
-  - **Visualizations**: Comprehensive visualization library with interactive elements
-  - **Capture Profiles**: Interface for generating and customizing capture profiles
-  - **AI Tools**: Access to AI-powered features via Model Context Protocol integration
-  - **Admin**: Administrative tools for data refresh and system maintenance (restricted access)
-
-### Tabbed Interface Components
-
-- **Implement Tabbed Content Organization**:
-
-  - Use `st.tabs` to organize related content within each page
-  - Apply consistent tab naming and organization patterns across the application
-  - Maintain optimal number of tabs per page (3-5) to prevent overwhelming users
-
-- **Strategic Tab Implementation**:
-  - **Visualization Tabs**: Separate different visualization types (timelines, charts, maps)
-  - **Analysis Tabs**: Group different analytical perspectives (financial, competitive, historical)
-  - **Configuration Tabs**: Organize advanced settings and customization options
-  - **Results Tabs**: Present query results in different formats (table, summary, dashboard)
-
-### Advanced Streamlit Features
-
-- **Session State Management**:
-
-  - Implement `st.session_state` to persist user selections between interactions
-  - Create memory-efficient caching for expensive data operations
-  - Enable cross-page data sharing while maintaining clean code separation
-
-- **Interactive Elements**:
-
-  - Add interactive callbacks for dynamic content updates without full page refreshes
-  - Implement progressive disclosure patterns for complex functionality
-  - Use tooltips and contextual help elements to improve usability
-
-- **Performance Optimizations**:
-
-  - Apply `@st.cache_data` and `@st.cache_resource` decorators for efficient data loading
-  - Implement lazy loading patterns for computationally expensive visualizations
-  - Optimize layout to minimize recomputation during user interaction
-
-- **Visual Enhancements**:
-  - Create custom header and footer components for consistent branding
-  - Implement animations for state changes and transitions
-  - Use consistent color schemes and visual hierarchy to improve information processing
-
-## Database Optimization
-
-- **Database Migration**:
-  - Migrated from SQLite to PostgreSQL for improved performance with large datasets
-  - Optimized PostgreSQL configuration for high-performance queries
-- **Data Cleansing Optimizations**:
-  - Dramatically improved data cleansing performance using direct SQL transformations
-  - Reduced processing time from 3.5+ hours to under 12 minutes for 22 million records
-  - Achieved processing speeds of ~29,000 rows per second
-  - Eliminated Python overhead by performing transformations directly in PostgreSQL
-  - Removed 3.6 million duplicate records (16.58% of the original data)
-  - Implemented proper type handling and data normalization in a single SQL operation
-- **SAM.gov Integration Improvements**:
-  - Implemented robust rate limiting with exponential backoff for API requests
-  - Added automatic retry mechanism with configurable maximum retries
-  - Enhanced error handling for rate limit, connection, and general errors
-  - Created detailed logging system with timestamps for troubleshooting
-  - Implemented daily request quota tracking to manage API usage limits
-  - Added cache invalidation and session refresh mechanisms
-  - Successfully enabled fetching of future opportunity data from SAM.gov, a critical step toward our vision of combining historical contract data with upcoming opportunities
-  - Established a foundation for the integrated data environment that will power capture management workflows
-  - Resolved HTTP 429 "Too Many Requests" errors with intelligent backoff strategy
-- **External Data Source Schema Handling Improvements**:
-  - Implemented automated schema migration system for external data sources
-  - Created dynamic schema detection that identifies new fields in data sources
-  - Added ability to automatically evolve database tables when source data formats change
-  - Preserved exact field names and formats from original data sources (XML, CSV, JSON)
-  - Implemented case-insensitive column matching to prevent field duplication
-  - Eliminated need for manual table deletion when data formats change
-  - Added automated logging of schema changes for tracking source data evolution
-  - Applied to NATO NSPA data source with immediate reliability improvements
-  - Prepared foundation for seamless integration of future data sources
-- **PostgreSQL Tables**:
-  - `usaprime_cleaned`: Main table with contract data
-  - `filter_values_*`: Precomputed filter values for each column
-  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency)
-  - `quarterly_data`: Pre-aggregated data for visualizations
-- **Indexes**:
-  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`
-  - Composite index: `idx_filter_composite` on frequently filtered columns
-  - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
-
-## Implementation Status
-
-### Completed Features
+#### Completed Features
 
 - ✅ **Application Architecture**: Modular structure with clear separation of concerns
 - ✅ **PostgreSQL Integration**: Connection, queries, and data management
@@ -324,231 +688,99 @@ Data_Insights/
 - ✅ **Dashboard**: Strategic overview with metrics and charts
 - ✅ **Tabbed Interface**: Content organization with tabs for different views
 - ✅ **Multipage Structure**: Navigation between dedicated application pages
+- ✅ **Centralized Theme and CSS**: All theme colors and CSS are now centralized in `src/frontend/styles/theme.py` and `custom_css.py`.
+- ✅ **Reusable Visualization Components**: All chart and metric logic is modularized under `src/frontend/visualizations/charts/` and `components/`.
+- ✅ **Centralized Filter Logic**: All filter UI and logic are now in `src/frontend/components/filters.py`, supporting robust filter state management and a reliable Clear Filters button.
+- ✅ **Layout Component Library**: Standardized grid, card, and sidebar layouts are now implemented in `src/frontend/components/layouts/grid.py` and used throughout the dashboard for consistent UI structure.
+- ✅ **Pydantic Model Integration**: All backend processor functions now return lists of Pydantic models for major data flows, and the frontend/tab code has been refactored to consume these models.
+- ✅ **Logging and Diagnostics**: File-based logging and robust sidebar diagnostics are implemented for traceability and debugging.
 
-### In Progress
+#### In Progress
 
-- 🔄 **Advanced Filtering**: Enhanced data filtering capabilities
+- 🔄 **Advanced Filtering**: Enhanced data filtering capabilities (multi-select, keyword search, competition intensity)
 - 🔄 **Export Functionality**: CSV and Excel export for data tables
+- 🔄 **AI Integration**: Local LLM inference with Ollama, MCP agent scaffolding, and capture profile generator UI
 
-### Pending
+#### Pending
 
-- ⏱️ **AI Integration**: Local LLM inference with Ollama
 - ⏱️ **Capture Profile Generation**: AI-assisted document creation
 - ⏱️ **External Data Integration**: SAM.gov and other data sources
+- ⏱️ **Full MCP/AI Agent Integration**: Web intelligence, document creation, visualization, and analysis tools
 
-## Architecture Updates
+### Next Steps
 
-### Streamlit Multipage Implementation
-
-The application now follows a modular structure with:
-
-- **Root Level**:
-
-  - `app.py`: Main entry point and home dashboard
-  - `config.py`: Centralized configuration management
-  - `.env`: Environment-specific configuration
-
-- **Source Code Structure**:
-  - `src/backend/core`: Core utilities for database and processing
-  - `src/frontend/pages`: Individual page implementations
-  - `src/frontend/components`: Reusable UI components
-  - `src/frontend/visualizations`: Chart generation functions
-
-### Component Organization
-
-- **Database Layer**: Abstracted through utility functions in `database.py`
-- **Configuration**: Environment variables centralized in `config.py`
-- **UI Components**: Modular components for filters, charts, and data display
-- **Visualization**: Dedicated functions for creating different chart types
-
-## Data Architecture
-
-### Data Sources
-
-- **Primary Data Sources**:
-
-  - **USAspending.gov API**: Historical contract award data
-  - **USAspending.gov Bulk Download**: Large-scale historical data
-
-- Complete PostgreSQL database (1.1TB) hosted on port 5433
-
-  - Direct access to all USAspending.gov tables and views
-  - Optimized for performance with custom PostgreSQL configuration
-  - **SAM.gov API**: Active and future opportunities
-  - **NATO NSPA XML Feed**: European procurement opportunities
-  - **Small Business Administration (SBA) SubNet**: Subcontracting opportunities
-  - **Federal Procurement Data System (FPDS)**: Additional contract data
-  - **GovWin IQ API**: Pre-RFP intelligence and teaming opportunities
-  - **Bloomberg Government API**: Agency spending trends and legislative tracking
-  - **ILOSTAT Database API**: International Labour Organization's central repository of labor statistics for global wage rate analysis
-  - **Data.gov Contract-Awarded Labor Category API**: General Services Administration's data on contract-awarded labor categories, rates and qualifications
-  - **Bureau of Labor Statistics OEWS API**: Occupational Employment and Wage Statistics providing comprehensive wage data for 800+ occupations across various industries and geographic areas
-
-- **Data Acquisition Mechanisms**:
-  - **Manual Fetch Button**: Admin-only interface for on-demand data updates
-  - **Automated Fetch Scheduler**: Configurable scheduled data retrieval system
-    - Time-based scheduling (daily, weekly, monthly)
-    - Differential updates to minimize processing requirements
-    - Automated retry with exponential backoff for failed fetches
-    - Health check reporting and notification system
-    - Source-specific configuration (frequency, scope, credentials)
-    - Logging and monitoring dashboard
-  - **REST API Connectors**: For real-time data access
-  - **Bulk Download Processors**: For large dataset ingestion
-  - **Web Scrapers**: For non-API data sources
-
-### Data Storage
-
-- **PostgreSQL Database**: Primary data storage
-  - Optimized table structure for federal contracting data
-  - Materialized views for common query patterns
-  - Indexed search fields for performance
-  - Partitioning for large historical datasets
-  - Connection pooling for concurrent access
-
-### Database Configuration
-
-The application now uses a dual-database approach:
-
-1. **Main application database** (PostgreSQL, port 5432):
-
-   - Contains cleansed and transformed data
-   - Optimized for application performance
-   - Stores filter values, dependencies, and materialized views
-   - Used for direct application operations
-
-2. **USAspending full database** (PostgreSQL, port 5433):
-   - Contains the complete USAspending.gov database
-   - Approximately 1.1TB in size
-   - Provides access to all original tables and relationships
-   - Configured with optimized performance settings:
-     - `shared_buffers = 4GB`
-     - `work_mem = 512MB`
-     - `maintenance_work_mem = 2000MB`
-     - `max_parallel_workers_per_gather = 8`
-     - `max_parallel_workers = 16`
-     - And other performance settings
-
-Both databases can be accessed separately through their respective connection details. The USAspending database provides comprehensive access to the complete federal spending dataset, while the main application database provides optimized performance for the application's specific needs.
-
-Connection details for both databases are stored in the `.env` file. See `docs/DATABASE_SETUP.md` for comprehensive database configuration information.
-
-## Next Steps
-
-### Short Term
+#### Short Term
 
 1. Complete the filter implementation in the sidebar
 2. Implement the Data Explorer page with advanced filtering
 3. Create the Visualizations page with interactive charts
 
-### Medium Term
+#### Medium Term
 
 1. Implement state persistence between pages
 2. Add export functionality for all data views
 3. Enhance visualizations with interactive features
 
-### Long Term
+#### Long Term
 
 1. Integrate local LLM inference with Ollama
 2. Implement capture profile generation
 3. Add external data integration (SAM.gov, etc.)
 4. Create AI agents using Model Context Protocol
 
-## AI Integration Strategies
+## Recent Implementation Updates (May 2025)
 
-### PydanticAI Implementation Strategy
+### Contract Vehicle Analysis Tab
 
-PydanticAI provides a type-safe agent framework for building production-grade AI applications. The following implementation strategy will ensure successful integration with our Data_Insights project:
+- Fixed KeyError by aggregating vehicle preference by agency directly from the original DataFrame using the correct columns: 'parent_award_agency_name', 'award_type', and 'federal_action_obligation'.
+- Fixed KeyError for 'vehicle_type' and 'obligation' by using 'contract_vehicle' and aggregating from the original DataFrame as needed.
+- Replaced all references to THEME['category_colors'] with a local CATEGORY_COLORS list for Plotly charts.
+- All planned visualizations (pie, stacked bar, line, bar) and export features are implemented and error-free.
 
-#### Phase 1: Core Foundation
+### Geographic Analysis Tab
 
-1. **Core Domain Models**:
+- Implemented all planned visualizations:
+  - Choropleth map of obligations by state (using 'recipient_state_code')
+  - Bar chart of top states by obligation
+  - Geographic concentration of awards (scatter geo map using recipient latitude/longitude and obligation)
+- Added export functionality for each visualization.
+- Added CATEGORY_COLORS for future categorical charts.
+- All error handling and missing data cases are covered.
 
-   - Define Pydantic models for key federal contract entities
-   - Implement models for awards, agencies, opportunities, and contracts
-   - Create validation rules specific to federal contracting data
-   - Design specialized validators for monetary values, NAICS codes, and agency identifiers
+## Market Overview - Capture Intensity Agency Table (Planned Feature)
 
-2. **Simple Analysis Agent**:
+### Description
 
-   - Build a basic contract analysis agent as proof of concept
-   - Connect to Ollama for local LLM inference
-   - Implement structured response validation
-   - Test with sample contract data queries
-   - Measure performance and accuracy metrics
+- Add a table to the Market Overview tab showing all agencies that are above the dotted line on the Capture Intensity Chart (i.e., agencies with high capture intensity).
+- On each dashboard run, an LLM will analyze the data to:
+  - Identify each Agency
+  - List its sub-agencies (both awarding and funding)
+  - List its offices (both awarding and funding)
+  - Calculate and sort by the most compelling Action to Obligation ratio
+- **Action to Obligation Ratio (AOR):**
+  - Defined as: `AOR = Number of Award Actions / Total Federal Action Obligations`
+  - This ratio highlights agencies with a high number of actions relative to dollars obligated, which may indicate more fragmented or competitive markets.
+- The table will be selectable (e.g., via AgGrid), and the selected agency/sub-agency/office will feed downstream tabs (Agency Intelligence, Capabilities Assessment, etc.) via session state.
+- The LLM-driven analysis will run at each Market Overview render, ensuring up-to-date, context-aware recommendations.
 
-3. **Database Integration**:
-   - Implement dependency injection for PostgreSQL database context
-   - Create data providers for USAspending database
-   - Design caching mechanisms for expensive database operations
-   - Build type-safe query result mappers to Pydantic models
-   - Implement transaction management for agent operations
+### Implementation Notes
 
-#### Phase 2: MCP Tool Integration
+- Table should be interactive and support selection of one or more agencies.
+- Downstream tabs should auto-focus on the selected agency context if set.
+- The Action to Obligation ratio can be refined over time based on user feedback and observed market patterns.
+- LLM analysis can be extended to provide narrative insights or recommendations for each agency.
 
-4. **Capability Identifier Tool**:
+---
 
-   - Define structured output models for capability identification
-   - Implement competitor capability modeling
-   - Create gap analysis schema with validated outputs
-   - Design structured competitiveness assessment metrics
-   - Build win probability estimation models
+# Cross-References
 
-5. **Document Creator Agent**:
+- See `CAPTUREINTEL.md` for detailed capture intelligence workflows and models.
+- See `MODULARIZATION_AND_AI_PLAN.md` for AI/ML modularization and agent orchestration.
+- See `DATABASE_SCHEMA.md` for full database schema and data dictionary.
+- See `strategic_dashboard_implementation.md` for dashboard-specific implementation details.
 
-   - Develop document schema models for different output types
-   - Implement structured section generators
-   - Create validation for narrative sections
-   - Design templating system with typed parameters
-   - Build export validation for different formats
+---
 
-6. **Web Intelligence Scraper**:
+# Revision Notes
 
-   - Design models for intelligence sources and findings
-   - Implement entity detection with validation
-   - Create structured intelligence digest schema
-   - Build search result validation models
-   - Develop models for competitive intelligence analysis
-
-7. **Visualization Tool Enhancement**:
-   - Implement chart configuration models
-   - Create visualization recommendation schemas
-   - Design data validation for visualization inputs
-   - Build query-to-visualization converter models
-   - Implement annotation and metadata schemas
-
-#### Phase 3: Advanced Features
-
-8. **Agent Composition**:
-
-   - Implement modular agent design with composition patterns
-   - Create agent pipelines with validated intermediate outputs
-   - Design typed communication protocols between agent components
-   - Build testing framework for agent interactions
-   - Implement error handling and recovery strategies
-
-9. **Domain-Specific Models**:
-
-   - Create structured models for opportunity qualification
-   - Implement capture planning document schemas
-   - Design competitive analysis report structures
-   - Build price-to-win models with structured components
-   - Develop proposal strategy recommendation schemas
-
-10. **Integration with Langfuse**:
-    - Implement tracing for structured outputs
-    - Create evaluation metrics based on model validation
-    - Design test datasets for agent validation
-    - Build performance dashboards using structure definitions
-    - Implement A/B testing framework for model variants
-
-#### Implementation Guidelines
-
-1. **Start Small**: Begin with core models and a simple agent to test the integration framework
-2. **Incremental Adoption**: Gradually incorporate PydanticAI into each MCP tool
-3. **Type Safety First**: Leverage Python type hints throughout the implementation
-4. **Test-Driven Development**: Create comprehensive tests for all models and agents
-5. **Consistent Patterns**: Establish standard patterns for dependency injection and error handling
-6. **Documentation**: Document all models and their validation rules for future reference
-
-This implementation strategy aligns with the project's focus on local processing, strong validation, and domain-specific AI capabilities for federal contract analysis.
+- This document has been reorganized for logical grouping and efficient reference. All original content is preserved and supplemented as needed. Table of contents and cross-references added for clarity.
