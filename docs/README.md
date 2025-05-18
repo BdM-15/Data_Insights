@@ -19,6 +19,12 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
   - Top funding offices, sub-agencies, and awarding agencies statistics
   - **Consistent, human-readable heatmaps and improved axis labeling**
   - **All charts use THEME colors and formatting from `src/frontend/styles/theme.py`**
+- **Projected Awards and Suitability Overlay Chart**: Visualize projected award dates and obligations for all active contracts, with a second line overlay showing the portion realistically winnable by your company based on suitability.
+  - _Benefit_: Compare total market opportunity to your company's addressable market, supporting strategic targeting and resource allocation.
+- **Similar NAICS Table via LLM Semantic Search**: Table of NAICS codes similar to the one being filtered, powered by LLM-based semantic search on NAICS codes and descriptions.
+  - _Benefit_: Discover adjacent or unexplored market areas, expand research, and avoid missing relevant opportunities due to narrow filtering.
+- **Interactive Sankey Diagram (Agency → Office → Contract)**: Interactive Sankey diagram tracing the flow from parent agency to office and contract levels.
+  - _Benefit_: Intuitive visualization of how obligations and actions flow through the federal hierarchy, helping identify bottlenecks, key offices, and contract concentrations for more effective targeting.
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations. Layout and chart rendering are optimized for large datasets and fast UI response.
 - **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights. Scaffolding for additional connectors is in place.
 - **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making. Scaffolding for local LLM and MCP agent integration is in place.
@@ -280,6 +286,7 @@ The Data_Insights project incorporates several advanced AI components:
 
 - **Local LLM Integration**: Using Ollama for local LLM inference to generate capture profile narratives, leveraging the user's GTX 4060 with CUDA.
 - **AI Agent Framework**: Model Context Protocol (MCP) integration to build local AI tools including web intelligence gathering, document creation, and analysis.
+- **Brave Search MCP Integration**: Adds privacy-focused, real-time web search to the MCP suite, enabling up-to-date market research, competitor monitoring, and news/event tracking. Complements static scraping (Crawl4AI) and document retrieval (Vectorize) with structured, privacy-respecting results for downstream AI analysis. All queries/results are handled locally, with no persistent logs or external data sharing.
 - **PydanticAI Integration**: Structured agent framework for type-safe AI components with validated outputs:
   - Structured response validation using Pydantic models
   - Type-safe dependency injection for AI agent components

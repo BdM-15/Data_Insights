@@ -263,6 +263,19 @@ src/
 - **Expand test coverage:** Add/expand Pytest unit tests for new backend processors, visualization components, and filter logic.
 - **Document new layout and filter components:** Supplement documentation in `PLANNING.md` and `strategic_dashboard_implementation.md` to reflect new UI scaffolding and filter management patterns.
 
+## Market Overview Tab: Planned Advanced Features
+
+- **Projected Awards and Suitability Overlay Chart**: Implement a projection chart that takes all active contracts and projects their next award date and obligations. Overlay a second line based on the suitability of our company, showing both total projected spending and the potential amount our company could win.
+
+  - _Reason/Benefit_: Enables users to visually compare the overall market opportunity with the realistic, suitability-filtered opportunity for their company, supporting strategic targeting and resource allocation.
+
+- **Similar NAICS Table via LLM Semantic Search**: Add a table that identifies NAICS codes similar to the one being filtered, using LLM-based semantic search on NAICS codes and descriptions. This will help users discover adjacent or unexplored market areas.
+
+  - _Reason/Benefit_: By surfacing related NAICS codes, users can expand their market research, identify diversification opportunities, and avoid missing relevant opportunities due to narrow filtering.
+
+- **Interactive Sankey Diagram (Agency → Office → Contract)**: Add an interactive Sankey diagram as the last visual, tracing the flow from parent agency to office level and further into contract levels.
+  - _Reason/Benefit_: Provides a clear, intuitive visualization of how obligations and actions flow through the federal hierarchy, helping users identify bottlenecks, key offices, and contract concentrations for more effective targeting.
+
 ---
 
 ## AI Integration Roadmap
@@ -572,6 +585,17 @@ Based on the project requirements and available MCP servers, here are the specif
     - Advanced browser control for complex government websites
   - **Integration Timeline:** Phase 4 (Weeks 7-9)
   - **Implementation Approach:** Adapt for scraping SAM.gov, USAspending.gov, and contractor websites
+
+- **Brave Search MCP (websearch)**
+
+  - **Purpose:** Privacy-focused, real-time web search and retrieval using the Brave Search engine
+  - **Key Features:**
+    - Up-to-date, privacy-respecting web search results
+    - Structured output for downstream AI analysis and RAG pipelines
+    - Complements static scraping (Crawl4AI) and document retrieval (Vectorize)
+    - No persistent logs or external data sharing; all queries/results handled locally
+  - **Integration Timeline:** Phase 4 (Weeks 7-9)
+  - **Implementation Approach:** Integrate as a core web intelligence tool, expose in AI Tools tab and web intelligence dashboard, and document best practices for combined use with other MCP agents
 
 - **[Vectorize](https://github.com/ContextualAI/vectorize/tree/main/mcp)**
   - **Purpose:** Enhanced document retrieval and analysis

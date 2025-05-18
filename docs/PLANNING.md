@@ -220,6 +220,25 @@ Data_Insights/
 
 ### AI Integration Strategies
 
+#### Brave Search MCP (websearch) Tool Integration
+
+**Overview:**
+Brave Search MCP is a privacy-focused web search tool that integrates with the Model Context Protocol (MCP) suite. It enables secure, real-time web search and retrieval using the Brave Search engine, returning structured results suitable for downstream AI analysis and RAG pipelines.
+
+**Fit and Value:**
+
+- Complements static web scraping (Crawl4AI) and document retrieval (Vectorize) by providing up-to-date, privacy-respecting web search results.
+- Ideal for market research, competitor monitoring, news/event tracking, and supplementing intelligence gathering with the latest public information.
+- Can be orchestrated with other MCP tools for layered intelligence workflows.
+- All queries and results are handled locally, with no persistent logs or external data sharing, aligning with project privacy requirements.
+
+**Planned Integration:**
+
+- Add Brave Search MCP as a core web intelligence tool in the MCP suite.
+- Expose its capabilities in the AI Tools tab and web intelligence dashboard.
+- Document its role and best practices for combining with other MCP agents (e.g., Crawl4AI, Vectorize).
+- Update planning and architecture docs to reflect its fit and expected benefits.
+
 #### PydanticAI Implementation Strategy
 
 PydanticAI provides a type-safe agent framework for building production-grade AI applications. The following implementation strategy will ensure successful integration with our Data_Insights project:
@@ -581,6 +600,12 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
     - Projected spend forecast based on historical trends
     - Competitive landscape analysis
     - Small business participation metrics
+  - **Projected Awards and Suitability Overlay Chart**: Add a projection chart that takes all active contracts and projects their next award date and obligations. Overlay a second line based on the suitability of our company, showing both total projected spending and the potential amount our company could win.
+    - _Reason/Benefit_: This enables users to visually compare the overall market opportunity with the realistic, suitability-filtered opportunity for their company, supporting strategic targeting and resource allocation.
+  - **Similar NAICS Table via LLM Semantic Search**: Add a table that identifies NAICS codes similar to the one being filtered, using LLM-based semantic search on NAICS codes and descriptions. This will help users discover adjacent or unexplored market areas.
+    - _Reason/Benefit_: By surfacing related NAICS codes, users can expand their market research, identify diversification opportunities, and avoid missing relevant opportunities due to narrow filtering.
+  - **Interactive Sankey Diagram (Agency → Office → Contract)**: Add an interactive Sankey diagram as the last visual, tracing the flow from parent agency to office level and further into contract levels.
+    - _Reason/Benefit_: This provides a clear, intuitive visualization of how obligations and actions flow through the federal hierarchy, helping users identify bottlenecks, key offices, and contract concentrations for more effective targeting.
   - Implement dynamic filtering with real-time visualization updates
   - Add market share analysis for contractors within selected NAICS codes
   - Include opportunity timeline showing contract expirations and projected solicitations
