@@ -1302,3 +1302,11 @@ The data sources will directly enhance proposal development:
 4. **Teaming Intelligence**: SBA SubNet and Mentor-Protégé data
 5. **International Expansion**: ILOSTAT and NATO NSPA data
 6. **Premium Intelligence**: GovWin IQ and Bloomberg Government (budget permitting)
+
+## Company Capabilities Foundation & Competitor Research (2025 Update)
+
+- The foundation for all capture intelligence and gap analysis is a structured, queryable JSON profile of your company (KBR and subsidiaries), stored in PostgreSQL.
+- This profile is built from USAspending.gov data (prime/sub awards, UEIs), web crawls, social media, and BloombergGov API, orchestrated by the Prime AI Agent and MCP tools.
+- The same pipeline and schema will be used for competitor research, enabling direct side-by-side analysis.
+- All data is processed and enriched by AI agents to extract key capabilities, relationships, and news, supporting semantic search and advanced analytics.
+- JSON is the preferred storage format for extensibility, queryability, and AI-driven enrichment; markdown/Word/PDF can be generated for reporting as needed.

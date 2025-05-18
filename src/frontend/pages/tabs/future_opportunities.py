@@ -104,6 +104,16 @@ def render_tab(df: pd.DataFrame = None):
         )
         selected_rows = aggrid_response.selected_rows if aggrid_response and aggrid_response.selected_rows is not None else []
         show_details = st.button("Show Details for Selected Opportunities")
+        # --- New: Store selected opportunity in session state for downstream tabs ---
+        if len(selected_rows) == 1:
+            # Only store if exactly one is selected (for downstream context)
+            from src.backend.data.models.data_models import FutureOpportunity
+            selected_opp = next((o for o in filtered_opps if o.opportunity_id == selected_rows[0]['opportunity_id']), None)
+            if selected_opp:
+                st.session_state['selected_opportunity'] = selected_opp.dict()
+                st.info(f"Selected opportunity context set for downstream tabs: {selected_opp.title}")
+        elif len(selected_rows) == 0:
+            st.session_state.pop('selected_opportunity', None)
         if show_details and len(selected_rows) > 0:
             st.markdown("---")
             st.markdown("#### Opportunity Details")
