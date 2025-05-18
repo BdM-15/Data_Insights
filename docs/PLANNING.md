@@ -728,6 +728,25 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
 3. Add external data integration (SAM.gov, etc.)
 4. Create AI agents using Model Context Protocol
 
+## Recent Implementation Updates (May 2025)
+
+### Contract Vehicle Analysis Tab
+
+- Fixed KeyError by aggregating vehicle preference by agency directly from the original DataFrame using the correct columns: 'parent_award_agency_name', 'award_type', and 'federal_action_obligation'.
+- Fixed KeyError for 'vehicle_type' and 'obligation' by using 'contract_vehicle' and aggregating from the original DataFrame as needed.
+- Replaced all references to THEME['category_colors'] with a local CATEGORY_COLORS list for Plotly charts.
+- All planned visualizations (pie, stacked bar, line, bar) and export features are implemented and error-free.
+
+### Geographic Analysis Tab
+
+- Implemented all planned visualizations:
+  - Choropleth map of obligations by state (using 'recipient_state_code')
+  - Bar chart of top states by obligation
+  - Geographic concentration of awards (scatter geo map using recipient latitude/longitude and obligation)
+- Added export functionality for each visualization.
+- Added CATEGORY_COLORS for future categorical charts.
+- All error handling and missing data cases are covered.
+
 ## Market Overview - Capture Intensity Agency Table (Planned Feature)
 
 ### Description

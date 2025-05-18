@@ -17,6 +17,11 @@ The dashboard user interface has been enhanced with:
 - Consistent electric theme styling throughout
 - Replaced Unicode characters with ASCII-compatible alternatives for improved compatibility across environments
 
+## May 2025 Update: Tab Completion and Error Fixes
+
+- Contract Vehicle Analysis tab: All planned visualizations (distribution, agency preference, trends, success rate) and export features are implemented. All column and color errors resolved.
+- Geographic Analysis tab: All planned visualizations (state choropleth, top states bar, scatter geo) and export features are implemented. All error handling and color issues resolved.
+
 ## Visual Theme
 
 The dashboard uses an "electric energy" theme with:
@@ -69,6 +74,7 @@ The dashboard uses an "electric energy" theme with:
    - Dual-axis visualization showing relationship between spending and contract actions
    - Quarter-by-quarter view with fiscal year demarcations
    - Toggle capability between cumulative and quarterly views
+
 - Line chart showing quarterly trends for both obligations and award actions
 
 3. **Action-to-Obligation Ratio Analysis**
@@ -98,6 +104,7 @@ The dashboard uses an "electric energy" theme with:
 The dashboard uses a tabbed interface with six main tabs:
 
 1. **Market Overview** (default tab)
+
    - Contains executive summary metrics and key visualizations described above
    - Top agencies, recipients, and NAICS code analysis
    - Interactive charts for obligations and award actions trends
@@ -107,16 +114,21 @@ The dashboard uses a tabbed interface with six main tabs:
    - Strategic Alignment Analysis (Suitability vs. Synergy quadrant chart)
    - Active SAM.gov Opportunities with capability match scoring
    - NATO NSPA Opportunities with capability match scoring
+
 - Incumbenet and recompete information
-   - Strategic Connections between historical performance and future opportunities
- 
-   3. **Agency Intelligence**
-   - Agency hierarchy analysis
-   - Agency spending patterns
-   - Set-aside utilization by agency
+
+  - Strategic Connections between historical performance and future opportunities
+
+  3.  **Agency Intelligence**
+
+  - Agency hierarchy analysis
+  - Agency spending patterns
+  - Set-aside utilization by agency
+
 - Competitor-agency relationships
 
 4. **Competitive Analysis**
+
    - Market Share Analysis - Horizontal bar chart of competitors by market share
    - Win Rate Analysis - Bar chart showing top competitors by win rate percentage
    - Market Position Analysis - Quadrant scatter plot showing win rate vs market share
@@ -125,6 +137,7 @@ The dashboard uses a tabbed interface with six main tabs:
    - Competitive Strategy Insights - Actionable recommendations based on analysis
 
 5. **Contract Vehicle Analysis**
+
    - Vehicle preference by agency
    - Award type distributions
    - Success rates by contract type
