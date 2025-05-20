@@ -35,6 +35,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(ARCHIVE_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
+
 # API Settings
 # SAM.gov API
 SAM_API_URL = "https://api.sam.gov/opportunities/v2/search"
@@ -57,6 +58,60 @@ SDMX_API_URL = "https://www.ilo.org/sdmx/rest"
 # BLS API (Bureau of Labor Statistics)
 BLS_API_URL = "https://api.bls.gov/publicAPI/v2"
 BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
+
+
+# Prompt Repository (for agent/LLM prompt templates)
+def get_prompt_repo_path() -> str:
+    """
+    Get the path to the prompt repository for agent/LLM prompt templates.
+    Returns:
+        Path as a string
+    """
+    return os.getenv("PROMPT_REPO_PATH", str(Path(__file__).parent / "src" / "backend" / "ai" / "prompt_templates"))
+
+# Langfuse Observability Config
+def get_langfuse_config() -> Dict[str, Any]:
+    """
+    Get Langfuse configuration from environment variables.
+    Returns:
+        Dictionary containing Langfuse configuration parameters
+    """
+    return {
+        "LANGFUSE_PUBLIC_KEY": os.getenv("LANGFUSE_PUBLIC_KEY"),
+        "LANGFUSE_SECRET_KEY": os.getenv("LANGFUSE_SECRET_KEY"),
+        "LANGFUSE_HOST": os.getenv("LANGFUSE_HOST", "http://localhost:3000"),
+        "LANGFUSE_PROJECT": os.getenv("LANGFUSE_PROJECT", "default"),
+        "LANGFUSE_ENVIRONMENT": os.getenv("LANGFUSE_ENVIRONMENT", "development"),
+    }
+
+# Ollama LLM/AI Integration Config
+def get_ollama_config() -> Dict[str, Any]:
+    """
+    Get Ollama configuration from environment variables.
+    Returns:
+        Dictionary containing Ollama configuration parameters
+    """
+    return {
+        "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "mistral"),
+        "TEMPERATURE": float(os.getenv("TEMPERATURE", "0.7")),
+        "MAX_TOKENS": int(os.getenv("MAX_TOKENS", "2000")),
+    }
+
+# Placeholders for future MCP/AI agent config
+def get_mcp_config() -> Dict[str, Any]:
+    """
+    Get MCP/AI agent configuration from environment variables.
+    Returns:
+        Dictionary containing MCP/AI agent configuration parameters
+    """
+    return {
+        "MCP_SERVER_URL": os.getenv("MCP_SERVER_URL", "http://localhost:8000"),
+        "MCP_API_KEY": os.getenv("MCP_API_KEY", ""),
+        "PYDANTIC_AI_MODEL": os.getenv("PYDANTIC_AI_MODEL", "mistral"),
+    }
+
+# Reason: Centralizes all AI/LLM/MCP config for easy access and validation
 
 # Rate limiting management for SAM.gov
 SAM_API_RATE_LIMIT = int(os.getenv("SAM_API_RATE_LIMIT", "5").split('#')[0].strip())  # Requests per minute allowed
@@ -187,7 +242,7 @@ def get_ollama_config() -> Dict[str, Any]:
     """
     return {
         "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "llama2"),
+        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "mistral"),
         "TEMPERATURE": float(os.getenv("TEMPERATURE", "0.7")),
         "MAX_TOKENS": int(os.getenv("MAX_TOKENS", "2000"))
     }

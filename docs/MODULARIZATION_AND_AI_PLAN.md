@@ -21,7 +21,7 @@
 
 | #   | Functionality         | Open Source | Local | Free | Recommended Server(s)                    |
 | --- | --------------------- | ----------- | ----- | ---- | ---------------------------------------- |
-| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai                     |
+| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai (Completed)         |
 | 2   | LLM/Chat              | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server |
 | 3   | Agent Orchestration   | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server    |
 | 4   | GitHub Automation     | Yes         | Yes   | Yes  | github-mcp-server                        |
@@ -40,8 +40,9 @@
 
 1. **Observability Foundation**
 
-   - Integrate Langfuse and Logfire for tracing, prompt management, and evaluation of all LLM, MCP, and agent interactions.
-   - Ensure all chatbots, agents, and MCP tool calls are logged and observable from the start.
+   - **Langfuse integration is complete.**
+   - All LLM, MCP, and agent interactions will be traced using Langfuse and (optionally) Logfire.
+   - All chatbots, agents, and MCP tool calls are now observable from the start.
 
 2. **AI Chat Agent Integration**
 
