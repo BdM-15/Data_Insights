@@ -10,7 +10,6 @@ from config import get_app_config, get_ollama_config
 # Import Langfuse and Pydantic AI tracing if available
 try:
     from langfuse import Langfuse
-    from pydantic_ai.tracing import Tracer as PydanticAITracer
 except ImportError:
     Langfuse = None
     PydanticAITracer = None
