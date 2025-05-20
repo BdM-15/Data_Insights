@@ -1,3 +1,54 @@
+# USAspending Slim Table Architecture (May 2025)
+
+## usaspending_prime_awards_slim & usaspending_subawards_slim
+
+### Overview
+
+To support maintainable, normalized, and AI/LLM-friendly analytics, the Data_Insights project uses two slimmed tables:
+
+- `usaspending_prime_awards_slim`: Contains only the required columns for prime awards analytics and AI workflows.
+- `usaspending_subawards_slim`: Contains only the required columns for subawards analytics and AI workflows, including the join key (`prime_award_unique_key`).
+
+These tables are designed for dynamic joins and smart querying by analytics code and AI/LLM agents. They are not denormalized; all joins are performed as needed for reporting or analysis. This approach supports future integration with Model Context Protocol (MCP) agents and local LLMs (Ollama, etc.).
+
+#### usaspending_subawards_slim Columns
+
+The following columns are included in `usaspending_subawards_slim` (as of May 2025):
+
+- `prime_award_unique_key` (join key to prime awards)
+- `subaward_sam_report_id`
+- `subaward_number`
+- `subaward_amount`
+- `subaward_action_date`
+- `subaward_description`
+- `subawardee_name`
+- `subawardee_uei`
+- `subawardee_parent_name`
+- `subawardee_parent_uei`
+- `subawardee_city_name`
+- `subawardee_state_code`
+- `subawardee_country_code`
+- `subawardee_country_name`
+- `subawardee_business_types`
+- `subaward_primary_place_of_performance_city_name`
+- `subaward_primary_place_of_performance_state_code`
+- `subaward_type`
+
+Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date`) are included for auditing and ETL tracking.
+
+#### Join Guidance
+
+- Use `prime_award_unique_key` to join `usaspending_subawards_slim` to `usaspending_prime_awards_slim` for analytics and reporting.
+- All joins should be performed dynamically in queries or by AI/LLM agents, not by denormalizing the tables.
+- Materialized views or denormalized tables may be created for specific reporting needs if required, but are not the default.
+
+#### Rationale
+
+- This architecture supports maintainability, scalability, and future AI/LLM-driven analytics.
+- Enables integration with Model Context Protocol (MCP) agents and local LLMs for advanced analytics, reasoning, and document generation.
+
+See `PLANNING.md` and `README.md` for additional context and rationale.
+
 # USAspending Database Schema Documentation
 
 This document provides a comprehensive overview of the schemas and tables within the USAspending database, organized to highlight the most relevant data for capture managers. The database is organized into four main schemas, each serving a specific purpose in the data processing pipeline.
@@ -110,7 +161,7 @@ Fields describing competitors and their capabilities:
 - `ultimate_parent_unique_ide` - Parent DUNS number
 - `ultimate_parent_uei` - Parent UEI
 
-**Subaward Information:** 
+**Subaward Information:**
 
 - `subaward_id` - Unique identifier for subawards
 - `subaward_amount` - Dollar value of the subaward
@@ -122,6 +173,7 @@ Fields describing competitors and their capabilities:
 - `subawardee_business_types` - Business size and socioeconomic categories of subcontractor
 
 This subaward data helps identify capability gaps and competitive discriminators by revealing:
+
 - Which capabilities competitors outsource vs. perform in-house
 - Recurring partnership patterns between primes and subcontractors
 - Division of work within competitor teams
@@ -2356,7 +2408,6 @@ This table contains information about top-tier federal agencies (departments).
 
 **Key fields for capture managers:**
 
-
 1. **Agency Identification**
 
    - `toptier_agency_id` - Unique identifier
@@ -2406,7 +2457,6 @@ This table contains information about sub-tier federal agencies (bureaus).
 
 **Key fields for capture managers:**
 
-
 1. **Agency Identification**
    - `subtier_agency_id` - Unique identifier
    - `subtier_code` - Sub-tier agency code
@@ -2440,7 +2490,6 @@ This table contains information about sub-tier federal agencies (bureaus).
 This table contains geographic location information.
 
 **Key fields for capture managers:**
-
 
 1. **Location Identification**
 
@@ -2519,7 +2568,6 @@ This table contains information about CFDA (Catalog of Federal Domestic Assistan
 
 **Key fields for capture managers:**
 
-
 1. **Program Identification**
 
    - `program_number` - CFDA program number
@@ -2580,7 +2628,6 @@ This table contains information about NAICS (North American Industry Classificat
 
 **Key fields for capture managers:**
 
-
 1. **Code Information**
    - `code` - NAICS code
    - `description` - Description of the NAICS code
@@ -2609,7 +2656,6 @@ This table contains information about NAICS (North American Industry Classificat
 This table contains information about PSC (Product or Service Code) codes.
 
 **Key fields for capture managers:**
-
 
 1. **Code Information**
 
@@ -2652,7 +2698,6 @@ This table contains country codes and names.
 
 **Key fields for capture managers:**
 
-
 1. **Country Information**
    - `country_code` - ISO country code
    - `country_name` - Country name
@@ -2683,7 +2728,6 @@ This table contains country codes and names.
 This table contains Disaster Emergency Fund Codes (DEFCs) for tracking emergency spending.
 
 **Key fields for capture managers:**
-
 
 1. **Code Information**
 
@@ -2925,6 +2969,7 @@ This table contains subaward (subcontract and subgrant) data as reported by prim
 - Regular updates capture new subawards as they are reported
 
 This subaward data helps identify capability gaps and competitive discriminators by revealing:
+
 - Which capabilities competitors outsource vs. perform in-house
 - Recurring partnership patterns between primes and subcontractors
 - Division of work within competitor teams

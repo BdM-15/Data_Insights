@@ -809,3 +809,42 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
 # Revision Notes
 
 - This document has been reorganized for logical grouping and efficient reference. All original content is preserved and supplemented as needed. Table of contents and cross-references added for clarity.
+
+### USAspending Slim Table Architecture (May 2025)
+
+#### Subawards Table Update (May 2025)
+
+Due to data quality issues with the `usaspending_subawards_slim` table (all `prime_award_unique_key` values are null), the project will use the main `usaspending_subawards` table for subaward analytics and AI workflows.
+
+**Columns to Use:**
+
+The following columns are required for analytics, reporting, and AI/LLM agent workflows:
+
+- `prime_award_unique_key`
+- `subaward_type`
+- `subaward_number`
+- `subaward_amount`
+- `subaward_action_date`
+- `subaward_action_date_fiscal_year`
+- `subawardee_uei`
+- `subawardee_name`
+- `subawardee_dba_name`
+- `subawardee_parent_uei`
+- `subawardee_parent_name`
+- `subawardee_country_code`
+- `subawardee_country_name`
+- `subawardee_city_name`
+- `subawardee_state_code`
+- `subawardee_business_types`
+- `subaward_primary_place_of_performance_city_name`
+- `subaward_primary_place_of_performance_state_code`
+- `subaward_description`
+
+**Key Points:**
+
+- The `usaspending_subawards` table will be queried for these specific columns.
+- The join to prime awards will use `prime_award_unique_key` (when available).
+- If additional columns are needed for future analytics or AI/LLM workflows, they can be added to this list.
+- Materialized views or denormalized tables may be created for specific reporting needs if required.
+
+See `DATABASE_SCHEMA.md` for schema details and join guidance.

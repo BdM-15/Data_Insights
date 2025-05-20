@@ -390,3 +390,14 @@ The project includes custom GitHub Copilot tools to enhance development producti
 ### Contact
 
 For questions or support, please contact the project maintainer.
+
+#### Data Model Update (May 2025)
+
+- **Normalized Slim Tables**: The application now uses two slimmed, normalized tables for federal spending data:
+
+  - `usaspending_prime_awards_slim`
+  - `usaspending_subawards_slim`
+    These contain only the required columns for analytics and AI workflows, including the join key (`prime_award_unique_key`).
+    Tables are kept separate for maintainability and to support AI/LLM-driven analytics. All joins are performed dynamically in queries or by AI agents, not by denormalizing the tables.
+
+- **AI/LLM/Agent Integration**: The architecture is designed for future integration with Model Context Protocol (MCP) agents and local LLMs (Ollama, etc.), enabling advanced analytics, reasoning, and document generation. Materialized views or denormalized tables may be created for specific reporting needs if required.
