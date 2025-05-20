@@ -1,3 +1,4 @@
+
 """
 Pydantic models for data validation in Data Insights.
 Define all data schemas used in data processing modules here.
@@ -112,3 +113,148 @@ class FutureOpportunity(BaseModel):
     url: Optional[str] = None
     source: Optional[str] = None  # e.g., 'SAM.gov', 'NATO NSPA'
     # Add more fields as needed for future extensibility
+    
+# ---------------- Prime Award Data Models for Capability Gap Analysis ----------------
+
+class PrimeCompetitorDetails(BaseModel):
+    """
+    Competitor details for a prime award record.
+    """
+    recipient_name: Optional[str]
+    recipient_uei: Optional[str]
+    recipient_parent_name: Optional[str]
+    recipient_parent_uei: Optional[str]
+
+
+class PrimeContractAwardDetails(BaseModel):
+    """
+    Core award details for a prime contract record.
+    """
+    action_date_fiscal_year: Optional[str]
+    action_date: Optional[date]
+    parent_award_id_piid: Optional[str]
+    award_id_piid: Optional[str]
+    modification_number: Optional[str]
+    federal_action_obligation: Optional[float]
+    total_dollars_obligated: Optional[float]
+    potential_total_value_of_award: Optional[float]
+    total_outlayed_amount_for_overall_award: Optional[float]
+    period_of_performance_start_date: Optional[date]
+    period_of_performance_current_end_date: Optional[date]
+    period_of_performance_potential_end_date: Optional[date]
+    ordering_period_end_date: Optional[date]
+    primary_place_of_performance_city_name: Optional[str]
+    primary_place_of_performance_state_code: Optional[str]
+    action_type: Optional[str]
+    award_type: Optional[str]
+    type_of_idc: Optional[str]
+    idv_type: Optional[str]
+    undefinitized_action: Optional[str]
+    multi_year_contract: Optional[str]
+    multiple_or_single_award_idv: Optional[str]
+    usaspending_permalink: Optional[str]
+    type_of_contract_pricing: Optional[str]
+
+
+class PrimeContractRequirementDetails(BaseModel):
+    """
+    Requirement and classification details for a prime contract record.
+    """
+    prime_award_base_transaction_description: Optional[str]
+    transaction_description: Optional[str]
+    naics_code: Optional[str]
+    naics_description: Optional[str]
+    product_or_service_code: Optional[str]
+    product_or_service_code_description: Optional[str]
+    dod_acquisition_program_description: Optional[str]
+    sam_gov_link: Optional[str]
+
+
+class PrimeCustomerDetails(BaseModel):
+    """
+    Customer and agency details for a prime contract record.
+    """
+    parent_award_agency_name: Optional[str]
+    awarding_sub_agency_name: Optional[str]
+    awarding_office_name: Optional[str]
+    funding_agency_name: Optional[str]
+    funding_sub_agency_name: Optional[str]
+    funding_office_name: Optional[str]
+
+
+class PrimeSolicitationDetails(BaseModel):
+    """
+    Solicitation and competition details for a prime contract record.
+    """
+    solicitation_date: Optional[date]
+    solicitation_procedures: Optional[str]
+    extent_competed: Optional[str]
+    type_of_set_aside: Optional[str]
+    fair_opportunity_limited_sources: Optional[str]
+    other_than_full_and_open_competition: Optional[str]
+    number_of_offers_received: Optional[int]
+    subcontracting_plan: Optional[str]
+    government_furnished_property: Optional[str]
+
+# ---------------- Subaward Data Models for Capability Gap Analysis ----------------
+
+class SubcontractAwardDetails(BaseModel):
+    """
+    Core award details for a subaward (subcontract) record.
+
+    Attributes:
+        prime_award_unique_key: Unique key for joining to the prime award
+        subaward_type: Type of subaward (e.g., procurement, grant)
+        subaward_number: Subaward identifier/number
+        subaward_amount: Dollar value of the subaward
+        subaward_action_date: Date the subaward was made
+        subaward_action_date_fiscal_year: Fiscal year of the subaward action
+    """
+    prime_award_unique_key: Optional[str]
+    subaward_type: Optional[str]
+    subaward_number: Optional[str]
+    subaward_amount: Optional[float]
+    subaward_action_date: Optional[date]
+    subaward_action_date_fiscal_year: Optional[str]
+
+
+class SubcontractCompetitorDetails(BaseModel):
+    """
+    Competitor (subawardee) information for a subaward record.
+
+    Attributes:
+        subawardee_uei: Unique Entity Identifier for the subawardee
+        subawardee_name: Name of the subawardee
+        subawardee_dba_name: Doing Business As name for the subawardee
+        subawardee_parent_uei: Parent UEI for the subawardee
+        subawardee_parent_name: Parent company name for the subawardee
+        subawardee_country_code: Country code of the subawardee
+        subawardee_country_name: Country name of the subawardee
+        subawardee_city_name: City of the subawardee
+        subawardee_state_code: State code of the subawardee
+        subawardee_business_types: Business types/socioeconomic categories
+    """
+    subawardee_uei: Optional[str]
+    subawardee_name: Optional[str]
+    subawardee_dba_name: Optional[str]
+    subawardee_parent_uei: Optional[str]
+    subawardee_parent_name: Optional[str]
+    subawardee_country_code: Optional[str]
+    subawardee_country_name: Optional[str]
+    subawardee_city_name: Optional[str]
+    subawardee_state_code: Optional[str]
+    subawardee_business_types: Optional[str]
+
+
+class SubcontractRequirementsDetails(BaseModel):
+    """
+    Requirement and place of performance details for a subaward record.
+
+    Attributes:
+        subaward_primary_place_of_performance_city_name: City where work is performed
+        subaward_primary_place_of_performance_state_code: State where work is performed
+        subaward_description: Description of the subcontracted work
+    """
+    subaward_primary_place_of_performance_city_name: Optional[str]
+    subaward_primary_place_of_performance_state_code: Optional[str]
+    subaward_description: Optional[str]
