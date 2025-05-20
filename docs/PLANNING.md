@@ -218,7 +218,35 @@ Data_Insights/
 
 ## AI/ML & Agent Integration
 
+#### MCP Chat Agent Integration (May 2025)
+
+- ollama-mcp-server will be integrated as the first general-purpose LLM/chat MCP tool, enabling local, privacy-preserving AI chat features.
+- All chat and agent interactions will be traced and observable via Langfuse and Logfire.
+- This lays the foundation for a prime agent structure, where a coordinating agent manages all tool and LLM calls with full observability.
+- See MODULARIZATION_AND_AI_PLAN.md for detailed roadmap and architecture.
+
 ### AI Integration Strategies
+
+#### MCP Tool Integration: GitHub MCP Server (May 2025)
+
+**Status:**
+
+- The GitHub MCP server is now fully integrated as the first Model Context Protocol (MCP) tool in the Data_Insights project.
+- The integration is managed via Docker, with configuration in `.vscode/mcp.json` and a dedicated `github-mcp-server/Dockerfile` for reproducible builds.
+- The MCP server is launched as a local containerized service, with secure environment variable injection for the GitHub token.
+- This enables local, privacy-preserving AI agent workflows for GitHub data and sets the foundation for further MCP tool integrations (web intelligence, document creation, visualization, and analysis agents).
+
+**Key Implementation Details:**
+
+- See `github-mcp-server/Dockerfile` for build and deployment details.
+- See `.vscode/mcp.json` for VS Code MCP tool configuration and environment variable handling.
+- All MCP tool processing is local, with no external API calls for AI/LLM inference, in line with project privacy requirements.
+- Documentation and usage instructions are being updated in `README.md` and `MODULARIZATION_AND_AI_PLAN.md`.
+
+**Next Steps:**
+
+- Expand MCP tool suite with additional agents (web intelligence, document creation, visualization, analysis).
+- Continue to document and modularize MCP tool integration for maintainability and scalability.
 
 #### Brave Search MCP (websearch) Tool Integration
 
@@ -380,6 +408,7 @@ This plan will be documented and tracked in MODULARIZATION_AND_AI_PLAN.md and re
 
 ### MCP Tools Integration for Streamlit App
 
+- **GitHub MCP Server is now integrated as the first MCP tool, available for local agent workflows.**
 - **Create dedicated "AI Tools" tab with multi-tab interface in Streamlit**
 - **Add conversational AI assistant embedded in the Streamlit sidebar**
 - **Implement capture profile generation UI with customization options**
@@ -719,6 +748,7 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
 - ✅ **Layout Component Library**: Standardized grid, card, and sidebar layouts are now implemented in `src/frontend/components/layouts/grid.py` and used throughout the dashboard for consistent UI structure.
 - ✅ **Pydantic Model Integration**: All backend processor functions now return lists of Pydantic models for major data flows, and the frontend/tab code has been refactored to consume these models.
 - ✅ **Logging and Diagnostics**: File-based logging and robust sidebar diagnostics are implemented for traceability and debugging.
+- ✅ **First MCP Tool Integrated**: GitHub MCP server is now running as a local MCP tool, with Docker-based deployment and VS Code integration for secure, local agent workflows.
 
 #### In Progress
 
