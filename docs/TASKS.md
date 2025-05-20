@@ -225,6 +225,10 @@
 
 - **Develop Model Context Protocol (MCP) Integration**:
 
+  - ✅ First MCP tool (GitHub MCP server) is now fully integrated and running locally via Docker and VS Code configuration (`.vscode/mcp.json`).
+  - ✅ All MCP tool processing is local, with no external API calls for AI/LLM inference, in line with project privacy requirements.
+  - ✅ See `github-mcp-server/Dockerfile` and `.vscode/mcp.json` for implementation details.
+
   - Sub-tasks:
     - **Visualization Tool Integration**:
       - Design and develop a dedicated Python-based UI for interactive visualizations of USASpending.gov data
@@ -601,6 +605,9 @@
   - ✅ Render all visualizations correctly in expandable sections.
   - Status: ✅ Completed
 - **Milestone 2: MCP Integration and Advanced AI Tools**:
+  - ✅ Integrate and deploy the first MCP tool (GitHub MCP server) as a local agent service
+  - ✅ Document configuration and usage in planning and modularization docs
+  - ✅ Test agent workflow end-to-end with local LLM inference
   - Develop and integrate Visualization Tool with the main application
   - Create VS Code integrated Chatbot for award data analysis
   - Build Capability Identifier for competitive analysis

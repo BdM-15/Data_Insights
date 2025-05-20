@@ -28,6 +28,13 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations. Layout and chart rendering are optimized for large datasets and fast UI response.
 - **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights. Scaffolding for additional connectors is in place.
 - **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making. Scaffolding for local LLM and MCP agent integration is in place.
+
+**May 2025 Update:**
+
+- The GitHub MCP server is now fully integrated as the first MCP tool in the Data_Insights project.
+- The integration is managed via Docker and VS Code configuration (`.vscode/mcp.json`), enabling secure, local agent workflows for GitHub data and future AI tools.
+- All MCP tool processing is local, with no external API calls for AI/LLM inference, in line with project privacy requirements.
+- See `github-mcp-server/Dockerfile` and `.vscode/mcp.json` for implementation details.
 - **Full USAspending.gov Database**: Direct access to the complete USAspending.gov database (1.1TB) through a dedicated PostgreSQL instance on port 5433.
 - **Modularized UI and Backend**: All business/data logic is in backend modules, and the frontend is UI-only. Layout, filter, and visualization components are fully modular and reusable.
 - **Logging and Diagnostics**: File-based logging and robust sidebar diagnostics are implemented for traceability and debugging.

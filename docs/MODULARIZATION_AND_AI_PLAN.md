@@ -11,9 +11,58 @@
 | 5. Create a Layout Component Library             | Complete    |
 | 6. Integrate with Streamlit's Config System      | Complete    |
 | 7. Pydantic Model Integration (Backend/Frontend) | Complete    |
-| 8. Specialized MCP/AI Agent Integration          | Not Started |
+| 8. Specialized MCP/AI Agent Integration          | In Progress |
 | 9. AI-Assisted Capture Profile Generator         | Not Started |
 | 10. External Data Connectors & Market Intel      | Not Started |
+
+---
+
+## MCP Server Capabilities Table (Prioritized Implementation Order, May 2025)
+
+| #   | Functionality         | Open Source | Local | Free | Recommended Server(s)                    |
+| --- | --------------------- | ----------- | ----- | ---- | ---------------------------------------- |
+| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai                     |
+| 2   | LLM/Chat              | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server |
+| 3   | Agent Orchestration   | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server    |
+| 4   | GitHub Automation     | Yes         | Yes   | Yes  | github-mcp-server                        |
+| 5   | Web Search            | Yes         | Yes   | Yes  | Brave Search MCP                         |
+| 6   | Web Scraping          | Yes         | Yes   | Yes  | Firecrawl MCP, Crawl4AI MCP              |
+| 7   | Database (Postgres)   | Yes         | Yes   | Yes  | postgres-mcp-server                      |
+| 8   | Visualization         | Yes         | Yes   | Yes  | vega-lite-mcp-server                     |
+| 9   | Document Generation   | Yes         | Yes   | Yes  | python-sdk-mcp + python-docx             |
+| 10  | Reasoning/Analysis    | Yes         | Yes   | Yes  | Sequential Thinking MCP                  |
+
+---
+
+## Updated MCP/AI Agent Integration Roadmap (May 2025)
+
+### Next Steps
+
+1. **Observability Foundation**
+
+   - Integrate Langfuse and Logfire for tracing, prompt management, and evaluation of all LLM, MCP, and agent interactions.
+   - Ensure all chatbots, agents, and MCP tool calls are logged and observable from the start.
+
+2. **AI Chat Agent Integration**
+
+   - Deploy ollama-mcp-server as the first general-purpose LLM/chat MCP tool (local, GPU-accelerated).
+   - Expose chat and completion endpoints for Streamlit and agent workflows.
+   - Document configuration and usage in README and planning docs.
+
+3. **Prime Agent & Structured Orchestration**
+
+   - Integrate pydanticai-mcp-server for type-safe, orchestrated agent workflows.
+   - Develop a prime agent to coordinate all MCP tools, LLMs, and specialized agents.
+   - Ensure all agent interactions are observable via Langfuse/Logfire.
+
+4. **Incremental Tool Expansion**
+   - Add web intelligence (crawl4ai-mcp-server), document creation, and vector search tools as needed.
+   - Maintain modular, observable architecture for all new tools.
+
+### AI Agent Architecture Note
+
+- All agent and LLM interactions (including chatbots) will be traced and evaluated using Langfuse and Logfire.
+- The prime agent will coordinate tool selection, prompt routing, and result aggregation, with full observability.
 
 > **Legend:** Complete | In Progress | Not Started
 
@@ -25,6 +74,28 @@ This document outlines a comprehensive plan for:
 
 1. **Code Modularization** - Restructuring the codebase for better maintainability and scalability
 2. **AI Integration** - Incrementally adding AI capabilities including Model Context Protocol (MCP), chatbot functionality, and LLM integration
+
+---
+
+## MCP/AI Agent Integration Roadmap (Updated May 2025)
+
+### Phase 1: MCP Server Setup
+
+- [x] Dockerize and configure the GitHub MCP server for local agent workflows
+- [x] Add VS Code MCP tool configuration for secure, local launch
+- [x] Validate local-only processing and privacy compliance
+
+### Phase 2: Tool Integration
+
+- [x] Integrate first MCP tool (GitHub MCP server) into the Data_Insights project
+- [x] Document configuration and usage in README and planning docs
+- [x] Test agent workflow end-to-end with local LLM inference
+
+### Phase 3: Expand Agent Suite
+
+- [ ] Add additional MCP tools (web intelligence, document creation, visualization, analysis)
+- [ ] Modularize agent orchestration and workflow management
+- [ ] Document best practices for agent integration
 
 _Last updated: May 8, 2025_
 
