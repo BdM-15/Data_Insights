@@ -19,22 +19,32 @@
 
 ## MCP Server Capabilities Table (Prioritized Implementation Order, May 2025)
 
-| #   | Functionality         | Open Source | Local | Free | Recommended Server(s)                    |
-| --- | --------------------- | ----------- | ----- | ---- | ---------------------------------------- |
-| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai (Completed)         |
-| 2   | LLM/Chat              | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server |
-| 3   | Agent Orchestration   | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server    |
-| 4   | GitHub Automation     | Yes         | Yes   | Yes  | github-mcp-server                        |
-| 5   | Web Search            | Yes         | Yes   | Yes  | Brave Search MCP                         |
-| 6   | Web Scraping          | Yes         | Yes   | Yes  | Firecrawl MCP, Crawl4AI MCP              |
-| 7   | Database (Postgres)   | Yes         | Yes   | Yes  | postgres-mcp-server                      |
-| 8   | Visualization         | Yes         | Yes   | Yes  | vega-lite-mcp-server                     |
-| 9   | Document Generation   | Yes         | Yes   | Yes  | python-sdk-mcp + python-docx             |
-| 10  | Reasoning/Analysis    | Yes         | Yes   | Yes  | Sequential Thinking MCP                  |
+| #   | Functionality         | Open Source | Local | Free | Recommended Server(s)                                  |
+| --- | --------------------- | ----------- | ----- | ---- | ------------------------------------------------------ |
+| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai (Completed)                       |
+| 2   | LLM/Chat              | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server (In Progress) |
+| 3   | Agent Orchestration   | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server (Not Started)    |
+| 4   | GitHub Automation     | Yes         | Yes   | Yes  | github-mcp-server (Not Started)                        |
+| 5   | Web Search            | Yes         | Yes   | Yes  | Brave Search MCP (Not Started)                         |
+| 6   | Web Scraping          | Yes         | Yes   | Yes  | Firecrawl MCP, Crawl4AI MCP (Not Started)              |
+| 7   | Database (Postgres)   | Yes         | Yes   | Yes  | postgres-mcp-server (Not Started)                      |
+| 8   | Visualization         | Yes         | Yes   | Yes  | vega-lite-mcp-server (Not Started)                     |
+| 9   | Document Generation   | Yes         | Yes   | Yes  | python-sdk-mcp + python-docx (Not Started)             |
+| 10  | Reasoning/Analysis    | Yes         | Yes   | Yes  | Sequential Thinking MCP (Not Started)                  |
 
 ---
 
 ## Updated MCP/AI Agent Integration Roadmap (May 2025)
+
+### May 2025 Progress Update
+
+- **WSL2 Ubuntu 22.04 LTS with NVIDIA Container Toolkit**: Complete. Confirmed GPU access in Docker containers for RTX 4060.
+- **Ollama and FastAPI Chat API Docker Compose Integration**: Complete. Both services run as containers, with Ollama using GPU.
+- **Langfuse and Pydantic AI Tracing**: Complete. Centralized tracing module implemented, all config in `.env`/`.env.example`.
+- **Prompt Template System**: Complete. Markdown-based prompt templates in place, loaded by chat API.
+- **Configuration Refactor**: Complete. All config now accessed via function-based accessors in `config.py`.
+- **Documentation and Planning**: In Progress. Modularization and AI integration plans updated, but ongoing as features are added.
+- **AI Chat Endpoint**: In Progress. FastAPI endpoint scaffolded, ready for further development in a new branch.
 
 ### Next Steps
 

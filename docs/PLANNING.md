@@ -1,3 +1,27 @@
+### May 2025 Progress Update
+
+- **WSL2 Ubuntu 22.04 LTS with NVIDIA Container Toolkit**: Complete. Confirmed GPU access in Docker containers for RTX 4060.
+- **Ollama and FastAPI Chat API Docker Compose Integration**: Complete. Both services run as containers, with Ollama using GPU.
+- **Langfuse and Pydantic AI Tracing**: Complete. Centralized tracing module implemented, all config in `.env`/`.env.example`.
+- **Prompt Template System**: Complete. Markdown-based prompt templates in place, loaded by chat API.
+- **Configuration Refactor**: Complete. All config now accessed via function-based accessors in `config.py`.
+- **Documentation and Planning**: In Progress. Modularization and AI integration plans updated, but ongoing as features are added.
+- **AI Chat Endpoint**: In Progress. FastAPI endpoint scaffolded, ready for further development in a new branch.
+
+---
+
+| Task/Phase                                | Status      |
+| ----------------------------------------- | ----------- |
+| WSL2 Ubuntu 22.04 LTS + NVIDIA Toolkit    | Complete    |
+| Docker Compose: Ollama + FastAPI Chat API | Complete    |
+| GPU Access in Containers                  | Complete    |
+| Langfuse + Pydantic AI Tracing            | Complete    |
+| Centralized Config via config.py          | Complete    |
+| Prompt Template System (Markdown)         | Complete    |
+| FastAPI Chat Endpoint (scaffold)          | In Progress |
+| Modularization/AI Planning Docs           | In Progress |
+| AI Chat Feature (full)                    | Not Started |
+
 # PLANNING.md
 
 ## Table of Contents
