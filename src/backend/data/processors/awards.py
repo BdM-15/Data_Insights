@@ -210,12 +210,22 @@ def get_agency_obligation_ratio(df: pd.DataFrame) -> list:
     """
     if df.empty:
         return []
+    # Calculate award actions (base awards only)
     base_awards = df[df['modification_number'] == '0']
-    agency_ratio = base_awards.groupby('parent_award_agency_name').agg(
-        award_count=('parent_award_agency_name', 'count'),
-        federal_action_obligation=('federal_action_obligation', 'sum')
-    ).reset_index()
-    agency_ratio['avg_award_value'] = agency_ratio['federal_action_obligation'] / agency_ratio['award_count']
+    award_count_per_agency = base_awards.groupby('parent_award_agency_name').size().rename('award_count')
+
+    # Calculate obligations (sum of all obligations for all rows, not just base awards)
+    obligation_per_agency = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().rename('federal_action_obligation')
+
+    # Merge to ensure all agencies are included
+    agency_ratio = pd.concat([award_count_per_agency, obligation_per_agency], axis=1).fillna(0).reset_index()
+
+    # Calculate average award value (obligations / award actions)
+    agency_ratio['avg_award_value'] = agency_ratio.apply(
+        lambda row: row['federal_action_obligation'] / row['award_count'] if row['award_count'] > 0 else 0,
+        axis=1
+    )
+    # Reason: Use avg_award_value for scatter size, but cap for outliers
     agency_ratio['scatter_size'] = np.abs(agency_ratio['avg_award_value'])
     size_cap = agency_ratio['scatter_size'].quantile(0.95)
     agency_ratio['scatter_size'] = agency_ratio['scatter_size'].clip(upper=size_cap)

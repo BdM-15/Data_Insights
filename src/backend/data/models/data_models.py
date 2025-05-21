@@ -17,15 +17,14 @@ class TopAgencyByObligation(BaseModel):
     federal_action_obligation: float
 
 class AgencyRatioMetrics(BaseModel):
-    parent_award_agency_name: str
-    award_count: int
-    federal_action_obligation: float
-    avg_award_value: float
-    scatter_size: float
-    award_count_normalized: float
-    obligation_normalized: float
-    award_count_original: int
-    obligation_original: float
+    parent_award_agency_name: str  # Display/label
+    award_count: int  # Data (Award Actions)
+    federal_action_obligation: float  # Data (Obligations)
+    avg_award_value: float  # Data (Avg Award Value)
+    # --- Charting/Plotting only ---
+    scatter_size: float  # Bubble size for chart
+    award_count_normalized: float  # X axis (log scale)
+    obligation_normalized: float  # Y axis (log scale)
 
 # Model for data related to 'queries.py' (e.g., output of get_naics_data)
 class NAICSData(BaseModel):

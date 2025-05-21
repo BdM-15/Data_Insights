@@ -521,9 +521,9 @@ def get_agency_obligation_ratio(df):
     agency_ratio['award_count_normalized'] = np.log1p(agency_ratio['award_count'])
     agency_ratio['obligation_normalized'] = np.log1p(agency_ratio['federal_action_obligation'])
     
-    # Add original values as hover data for reference
-    agency_ratio['award_count_original'] = agency_ratio['award_count']
-    agency_ratio['obligation_original'] = agency_ratio['federal_action_obligation']
+    # (Removed: Add original values as hover data for reference)
+    # No longer needed: agency_ratio['award_count_original'] = agency_ratio['award_count']
+    # No longer needed: agency_ratio['obligation_original'] = agency_ratio['federal_action_obligation']
     
     return agency_ratio
 
@@ -1364,8 +1364,8 @@ def main():
                         hover_data={
                             "award_count_normalized": False,
                             "obligation_normalized": False,
-                            "award_count_original": ":.0f",
-                            "obligation_original": ":$.2s",
+                            "award_count": ":.0f",
+                            "federal_action_obligation": ":$.2s",
                             "avg_award_value": ":$.2s"
                         },
                         size_max=50,

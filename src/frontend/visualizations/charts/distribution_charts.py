@@ -67,6 +67,13 @@ def plot_capture_intensity_scatter(
     import numpy as np
     median_count = agency_df["award_count_normalized"].median()
     median_obligation = agency_df["obligation_normalized"].median()
+    # Prepare hover data with custom formatting (no shorthand, currency for obligations, comma for actions)
+    from src.frontend.utils.formatting import format_value
+    hover_data = {
+        "Award Actions": agency_df["award_count"].apply(lambda x: f"{x:,}"),
+        "Obligations": agency_df["federal_action_obligation"].apply(lambda x: format_value(x, is_currency=True)),
+        "Avg. Award Value": agency_df["avg_award_value"].apply(lambda x: format_value(x, is_currency=True)),
+    }
     fig = px.scatter(
         agency_df,
         x="award_count_normalized",
@@ -74,13 +81,7 @@ def plot_capture_intensity_scatter(
         size="scatter_size",
         color="parent_award_agency_name",
         hover_name="parent_award_agency_name",
-        hover_data={
-            "award_count_normalized": False,
-            "obligation_normalized": False,
-            "award_count_original": ":.0f",
-            "obligation_original": ":$.2s",
-            "avg_award_value": ":$.2s"
-        },
+        custom_data=[agency_df["award_count"], agency_df["federal_action_obligation"], agency_df["avg_award_value"]],
         size_max=50,
         title=config.get('title', 'Action-to-Obligation Ratio Analysis (Normalized Scale)') if config else 'Action-to-Obligation Ratio Analysis (Normalized Scale)',
         labels={
@@ -88,6 +89,13 @@ def plot_capture_intensity_scatter(
             "obligation_normalized": "Obligations (log scale)",
             "avg_award_value": "Avg. Award Value"
         }
+    )
+    # Remove unwanted fields from hover, and set custom hovertemplate
+    fig.update_traces(
+        hovertemplate="<b>%{hovertext}</b><br>"
+        + "Award Actions: %{customdata[0]:,}<br>"
+        + "Obligations: $%{customdata[1]:,.2f}<br>"
+        + "Avg. Award Value: $%{customdata[2]:,.2f}<extra></extra>"
     )
     fig.add_shape(
         type="line",
