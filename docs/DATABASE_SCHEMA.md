@@ -142,7 +142,33 @@ Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date
 - This architecture supports maintainability, scalability, and future AI/LLM-driven analytics.
 - Enables integration with Model Context Protocol (MCP) agents and local LLMs for advanced analytics, reasoning, and document generation.
 
-See `PLANNING.md` and `README.md` for additional context and rationale.
+---
+
+## Pydantic Model Alignment
+
+The Pydantic models in `src/backend/data/models/data_models.py` are designed to mirror and validate the structure of the slimmed USAspending tables for robust data processing and API responses. The mapping is as follows:
+
+### Prime Awards Table → Pydantic Models
+
+- **PrimeContractAwardDetails**: Maps to core award fields (dates, values, IDs, performance period, contract types, etc.)
+- **PrimeCompetitorDetails**: Maps to recipient and parent recipient fields (names, UEIs)
+- **PrimeContractRequirementDetails**: Maps to requirement/classification fields (descriptions, NAICS, PSC, DoD program, etc.)
+- **PrimeCustomerDetails**: Maps to agency and office fields (parent/awarding/funding agencies and offices)
+- **PrimeSolicitationDetails**: Maps to solicitation and competition fields (solicitation date, procedures, extent competed, set-aside, etc.)
+
+These models are used in combination to represent a full record from `usaspending_prime_awards_slim`.
+
+### Subawards Table → Pydantic Models
+
+- **SubcontractAwardDetails**: Maps to core subaward fields (join key, type, number, amount, action date, fiscal year)
+- **SubcontractCompetitorDetails**: Maps to subawardee identity fields (UEI, name, DBA, parent info, country, city, state, business types)
+- **SubcontractRequirementsDetails**: Maps to requirement and place of performance fields (performance city/state, description)
+
+These models are used together to represent a full record from `usaspending_subawards_slim`.
+
+> **Note:** Not all database columns are always present in a single Pydantic model. Instead, models are composed to reflect logical groupings for validation, API, and analytics use cases. See the model docstrings in `data_models.py` for details.
+
+---
 
 # USAspending Database Schema Documentation
 

@@ -129,6 +129,8 @@ class PrimeContractAwardDetails(BaseModel):
     """
     Core award details for a prime contract record.
     """
+    contract_transaction_unique_key: str  # Unique transaction key (primary key)
+    contract_award_unique_key: Optional[str]  # Unique award key
     action_date_fiscal_year: Optional[str]
     action_date: Optional[date]
     parent_award_id_piid: Optional[str]
@@ -209,7 +211,7 @@ class SubcontractAwardDetails(BaseModel):
         subaward_action_date: Date the subaward was made
         subaward_action_date_fiscal_year: Fiscal year of the subaward action
     """
-    prime_award_unique_key: Optional[str]
+    prime_award_unique_key: Optional[str]  # Join key to prime awards
     subaward_type: Optional[str]
     subaward_number: Optional[str]
     subaward_amount: Optional[float]
