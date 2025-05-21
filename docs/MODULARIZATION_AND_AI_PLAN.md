@@ -38,6 +38,109 @@
 
 ### May 2025 Progress Update
 
+---
+
+## AI Chat Integration & Agentic Sidebar Plan (May 2025)
+
+### Overview
+
+We are beginning the integration of AI/LLM capabilities into the Data Insights platform, focusing on a modular, agentic, and context-aware chat experience. The following plan outlines the incremental steps for integrating a sidebar AI chat agent that is:
+
+- **UI-agnostic** (works across all pages)
+- **Context-aware** (knows what the user is viewing)
+- **Agentic** (can adjust filters, suggest actions, and orchestrate MCP tools)
+- **Efficient** (does not trigger full Streamlit reruns on every chat interaction)
+- **Observable** (all LLM/MCP/agent actions traced via Langfuse)
+
+### Stepwise Integration Plan
+
+#### Step 1: Sidebar AI Chat UI & FastAPI Integration
+
+- Build an "AI Tools" page in Streamlit.
+- Move navigation to the top of the main page (horizontal menu/tabs).
+- Sidebar is reserved for the AI chat/agent panel.
+- Integrate the sidebar chat UI with the FastAPI chat endpoint (UI-agnostic, no page rerun on chat).
+- Display prompt examples and allow user input.
+
+#### Step 2: Contextual Awareness
+
+- Pass current page/tab and filter state to the chat endpoint with each message.
+- Backend uses this context for more relevant responses.
+
+#### Step 3: Agentic Actions (Filter Adjustment)
+
+- Extend chat backend to return both a text response and an optional "action" payload (e.g., {"set_filter": {"agency": "Army", "date_range": "2023"}}).
+- Streamlit checks for action payloads and updates session state accordingly.
+- **No full rerun:** Use Streamlit's session state and component callbacks to update only affected UI parts.
+
+#### Step 4: Database Querying via LLM/MCP
+
+- Integrate a PostgreSQL MCP server or direct LLM-to-SQL translation for contract data queries.
+- Allow the agent to answer questions using live data, not just static context.
+
+#### Step 5: Web Intelligence Tools
+
+- Integrate Brave Search, Crawl4AI, and Firecrawl MCPs for web search and scraping.
+- Expose these as agent tools, so the prime agent can choose the right tool for the user’s query.
+
+#### Step 6: Enhanced Agentic Capabilities
+
+- Allow the agent to suggest filters, visualizations, or even switch pages based on user intent.
+- Add brainstorming and intent clarification features.
+
+---
+
+### Prime Agent Structure (Planning)
+
+- **Prime Agent**: Orchestrates all tool calls (LLM, database, web search, document generation, etc.)
+- **Tool Plugins**: Each MCP server/tool is a plugin (Postgres, Brave, Crawl4AI, etc.)
+- **Context Manager**: Tracks current page, filters, and user history
+- **Action Dispatcher**: Returns both text and UI actions (filter changes, navigation, etc.)
+- **Observability**: All actions and tool calls are traced via Langfuse
+
+---
+
+### AI Tools for Capture Managers (Feature Ideas)
+
+- Natural language contract data queries ("Show top 5 expiring contracts in Q4")
+- Market research via web scraping (SAM.gov, competitor sites)
+- Similar NAICS/PSC code discovery
+- Opportunity qualification checklists
+- Win theme and discriminator brainstorming
+- Competitive landscape summaries
+- Document/proposal outline generation
+- Price-to-win and risk analysis (future phase)
+
+---
+
+### Navigation Refactor
+
+- Move page navigation to the top of the main page (horizontal menu or tabs)
+- Sidebar is reserved for the AI chat/agent panel
+
+---
+
+### Summary Table
+
+| Step | Feature/Action                          | Outcome                        |
+| ---- | --------------------------------------- | ------------------------------ |
+| 1    | Sidebar AI chat UI, FastAPI integration | Chatbot available on all pages |
+| 2    | Pass page/filter context to chat        | Context-aware responses        |
+| 3    | Agentic filter adjustment               | AI can set filters for user    |
+| 4    | LLM/MCP database queries                | Data-driven insights           |
+| 5    | Web intelligence tools                  | Market research via AI         |
+| 6    | Prime agent orchestration               | Flexible, multi-tool agent     |
+
+---
+
+### Notes
+
+- **No Streamlit rerun on chat:** The chat component will use Streamlit's session state and component callbacks to update only the chat UI, not the whole page, for a smooth user experience.
+- **Incremental approach:** Each step is modular and can be validated independently.
+- **All LLM/MCP/agent actions are observable via Langfuse.**
+
+---
+
 - **WSL2 Ubuntu 22.04 LTS with NVIDIA Container Toolkit**: Complete. Confirmed GPU access in Docker containers for RTX 4060.
 - **Ollama and FastAPI Chat API Docker Compose Integration**: Complete. Both services run as containers, with Ollama using GPU.
 - **Langfuse and Pydantic AI Tracing**: Complete. Centralized tracing module implemented, all config in `.env`/`.env.example`.
@@ -51,7 +154,7 @@
 1. **Observability Foundation**
 
    - **Langfuse integration is complete.**
-   - All LLM, MCP, and agent interactions will be traced using Langfuse and (optionally) Logfire.
+   - All LLM, MCP, and agent interactions will be traced using Langfuse and Pydantic AI.
    - All chatbots, agents, and MCP tool calls are now observable from the start.
 
 2. **AI Chat Agent Integration**
