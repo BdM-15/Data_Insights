@@ -16,7 +16,6 @@ These tables are designed for dynamic joins and smart querying by analytics code
 The following columns are included in `usaspending_subawards_slim` (as of May 2025):
 
 - `prime_award_unique_key` (join key to prime awards)
-- `subaward_sam_report_id`
 - `subaward_number`
 - `subaward_amount`
 - `subaward_action_date`
