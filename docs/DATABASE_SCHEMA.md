@@ -4,26 +4,36 @@
 
 The Data_Insights project uses a three-stage schema approach for all USAspending data to ensure clear data lineage, robust ETL, and high-performance analytics:
 
-- **raw**: Contains as-ingested, unmodified data from USAspending.gov. No transformations, no deduplication, no indexes except for ingestion/PKs. Example: `raw.usaspending_prime_awards`, `raw.usaspending_subawards`
-- **interim**: Contains cleaned and standardized data, but not deduplicated or indexed for analytics. Used for all downstream processing. Example: `interim.usaspending_prime_awards`, `interim.usaspending_subawards`
-- **processed**: Contains deduplicated, analytics-ready data with all performance indexes. Used for dashboards, reporting, and AI/LLM workflows. Example: `processed.usaspending_prime_awards`, `processed.usaspending_subawards`
+- **s1_raw**: Contains as-ingested, unmodified data from USAspending.gov. No transformations, no deduplication, no indexes except for ingestion/PKs. Example: `s1_raw.usaspending_prime_awards`, `s1_raw.usaspending_subawards`
+- **s2_interim**: Contains cleaned and standardized data, but not deduplicated or indexed for analytics. Used for all downstream processing. Example: `s2_interim.usaspending_prime_awards`, `s2_interim.usaspending_subawards`
+- **s3_processed**: Contains deduplicated, analytics-ready data with all performance indexes. Used for dashboards, reporting, and AI/LLM workflows. Example: `s3_processed.usaspending_prime_awards`, `s3_processed.usaspending_subawards`
 
 **Intent of Each Stage:**
 
-- `raw`: Immutable, for audit and reprocessing. Only ingestion logic writes here.
-- `interim`: Cleansing, type casting, and standardization. No deduplication or analytics indexes. Used for all ETL downstream logic.
-- `processed`: Final, deduplicated, indexed, and optimized for analytics. All dashboards, APIs, and AI agents should use only this schema.
+- `s1_raw`: Immutable, for audit and reprocessing. Only ingestion logic writes here.
+- `s2_interim`: Cleansing, type casting, and standardization. No deduplication or analytics indexes. Used for all ETL downstream logic.
+- `s3_processed`: Final, deduplicated, indexed, and optimized for analytics. All dashboards, APIs, and AI agents should use only this schema.
 
 **Best Practices:**
 
-- Never run analytics or reporting on `raw` or `interim` tables.
-- Only create performance indexes in the `processed` schema.
-- All deduplication and business rules are applied in the move from `interim` to `processed`.
+- Never run analytics or reporting on `s1_raw` or `s2_interim` tables.
+- Only create performance indexes in the `s3_processed` schema.
+- All deduplication and business rules are applied in the move from `s2_interim` to `s3_processed`.
 - Table names are always `usaspending_prime_awards` or `usaspending_subawards` (no suffixes for stage).
+  **Deduplication Keys:**
+
+- Prime awards: `contract_transaction_unique_key` (unique transaction key)
+- Subawards: Composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`)
+
+**Transformation & Indexing:**
+
+- All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` as the source.
+- Filter value tables and dependent filter relationships are precomputed for fast UI filtering and analytics.
+- Quarterly aggregation tables are created for timeline visualizations, with fiscal year/quarter computed dynamically.
 
 ---
 
-# USAspending Slim Table Architecture (May 2025)
+# USAspending Slim Table Architecture (May 2025, Updated)
 
 ## usaspending_prime_awards & usaspending_subawards (Table Structure)
 
@@ -168,6 +178,13 @@ Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date
 
 - This architecture supports maintainability, scalability, and future AI/LLM-driven analytics.
 - Enables integration with Model Context Protocol (MCP) agents and local LLMs for advanced analytics, reasoning, and document generation.
+- Robust deduplication and schema-aware transformation ensure high data quality for downstream AI, analytics, and RAG workflows.
+
+# Filter/Aggregation Tables for Analytics & AI
+
+The transformation pipeline precomputes filter value tables (e.g., `filter_values_parent_award_agency_name`, `filter_values_naics_code`) and dependent filter relationships (`filter_dependencies`) for fast UI filtering and analytics. Quarterly aggregation tables (e.g., `quarterly_data`) are also created for timeline visualizations. All are generated in `s3_processed` and are safe for repeated runs.
+
+---
 
 ---
 

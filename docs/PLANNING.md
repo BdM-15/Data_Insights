@@ -2,11 +2,27 @@
 
 ## USAspending ETL Pipeline, Data Model, and Semantic Search/RAG Readiness (May 2025)
 
-### Three-Stage Schema Architecture
+### Three-Stage Schema Architecture (Updated May 2025)
 
 - **s1_raw**: Ingests and stores unmodified source data (e.g., from USAspending.gov) for full provenance and reproducibility. No transformations or deduplication are performed at this stage. Table names mirror the source.
 - **s2_interim**: Receives cleansed, normalized, and type-corrected data. Deduplication is not performed here; indexes are not created at this stage to maximize write speed. Used as the staging area for further processing.
 - **s3_processed**: Contains deduplicated, performance-optimized, and analytics-ready tables. All indexes, vector/embedding columns, and materialized views are created here. This schema is the foundation for high-performance analytics, AI/LLM, and RAG workflows.
+
+#### Key Pipeline Updates (May 2025)
+
+- **Deduplication** is now fully automated and robust for both prime awards and subawards:
+  - Prime deduplication uses `contract_transaction_unique_key` as the primary key.
+  - Subaward deduplication uses a composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`).
+  - Deduplication reads from `s2_interim` and writes to `s3_processed`.
+  - All index creation logic is now handled in the transformation stage.
+- **Transformation** is fully automated and idempotent:
+  - Uses only `s3_processed.usaspending_prime_awards` as the source for all preprocessing and aggregations.
+  - Creates all recommended indexes and precomputes filter/aggregation tables for high-performance analytics and UI filtering.
+  - Computes fiscal year and quarter dynamically from `action_date`.
+  - All scripts are modular, schema-aware, and safe for repeated runs.
+- **AI/LLM/RAG Readiness**:
+  - The pipeline is now future-proofed for semantic search, web/RAG enrichment, and downstream extensibility.
+  - All tables and models are designed for easy extension as new AI, MCP, or LLM features are added.
 
 **Rationale:**
 
@@ -14,40 +30,21 @@
 - Supports future extensibility for new data sources and schema evolution.
 - Aligns with best practices for high-volume, AI-augmented analytics pipelines.
 
-### Deduplication Strategies
-
-- **Prime Awards:** Deduplication is performed using the `contract_transaction_unique_key` as the primary key. This ensures each transaction is unique and supports reliable joins and analytics.
-- **Subawards:** Deduplication uses a composite key (e.g., `prime_award_unique_key`, `subaward_number`, `subaward_action_date`) to uniquely identify subaward records. This approach is robust to data quality issues and supports downstream joins.
-- **Indexes and ANALYZE:** Indexes are only created in `s3_processed` after deduplication, following best practices for ETL performance and query optimization.
-
-### Data Model Enhancements for AI, LLM, and RAG
-
-- **Pydantic Models:** All core entities (prime awards, subawards, documents, etc.) are defined as Pydantic models in [`src/backend/data/models/data_models.py`](../src/backend/data/models/data_models.py) for type safety, validation, and extensibility.
-- **Embedding/Vector Fields:** Models now include `embedding: Optional[List[float]]` fields to support semantic search and vector database operations (e.g., with `pgvector`).
-- **Provenance Fields:** All major models include `source`, `created_at`, and `updated_at` fields to track data lineage and support auditability.
-- **Metadata Fields:** Flexible `metadata: Optional[dict]` fields are included for unstructured or enriched data, supporting future AI and RAG use cases.
-- **Generic Document Model:** A `Document` model is provided for RAG/web enrichment, supporting text, embeddings, source URLs, and arbitrary metadata. This enables downstream AI agents to attach, enrich, and retrieve documents for retrieval-augmented generation.
-
-### Semantic Search, RAG, and Extensibility
-
-- **pgvector Integration:** The pipeline and models are designed to support `pgvector` for high-performance vector search and semantic retrieval. Embeddings can be generated locally (e.g., via Ollama) and stored in dedicated vector columns.
-- **RAG/Web Enrichment:** The architecture supports attaching web-scraped or AI-generated documents to contracts, agencies, or opportunities, enabling advanced retrieval-augmented generation workflows.
-- **Downstream Extensibility:** All models and schemas are designed for easy extension as new AI, MCP, or LLM features are added. New fields, document types, or enrichment sources can be added with minimal disruption.
-
-### Documentation and Cross-References
+### Documentation and Cross-References (Updated)
 
 - **ETL Scripts:**
-  - Cleansing: [`src/backend/data/data_processing/cleansing.py`](../src/backend/data/data_processing/cleansing.py)
+  - Deduplication: [`src/backend/data/data_processing/deduplication.py`](../src/backend/data/data_processing/deduplication.py)
   - Transformation: [`src/backend/data/data_processing/transformation.py`](../src/backend/data/data_processing/transformation.py)
 - **Data Models:** [`src/backend/data/models/data_models.py`](../src/backend/data/models/data_models.py)
 - **Database Schema:** See [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md) for table and field definitions, including vector/embedding columns and document storage.
 - **Planning:** This section and related updates document the rationale, implementation, and future-proofing for AI/LLM and RAG readiness.
 
-### Next Steps
+### Status
 
-- Complete and test deduplication and transformation scripts for `s3_processed`, including index and vector column creation.
-- Implement and validate semantic search and RAG workflows using local LLMs and `pgvector`.
-- Continue to update documentation and code as new AI, MCP, and LLM features are implemented.
+- ✅ ETL pipeline refactor, deduplication, and transformation automation complete (May 2025)
+- ✅ Pipeline is modular, schema-aware, and ready for AI/LLM/RAG use cases
+
+---
 
 ---
 

@@ -69,21 +69,25 @@ The USAspending database is restored from the official USAspending.gov bulk down
 To improve data retrieval reliability and accommodate API rate limits, we implemented the following fetch adjustments:
 
 1. **Optimized Batch Processing**:
+
    - Implemented chunking of large data requests into smaller batches
    - Added configurable batch size parameters to prevent timeouts
    - Created resume capability to restart failed fetches from the last successful point
 
 2. **Enhanced Error Handling**:
+
    - Added exponential backoff retry mechanism for API failures
    - Implemented comprehensive error classification and recovery strategies
    - Added detailed logging with timestamps for troubleshooting
 
 3. **Rate Limiting Compliance**:
+
    - Implemented dynamic request throttling to respect API rate limits
    - Added automatic pausing when approaching rate limits
    - Created daily request quota tracking to prevent API cutoffs
 
 4. **Performance Optimizations**:
+
    - Implemented parallel fetching for independent data segments
    - Added progress tracking and ETA calculations for large fetches
    - Created caching mechanism to prevent redundant requests
@@ -281,22 +285,24 @@ The project includes several database utilities to manage the USAspending databa
 
 ## USAspending Database Schema
 
-The USAspending database is organized into four main schemas, each serving a specific purpose in the data processing pipeline. Below is a detailed overview of each schema and the transformations applied to the data throughout the ETL process.
+The USAspending database is organized into three main schemas for ETL and analytics, plus a `public` schema for reference data. Below is a detailed overview of each schema and the transformations applied throughout the ETL process (updated May 2025):
 
 ### Schema Overview
 
-1. **`raw` Schema** - Contains the original, unmodified data directly imported from USAspending.gov bulk downloads
-2. **`int` (Intermediate) Schema** - Contains normalized and cleaned data derived from the raw schema
-3. **`rpt` (Reporting) Schema** - Contains denormalized tables optimized for efficient querying and reporting
+1. **`s1_raw` Schema** - Contains the original, unmodified data directly imported from USAspending.gov bulk downloads
+2. **`s2_interim` Schema** - Contains normalized and cleaned data derived from the raw schema
+3. **`s3_processed` Schema** - Contains deduplicated, indexed, and analytics-ready tables for reporting, AI, and RAG
 4. **`public` Schema** - Contains reference data, lookup tables, and administrative tables
 
 ### Data Flow and ETL Process
 
-The USAspending database implements a standard ETL (Extract, Transform, Load) process:
+The USAspending database implements a robust, automated ETL (Extract, Transform, Load) process:
 
-1. **Extract**: Raw data is extracted from USAspending.gov bulk downloads and loaded into the `raw` schema without modification
-2. **Transform**: Data is cleaned, normalized, and prepared in the `int` schema
-3. **Load**: Transformed data is loaded into optimized reporting tables in the `rpt` schema
+1. **Extract**: Raw data is extracted from USAspending.gov bulk downloads and loaded into the `s1_raw` schema without modification
+2. **Transform**: Data is cleansed and normalized in the `s2_interim` schema
+3. **Deduplicate & Optimize**: Deduplication and all business rules are applied in the move from `s2_interim` to `s3_processed`, with all indexes and precomputed tables created in `s3_processed`
+
+**Note:** All analytics, AI, and RAG workflows should use only the `s3_processed` schema. The pipeline is modular, idempotent, and ready for future extensibility.
 
 ### Schema Details
 

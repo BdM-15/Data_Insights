@@ -66,12 +66,21 @@
   - Status: ✅ Completed, database now fully operational
 
 - ~~**Optimize Data Cleansing Process**~~:
+
   - ✅ Completely redesigned data_cleansing.py using direct SQL transformations
   - ✅ Reduced processing time from 3.5+ hours to under 12 minutes for 22 million records
   - ✅ Achieved processing speeds of ~29,000 rows per second
   - ✅ Removed 3.6 million duplicate records (16.58% of the original data)
   - ✅ Fixed data type handling issues for proper data normalization
   - Status: ✅ Completed with dramatic performance improvements
+
+- **ETL Pipeline Refactor, Deduplication, and Transformation Automation**:
+  - ✅ Refactored ETL scripts to use `s1_raw`, `s2_interim`, and `s3_processed` schemas with clear naming conventions
+  - ✅ Deduplication script now robustly deduplicates both prime awards and subawards, reading from `s2_interim` and writing to `s3_processed`
+  - ✅ All index creation logic moved to transformation, which is now fully automated and idempotent
+  - ✅ Transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed` as the source
+  - ✅ Pipeline is modular, schema-aware, and ready for high-performance analytics, AI, and RAG workflows
+  - Status: ✅ Complete (May 2025)
 - ~~**Fix filter dependencies JSON handling**~~:
   - ✅ Fixed JSON handling in the `get_unique_values` function to properly handle both string JSON and parsed list types
   - ✅ Resolved error: "the JSON object must be str, bytes or bytearray, not list" when selecting parent filter values

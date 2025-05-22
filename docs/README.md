@@ -100,7 +100,8 @@ All new features, modularization, and AI scaffolding are documented in the relev
 - **Data Processing**:
 
   - **`src/backend/data_processing/cleansing.py`**: Data cleaning and normalization functions.
-  - **`src/backend/data_processing/transformation.py`**: Data transformation and preprocessing for app performance.
+  - **`src/backend/data_processing/deduplication.py`**: Deduplication of prime awards and subawards, reading from `s2_interim` and writing to `s3_processed`.
+  - **`src/backend/data_processing/transformation.py`**: Automated transformation, index creation, and filter/aggregation table generation for analytics and AI, using only `s3_processed` as the source.
   - **`src/backend/data_processing/import.py`**: CSV to database transfer utilities.
   - **`src/backend/data_processing/migration.py`**: Database migration utilities (SQLite to PostgreSQL).
 
@@ -167,6 +168,7 @@ All new features, modularization, and AI scaffolding are documented in the relev
      1. Run the data preparation scripts in the following order:
         - `src/backend/data_processing/migration.py` (if migrating from an existing SQLite database)
         - `src/backend/data_processing/cleansing.py`
+        - `src/backend/data_processing/deduplication.py`
         - `src/backend/data_processing/transformation.py`
         - `src/backend/data_processing/import.py` (if importing from CSV files)
    - For the USAspending database:
@@ -188,118 +190,17 @@ All new features, modularization, and AI scaffolding are documented in the relev
 4. **Access the Application**:
    - Open the provided local URL in your web browser.
 
-### Future Enhancements
+### Recent Pipeline Updates (May 2025)
 
-- **Comprehensive Capture Profile Generation**:
-  - Create polished, strategic Capture Profiles that synthesize all AI tool outputs
-  - Include executive summaries, competitive positioning, PWin calculations, and strategic recommendations
-  - Generate visual aids and proposal support materials automatically
-  - Implement ghosting strategies based on competitor intelligence
-- **Model Context Protocol (MCP) Integration**:
-  - Build AI tools for web intelligence gathering, document creation, visualization, and strategic analysis
-  - Integrate all AI capabilities through Microsoft VSCode Toolkit for local deployment
-- **Langfuse Observability Integration**:
-  - Implement LLM observability framework for all AI components
-  - Track and version control prompts for all LLM interactions
-  - Create custom evaluation metrics for federal contracting domain
-  - Build performance dashboards for AI component quality assessment
-  - Develop test datasets and benchmarks for continuous improvement
-- **Advanced Web Intelligence with Crawl4AI**:
-  - Integrate open-source Crawl4AI for high-performance, LLM-friendly web crawling
-  - Generate clean markdown from government websites for direct LLM consumption
-  - Implement structured extraction for consistent data formatting across sources
-  - Leverage advanced browser control for navigating complex federal websites
-  - Enable parallel crawling for faster intelligence collection at scale
-  - Create a unified intelligence repository from multiple sources
-- **External Data Source Integration**:
-  - Connect SAM.gov for future opportunity data
-  - Integrate SBA SubNet for subcontracting opportunities
-  - Implement GovWin IQ and Bloomberg Government APIs for market intelligence
-  - Create Salesforce REST API integration for CRM and capture management
-- **Enhanced Capture Management Workflows**:
-  - Automate opportunity feeds for pipeline building
-  - Develop sophisticated PWin scoring models
-  - Create teaming partner identification tools
-  - Build automated proposal development support
-- **UI/UX Improvements**:
-  - Add interactive visualization features
-  - Implement advanced filtering options
-  - Optimize for large datasets with pagination
+- The ETL pipeline is now fully automated and modular, using a three-stage schema (`s1_raw`, `s2_interim`, `s3_processed`).
+- Deduplication is robust for both prime awards and subawards, and all index creation is handled in transformation.
+- The transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed` as the source.
+- The pipeline is idempotent, schema-aware, and ready for high-performance analytics, AI, and RAG workflows.
 
-### Recent Updates (May 2025)
+---
 
-- **USAspending Database Restoration Complete**:
-
-  - Full 1.1TB USAspending.gov database successfully restored on May 1, 2025
-  - All schemas, indexes, and constraints properly created and optimized
-  - Database accessible on dedicated PostgreSQL instance on port 5433
-  - Performance-optimized configuration enables efficient querying of complex federal spending data
-  - See `docs/DATABASE_SETUP.md` for detailed connection information
-
-- **Cross-Environment Compatibility Improvements**:
-  - Replaced all Unicode special characters with ASCII-compatible alternatives
-  - Standardized symbol usage across dashboards and reports
-  - Enhanced compatibility across Windows, Linux, and cloud environments
-  - Fixed encoding issues in exported files and visualizations
-  - Improved readability and consistent appearance across different platforms
-
-### Model Context Protocol (MCP) Integration in Streamlit
-
-The USAspending.gov Data Explorer will be enhanced with direct integration of Model Context Protocol (MCP) AI tools within the Streamlit interface, providing users with AI-powered analysis capabilities directly in the web application.
-
-#### Planned MCP Features in Streamlit
-
-1. **AI Tools Tab**
-
-   - A dedicated multi-tab interface for AI-powered features
-   - Clean, intuitive UI for tool selection and interaction
-   - Secure access management for AI capabilities
-
-2. **Integrated Chatbot**
-
-   - Conversational AI assistant embedded in the Streamlit sidebar
-   - Context-aware interaction with active filters and selected contract data
-   - Specialized prompts for contract analysis and capture intelligence
-   - Persistent conversation history for continuing analysis sessions
-
-3. **In-App Capture Profile Generation**
-
-   - One-click capture profile generation from selected contracts
-   - Customization options for different capture profile types
-   - Real-time progress indicators during document generation
-   - Preview capability before download
-   - Multiple export formats (DOCX, PDF)
-
-4. **Web Intelligence Dashboard**
-
-   - Integrated search and analysis of market intelligence
-   - Entity tracking for agencies, competitors, and technologies
-   - Visual mapping of relationships and intelligence findings
-   - Automatic digest generation of key intelligence points
-
-5. **AI-Enhanced Visualizations**
-   - Natural language queries to generate custom visualizations
-   - AI-driven visualization recommendations based on selected data
-   - Federal contracting-specific visualization templates
-   - Annotation and sharing capabilities for collaborative analysis
-
-#### Implementation Approach
-
-The MCP integration will leverage local AI models through Ollama, ensuring all data processing remains on the user's system with no external API calls. The implementation will utilize the GTX 4060 GPU with CUDA for efficient inference, making sophisticated AI capabilities accessible without compromising data privacy.
-
-### AI Components and Framework
-
-The Data_Insights project incorporates several advanced AI components:
-
-- **Local LLM Integration**: Using Ollama for local LLM inference to generate capture profile narratives, leveraging the user's GTX 4060 with CUDA.
-- **AI Agent Framework**: Model Context Protocol (MCP) integration to build local AI tools including web intelligence gathering, document creation, and analysis.
-- **Brave Search MCP Integration**: Adds privacy-focused, real-time web search to the MCP suite, enabling up-to-date market research, competitor monitoring, and news/event tracking. Complements static scraping (Crawl4AI) and document retrieval (Vectorize) with structured, privacy-respecting results for downstream AI analysis. All queries/results are handled locally, with no persistent logs or external data sharing.
-- **PydanticAI Integration**: Structured agent framework for type-safe AI components with validated outputs:
-  - Structured response validation using Pydantic models
-  - Type-safe dependency injection for AI agent components
-  - Domain-specific models for federal contracting
-  - Consistent error handling and recovery patterns
-  - Model-agnostic support for Ollama, OpenAI, Anthropic, and other providers
+- Consistent error handling and recovery patterns
+- Model-agnostic support for Ollama, OpenAI, Anthropic, and other providers
 - **LLM Observability**: Langfuse integration for tracking, evaluating, and improving AI component performance:
   - Tracing of all LLM interactions across the application
   - Prompt management system with versioning and templates
