@@ -19,18 +19,19 @@
 
 ## MCP Server Capabilities Table (Prioritized Implementation Order, May 2025)
 
-| #   | Functionality         | Open Source | Local | Free | Recommended Server(s)                                  |
-| --- | --------------------- | ----------- | ----- | ---- | ------------------------------------------------------ |
-| 1   | Observability/Tracing | Yes         | Yes   | Yes  | langfuse, pydanticai (Completed)                       |
-| 2   | LLM/Chat              | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server (In Progress) |
-| 3   | Agent Orchestration   | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server (Not Started)    |
-| 4   | GitHub Automation     | Yes         | Yes   | Yes  | github-mcp-server (Not Started)                        |
-| 5   | Web Search            | Yes         | Yes   | Yes  | Brave Search MCP (Not Started)                         |
-| 6   | Web Scraping          | Yes         | Yes   | Yes  | Firecrawl MCP, Crawl4AI MCP (Not Started)              |
-| 7   | Database (Postgres)   | Yes         | Yes   | Yes  | postgres-mcp-server (Not Started)                      |
-| 8   | Visualization         | Yes         | Yes   | Yes  | vega-lite-mcp-server (Not Started)                     |
-| 9   | Document Generation   | Yes         | Yes   | Yes  | python-sdk-mcp + python-docx (Not Started)             |
-| 10  | Reasoning/Analysis    | Yes         | Yes   | Yes  | Sequential Thinking MCP (Not Started)                  |
+| #   | Functionality                   | Open Source | Local | Free | Recommended Server(s)                                                                     |
+| --- | ------------------------------- | ----------- | ----- | ---- | ----------------------------------------------------------------------------------------- |
+| 1   | Observability/Tracing           | Yes         | Yes   | Yes  | langfuse, pydanticai (Completed)                                                          |
+| 2   | LLM/Chat                        | Yes         | Yes   | Yes  | ollama-mcp-server, pydanticai-mcp-server (In Progress)                                    |
+| 3   | Agent Orchestration             | Yes         | Yes   | Yes  | python-sdk-mcp, pydanticai-mcp-server (Not Started)                                       |
+| 4   | GitHub Automation               | Yes         | Yes   | Yes  | github-mcp-server (Not Started)                                                           |
+| 5   | Web Search                      | Yes         | Yes   | Yes  | Brave Search MCP (Not Started)                                                            |
+| 6   | Web Scraping                    | Yes         | Yes   | Yes  | Firecrawl MCP, Crawl4AI MCP (Not Started)                                                 |
+| 7   | Database (Postgres)             | Yes         | Yes   | Yes  | postgres-mcp-server (Not Started)                                                         |
+| 8   | Visualization                   | Yes         | Yes   | Yes  | vega-lite-mcp-server (Not Started)                                                        |
+| 9   | Document Generation             | Yes         | Yes   | Yes  | python-sdk-mcp + python-docx (Not Started)                                                |
+| 10  | Reasoning/Analysis              | Yes         | Yes   | Yes  | Sequential Thinking MCP (Not Started)                                                     |
+| 11  | SAM.gov Solicitation Enrichment | Yes         | Yes   | Yes  | See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` and `/docs/PLANNING.md` |
 
 ---
 

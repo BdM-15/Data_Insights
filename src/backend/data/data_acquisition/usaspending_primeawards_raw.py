@@ -149,8 +149,8 @@ TARGET_FIELDS = [
     "usaspending_permalink"
 ]
 
-# DB Table name
-TABLE_NAME = "usaspending_prime_awards_slim"
+# DB Table name (fully qualified for s1_raw schema)
+TABLE_NAME = "s1_raw.usaspending_prime_awards_slim"
 
 # FEATURE: PostgreSQL Database Connection
 def get_db_connection():
@@ -244,38 +244,29 @@ def setup_awards_table(conn):
     cursor = conn.cursor()
     try:
         # First check if table exists
-        cursor.execute("""
+        cursor.execute(f"""
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
-            WHERE table_name = %s
+            WHERE table_schema = 's1_raw' AND table_name = 'usaspending_prime_awards_slim'
         )
-        """, (TABLE_NAME,))
-        
+        """)
         table_exists = cursor.fetchone()[0]
-        
         if not table_exists:
-            # Create a simple table with TEXT columns for all fields
             columns = []
             for field in TARGET_FIELDS:
-                # contract_transaction_unique_key is our primary key
                 if field == "contract_transaction_unique_key":
                     columns.append(f"{field} TEXT PRIMARY KEY")
                 else:
                     columns.append(f"{field} TEXT")
-            
-            # Add tracking columns
             columns.append("created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
             columns.append("updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
             columns.append("fetch_date DATE")
-            
-            # Join columns and create table
             columns_sql = ", ".join(columns)
             cursor.execute(f"""
             CREATE TABLE {TABLE_NAME} (
                 {columns_sql}
             )
             """)
-            
             conn.commit()
             logger.info(f"Created table {TABLE_NAME}")
         else:

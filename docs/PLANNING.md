@@ -1,5 +1,56 @@
 ### May 2025 Progress Update
 
+## USAspending ETL Pipeline, Data Model, and Semantic Search/RAG Readiness (May 2025)
+
+### Three-Stage Schema Architecture
+
+- **s1_raw**: Ingests and stores unmodified source data (e.g., from USAspending.gov) for full provenance and reproducibility. No transformations or deduplication are performed at this stage. Table names mirror the source.
+- **s2_interim**: Receives cleansed, normalized, and type-corrected data. Deduplication is not performed here; indexes are not created at this stage to maximize write speed. Used as the staging area for further processing.
+- **s3_processed**: Contains deduplicated, performance-optimized, and analytics-ready tables. All indexes, vector/embedding columns, and materialized views are created here. This schema is the foundation for high-performance analytics, AI/LLM, and RAG workflows.
+
+**Rationale:**
+
+- Enables robust data lineage, reproducibility, and rapid reprocessing.
+- Supports future extensibility for new data sources and schema evolution.
+- Aligns with best practices for high-volume, AI-augmented analytics pipelines.
+
+### Deduplication Strategies
+
+- **Prime Awards:** Deduplication is performed using the `contract_transaction_unique_key` as the primary key. This ensures each transaction is unique and supports reliable joins and analytics.
+- **Subawards:** Deduplication uses a composite key (e.g., `prime_award_unique_key`, `subaward_number`, `subaward_action_date`) to uniquely identify subaward records. This approach is robust to data quality issues and supports downstream joins.
+- **Indexes and ANALYZE:** Indexes are only created in `s3_processed` after deduplication, following best practices for ETL performance and query optimization.
+
+### Data Model Enhancements for AI, LLM, and RAG
+
+- **Pydantic Models:** All core entities (prime awards, subawards, documents, etc.) are defined as Pydantic models in [`src/backend/data/models/data_models.py`](../src/backend/data/models/data_models.py) for type safety, validation, and extensibility.
+- **Embedding/Vector Fields:** Models now include `embedding: Optional[List[float]]` fields to support semantic search and vector database operations (e.g., with `pgvector`).
+- **Provenance Fields:** All major models include `source`, `created_at`, and `updated_at` fields to track data lineage and support auditability.
+- **Metadata Fields:** Flexible `metadata: Optional[dict]` fields are included for unstructured or enriched data, supporting future AI and RAG use cases.
+- **Generic Document Model:** A `Document` model is provided for RAG/web enrichment, supporting text, embeddings, source URLs, and arbitrary metadata. This enables downstream AI agents to attach, enrich, and retrieve documents for retrieval-augmented generation.
+
+### Semantic Search, RAG, and Extensibility
+
+- **pgvector Integration:** The pipeline and models are designed to support `pgvector` for high-performance vector search and semantic retrieval. Embeddings can be generated locally (e.g., via Ollama) and stored in dedicated vector columns.
+- **RAG/Web Enrichment:** The architecture supports attaching web-scraped or AI-generated documents to contracts, agencies, or opportunities, enabling advanced retrieval-augmented generation workflows.
+- **Downstream Extensibility:** All models and schemas are designed for easy extension as new AI, MCP, or LLM features are added. New fields, document types, or enrichment sources can be added with minimal disruption.
+
+### Documentation and Cross-References
+
+- **ETL Scripts:**
+  - Cleansing: [`src/backend/data/data_processing/cleansing.py`](../src/backend/data/data_processing/cleansing.py)
+  - Transformation: [`src/backend/data/data_processing/transformation.py`](../src/backend/data/data_processing/transformation.py)
+- **Data Models:** [`src/backend/data/models/data_models.py`](../src/backend/data/models/data_models.py)
+- **Database Schema:** See [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md) for table and field definitions, including vector/embedding columns and document storage.
+- **Planning:** This section and related updates document the rationale, implementation, and future-proofing for AI/LLM and RAG readiness.
+
+### Next Steps
+
+- Complete and test deduplication and transformation scripts for `s3_processed`, including index and vector column creation.
+- Implement and validate semantic search and RAG workflows using local LLMs and `pgvector`.
+- Continue to update documentation and code as new AI, MCP, and LLM features are implemented.
+
+---
+
 - **WSL2 Ubuntu 22.04 LTS with NVIDIA Container Toolkit**: Complete. Confirmed GPU access in Docker containers for RTX 4060.
 - **Ollama and FastAPI Chat API Docker Compose Integration**: Complete. Both services run as containers, with Ollama using GPU.
 - **Langfuse and Pydantic AI Tracing**: Complete. Centralized tracing module implemented, all config in `.env`/`.env.example`.
@@ -902,3 +953,65 @@ The following columns are required for analytics, reporting, and AI/LLM agent wo
 - Materialized views or denormalized tables may be created for specific reporting needs if required.
 
 See `DATABASE_SCHEMA.md` for schema details and join guidance.
+
+### SAM.gov Solicitation Ingestion & Enrichment Pipeline (Foundation)
+
+#### Overview
+
+This pipeline ingests current and historical SAM.gov solicitations, enriches them as `Document` objects, and stores them for semantic search, RAG, and advanced capability/gap analysis. It enables:
+
+- Full-text storage of solicitations (active/inactive)
+- Embedding generation for semantic search (via local LLM)
+- Metadata and provenance tracking
+- Linking to contracts/opportunities for downstream analysis
+
+#### Pipeline Steps
+
+1. **Ingest Data from SAM.gov**: Use `src/backend/data_acquisition/sam_gov.py` to fetch opportunities (API, robust rate limiting, deduplication).
+2. **Transform to Document Model**: For each opportunity, create a `Document` instance (see code sample in `/src/backend/data_acquisition/sam_gov_enrichment_example.py`).
+3. **Generate Embeddings**: Use local LLM (Ollama) to generate embeddings for the `text` field.
+4. **Store in Database**: Store as JSONB + vector (pgvector) for semantic search and RAG.
+5. **Enable Semantic Search & RAG**: Use embeddings for fast retrieval and AI-augmented workflows.
+6. **Link to Capability/Gap Analysis**: Use full solicitation text for richer requirement extraction and gap analysis.
+
+#### Sample Enrichment Code
+
+See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` for a reference implementation.
+
+#### Documentation
+
+- This pipeline is referenced in `/docs/CAPTUREINTEL.md` (see "Opportunity Insights" and "Data Elements for Business Intelligence").
+- Update `.copilot-codeGeneration-instructions.md` to require referencing this plan for all data/AI pipeline code.
+
+---
+
+### SAM.gov Solicitation Ingestion & Enrichment Pipeline (Foundation)
+
+#### Overview
+
+This pipeline ingests current and historical SAM.gov solicitations, enriches them as `Document` objects, and stores them for semantic search, RAG, and advanced capability/gap analysis. It enables:
+
+- Full-text storage of solicitations (active/inactive)
+- Embedding generation for semantic search (via local LLM)
+- Metadata and provenance tracking
+- Linking to contracts/opportunities for downstream analysis
+
+#### Pipeline Steps
+
+1. **Ingest Data from SAM.gov**: Use `src/backend/data_acquisition/sam_gov.py` to fetch opportunities (API, robust rate limiting, deduplication).
+2. **Transform to Document Model**: For each opportunity, create a `Document` instance (see code sample in `/src/backend/data_acquisition/sam_gov_enrichment_example.py`).
+3. **Generate Embeddings**: Use local LLM (Ollama) to generate embeddings for the `text` field.
+4. **Store in Database**: Store as JSONB + vector (pgvector) for semantic search and RAG.
+5. **Enable Semantic Search & RAG**: Use embeddings for fast retrieval and AI-augmented workflows.
+6. **Link to Capability/Gap Analysis**: Use full solicitation text for richer requirement extraction and gap analysis.
+
+#### Sample Enrichment Code
+
+See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` for a reference implementation.
+
+#### Documentation
+
+- This pipeline is referenced in `/docs/CAPTUREINTEL.md` (see "Opportunity Insights" and "Data Elements for Business Intelligence").
+- Update `.copilot-codeGeneration-instructions.md` to require referencing this plan for all data/AI pipeline code.
+
+---

@@ -33,7 +33,48 @@ pg_dbname = os.getenv('PG_DBNAME')
 db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_dbname}"
 engine = create_engine(db_url, echo=False)
 
-# Function to preprocess the data using direct SQL for better performance
+"""
+Note on Key Relationships:
+    - In s3_processed.usaspending_prime_awards, contract_transaction_unique_key is the unique row/transaction key.
+    - contract_award_unique_key identifies the overall contract/award (across all transactions).
+    - In s3_processed.usaspending_subawards, prime_award_unique_key is a foreign key that links each subaward to its parent contract/award (not to a transaction).
+    - This design allows you to join all subawards for a given contract/award using prime_award_unique_key <-> contract_award_unique_key.
+    - There is no issue with deduplication on contract_transaction_unique_key for primes and using prime_award_unique_key for subaward-to-prime joins.
+"""
+
+# Function to create indexes for deduplicated tables in s3_processed
+def create_performance_indexes():
+    """
+    Create recommended indexes on s3_processed.usaspending_prime_awards and s3_processed.usaspending_subawards
+    to optimize analytics, AI, and RAG workloads. Index creation is idempotent and safe to rerun.
+    """
+    with engine.connect() as connection:
+        # Indexes for s3_processed.usaspending_prime_awards
+        prime_table = "s3_processed.usaspending_prime_awards"
+        prime_indexes = [
+            {"name": "idx_prime_contract_transaction_unique_key", "columns": "contract_transaction_unique_key"},
+            {"name": "idx_prime_award_id_piid", "columns": "award_id_piid"},
+            {"name": "idx_prime_action_date", "columns": "action_date"},
+            {"name": "idx_prime_recipient_name", "columns": "recipient_name"},
+            {"name": "idx_prime_naics_code", "columns": "naics_code"},
+            {"name": "idx_prime_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"}
+        ]
+        for idx in prime_indexes:
+            logger.info(f"Creating index {idx['name']} on {prime_table}({idx['columns']}) if not exists...")
+            connection.execute(text(f"CREATE INDEX IF NOT EXISTS {idx['name']} ON {prime_table} ({idx['columns']})"))
+        # Indexes for s3_processed.usaspending_subawards
+        sub_table = "s3_processed.usaspending_subawards"
+        sub_indexes = [
+            {"name": "idx_sub_prime_award_unique_key", "columns": "prime_award_unique_key"},
+            {"name": "idx_sub_subawardee_uei", "columns": "subawardee_uei"},
+            {"name": "idx_sub_subaward_action_date", "columns": "subaward_action_date"},
+            {"name": "idx_sub_composite_key", "columns": "prime_award_unique_key, subaward_number, subaward_action_date, subaward_amount"}
+        ]
+        for idx in sub_indexes:
+            logger.info(f"Creating index {idx['name']} on {sub_table}({idx['columns']}) if not exists...")
+            connection.execute(text(f"CREATE INDEX IF NOT EXISTS {idx['name']} ON {sub_table} ({idx['columns']})"))
+        logger.info("[OK] All recommended indexes created for s3_processed tables.")
+
 def preprocess_data_optimized():
     """
     Optimized preprocessing of deduplicated data using direct SQL.
@@ -47,39 +88,32 @@ def preprocess_data_optimized():
     """
     start_time = time.time()
     results = {}
+    # Automatically create performance indexes before preprocessing
+    logger.info("\n[Auto] Creating performance indexes for s3_processed tables before preprocessing...")
+    create_performance_indexes()
     
-    # Determine which table to use as the source
-    with engine.connect() as connection:
-        deduplicated_exists = connection.execute(text(
-            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'usaprime_deduplicated')"
-        )).scalar()
-        
-        if deduplicated_exists:
-            source_table = "usaprime_deduplicated"
-            logger.info(f"Using {source_table} as source for transformation")
-        else:
-            source_table = "usaprime_cleaned"
-            logger.info(f"Using {source_table} as source for transformation")
-    
+    # Use s3_processed.usaspending_prime_awards as the source table
+    source_table = "s3_processed.usaspending_prime_awards"
+    logger.info(f"Using {source_table} as source for transformation")
     logger.info("Starting optimized data preprocessing for app performance...")
-    
     # Check if primary table exists and has data
     with engine.connect() as connection:
         table_exists = connection.execute(text(
-            f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{source_table}')"
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 's3_processed' AND table_name = 'usaspending_prime_awards'
+            )
+            """
         )).scalar()
-        
         if not table_exists:
-            logger.error(f"Error: {source_table} table does not exist. Run data cleansing first.")
+            logger.error(f"Error: {source_table} table does not exist. Run data cleansing and deduplication first.")
             return {"error": f"{source_table} table not found"}
-        
         # Get row count
         row_count = connection.execute(text(f"SELECT COUNT(*) FROM {source_table}")).scalar()
-        
         if row_count == 0:
             logger.error(f"Error: {source_table} table is empty. Check data cleansing process.")
             return {"error": f"{source_table} table is empty"}
-        
         logger.info(f"Found {source_table} table with {row_count:,} rows.")
     
     with engine.connect() as connection:
@@ -209,13 +243,14 @@ def preprocess_data_optimized():
         # Drop existing table if it exists
         connection.execute(text("DROP TABLE IF EXISTS quarterly_data"))
         
-        # Create the quarterly data table with fiscal year and quarter calculations
+        # Create the quarterly data table with fiscal year and quarter calculations (computed on the fly)
+        # US Federal Fiscal Year starts in October, so add 3 months to action_date
         create_quarterly_query = text(f"""
             CREATE TABLE quarterly_data AS
             SELECT 
-                action_date_fiscal_year as fiscal_year,
-                action_date_fiscal_quarter as fiscal_quarter,
-                CONCAT(action_date_fiscal_year, ' Q', action_date_fiscal_quarter) as fiscal_period,
+                EXTRACT(YEAR FROM action_date + INTERVAL '3 months') AS fiscal_year,
+                EXTRACT(QUARTER FROM action_date + INTERVAL '3 months') AS fiscal_quarter,
+                CONCAT(EXTRACT(YEAR FROM action_date + INTERVAL '3 months'), ' Q', EXTRACT(QUARTER FROM action_date + INTERVAL '3 months')) AS fiscal_period,
                 COUNT(*) as award_count,
                 SUM(federal_action_obligation) as total_obligation,
                 COUNT(DISTINCT recipient_name) as vendor_count,
@@ -224,12 +259,11 @@ def preprocess_data_optimized():
             FROM 
                 {source_table}
             WHERE 
-                action_date_fiscal_year IS NOT NULL AND
-                action_date_fiscal_quarter IS NOT NULL
+                action_date IS NOT NULL
             GROUP BY 
-                action_date_fiscal_year, action_date_fiscal_quarter
+                fiscal_year, fiscal_quarter
             ORDER BY 
-                action_date_fiscal_year, action_date_fiscal_quarter
+                fiscal_year, fiscal_quarter
         """)
         
         connection.execute(create_quarterly_query)
@@ -341,3 +375,14 @@ def preprocess_data_optimized():
     logger.info("The application is now ready to run with optimal performance!")
     
     return results
+
+# If run as a script, run preprocessing (and thus indexing) automatically
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+    logger.info("Starting full transformation pipeline (indexing + preprocessing)...")
+    preprocess_data_optimized()
+    logger.info("Transformation pipeline complete.")

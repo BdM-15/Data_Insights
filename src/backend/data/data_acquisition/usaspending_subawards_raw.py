@@ -88,8 +88,8 @@ CHUNK_DAYS = 7  # Days per chunk for processing
 # Ensure archive directory exists
 os.makedirs(CUSTOM_ARCHIVE_DIR, exist_ok=True)
 
-# DB Table name
-TABLE_NAME = "usaspending_subawards"
+# DB Table name (fully qualified for s1_raw schema)
+TABLE_NAME = "s1_raw.usaspending_subawards"
 
 # Database Connection
 def get_db_connection():
@@ -253,17 +253,14 @@ def setup_subawards_table(conn):
     cursor = conn.cursor()
     try:
         # First check if table exists
-        cursor.execute("""
+        cursor.execute(f"""
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
-            WHERE table_name = %s
+            WHERE table_schema = 's1_raw' AND table_name = 'usaspending_subawards'
         )
-        """, (TABLE_NAME,))
-        
+        """)
         table_exists = cursor.fetchone()[0]
-        
         if not table_exists:
-            # Create a simple table with id, then we'll add columns as needed
             cursor.execute(f"""
             CREATE TABLE {TABLE_NAME} (
                 id SERIAL,
@@ -272,7 +269,6 @@ def setup_subawards_table(conn):
                 fetch_date DATE
             )
             """)
-            
             conn.commit()
             logger.info(f"Created initial table {TABLE_NAME}")
         else:
@@ -304,7 +300,7 @@ def ensure_columns_exist(conn, df):
         cursor.execute(f"""
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = '{TABLE_NAME}'
+        WHERE table_schema = 's1_raw' AND table_name = 'usaspending_subawards'
         """)
         
         existing_columns = [row[0] for row in cursor.fetchall()]

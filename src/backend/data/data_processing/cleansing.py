@@ -59,45 +59,46 @@ def cleanse_data(force_rebuild=True):
         table_exists_query = text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
-                WHERE table_name = 'usaspending_prime_awards_cleaned'
+                WHERE table_schema = 's2_interim' AND table_name = 'usaspending_prime_awards'
             )
         """)
         destination_exists = connection.execute(table_exists_query).scalar()
         if destination_exists:
             if force_rebuild:
-                logger.warning(f"\nWARNING: usaspending_prime_awards_cleaned table already exists and will be dropped and recreated.")
-                logger.warning("All existing data in usaspending_prime_awards_cleaned will be lost.")
+                logger.warning(f"\nWARNING: s2_interim.usaspending_prime_awards table already exists and will be dropped and recreated.")
+                logger.warning("All existing data in s2_interim.usaspending_prime_awards will be lost.")
                 logger.warning("Processing will continue in 5 seconds...\n")
                 time.sleep(5)
                 try:
-                    connection.execute(text("DROP TABLE IF EXISTS usaspending_prime_awards_cleaned CASCADE"))
+                    connection.execute(text("DROP TABLE IF EXISTS s2_interim.usaspending_prime_awards CASCADE"))
                     connection.commit()
-                    logger.info("Successfully dropped usaspending_prime_awards_cleaned table.")
+                    logger.info("Successfully dropped s2_interim.usaspending_prime_awards table.")
                 except Exception as e:
                     logger.error(f"Error dropping table: {e}")
                     raise
             else:
-                logger.info("usaspending_prime_awards_cleaned table already exists. Exiting to prevent data loss.")
+                logger.info("s2_interim.usaspending_prime_awards table already exists. Exiting to prevent data loss.")
                 return False
     
     try:
         # --- PRIME AWARDS CLEANSING ---
-        PRIME_SRC = "usaspending_prime_awards_slim"
-        PRIME_DEST = "usaspending_prime_awards_cleaned"
+        PRIME_SRC = "s1_raw.usaspending_prime_awards_slim"
+        PRIME_DEST = "s2_interim.usaspending_prime_awards"
 
         logger.info(f"Creating optimized {PRIME_DEST} table structure...")
         with engine.connect() as connection:
             # Verify source table exists
             table_check_query = text(
-                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '" + PRIME_SRC + "');"
+                f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 's1_raw' AND table_name = 'usaspending_prime_awards_slim');"
             )
             source_exists = connection.execute(table_check_query).scalar()
             if not source_exists:
                 raise Exception(f"Error: {PRIME_SRC} table does not exist")
 
             # Check if the unique keys exist in the source table
+            # Reason: Check for contract_transaction_unique_key in s1_raw.usaspending_prime_awards_slim
             column_check_query = text(
-                "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '" + PRIME_SRC + "' AND column_name = 'contract_transaction_unique_key';"
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 's1_raw' AND table_name = 'usaspending_prime_awards_slim' AND column_name = 'contract_transaction_unique_key';"
             )
             has_unique_key = connection.execute(column_check_query).scalar() > 0
             if not has_unique_key:
@@ -107,7 +108,7 @@ def cleanse_data(force_rebuild=True):
                 raise Exception("Missing required contract_transaction_unique_key column in source table")
 
             # Get exact row count and key stats from source table
-            count_query = text("SELECT COUNT(*) FROM " + PRIME_SRC + ";")
+            count_query = text(f"SELECT COUNT(*) FROM {PRIME_SRC};")
             source_row_count = connection.execute(count_query).scalar()
             logger.info(f"Source table contains {source_row_count:,} rows")
 
@@ -116,7 +117,7 @@ def cleanse_data(force_rebuild=True):
                 "SELECT COUNT(*) - COUNT(DISTINCT contract_transaction_unique_key) AS duplicate_count, "
                 "COUNT(DISTINCT contract_transaction_unique_key) AS unique_keys, "
                 "COUNT(*) FILTER (WHERE contract_transaction_unique_key IS NULL) AS null_keys "
-                "FROM " + PRIME_SRC + ";"
+                f"FROM {PRIME_SRC};"
             )
             result = connection.execute(key_check_query).fetchone()
             duplicate_count, unique_key_count, null_key_count = result[0], result[1], result[2]
@@ -402,30 +403,7 @@ def cleanse_data(force_rebuild=True):
                 if unique_key_count != unique_cleaned_count:
                     logger.warning(f"Lost {unique_key_count - unique_cleaned_count:,} unique transaction keys during cleaning")
             else:
-                logger.info(f"[OK] All {source_row_count:,} source rows successfully preserved in the transformation")
-            
-            # Create essential indexes for query performance
-            logger.info("\nCreating optimized indexes for query performance...")
-            
-            # Create indexes on the most frequently used columns
-            indexes = [
-                ("idx_contract_award_unique_key", "contract_award_unique_key"),
-                ("idx_modification_number", "modification_number"),
-                ("idx_award_id_piid", "award_id_piid"),
-                ("idx_action_date", "action_date"),
-                ("idx_recipient_name", "recipient_name"),
-                ("idx_naics_code", "naics_code"),
-                ("idx_agency_fiscal_year", "parent_award_agency_name, action_date_fiscal_year")
-            ]
-            for index_name, columns in indexes:
-                connection.execute(text(f"""
-                    CREATE INDEX IF NOT EXISTS {index_name} 
-                    ON {PRIME_DEST}({columns});
-                """))
-                logger.info(f"[+] Created index {index_name} on {columns}")
-            logger.info("\nAnalyzing table for query optimization...")
-            connection.execute(text(f"ANALYZE {PRIME_DEST}"))
-            connection.commit()
+                logger.info(f"[OK] All {source_row_count:,} source rows successfully preserved in the transformation")   
         
     except Exception as e:
         logger.error(f"\nERROR: {str(e)}")
@@ -457,39 +435,39 @@ def cleanse_subawards_data(force_rebuild=True):
     start_time = time.time()
     logger.info("Starting subawards data cleansing process...")
 
-    SUB_SRC = "usaspending_subawards_slim"
-    SUB_DEST = "usaspending_subawards_cleaned"
+    SUB_SRC = "s1_raw.usaspending_subawards"
+    SUB_DEST = "s2_interim.usaspending_subawards"
 
     with engine.connect() as connection:
         table_exists_query = text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
-                WHERE table_name = '{SUB_DEST}'
+                WHERE table_schema = 's2_interim' AND table_name = 'usaspending_subawards'
             )
         """)
         destination_exists = connection.execute(table_exists_query).scalar()
         if destination_exists:
             if force_rebuild:
-                logger.warning(f"\nWARNING: {SUB_DEST} table already exists and will be dropped and recreated.")
-                logger.warning(f"All existing data in {SUB_DEST} will be lost.")
+                logger.warning(f"\nWARNING: s2_interim.usaspending_subawards table already exists and will be dropped and recreated.")
+                logger.warning(f"All existing data in s2_interim.usaspending_subawards will be lost.")
                 logger.warning("Processing will continue in 5 seconds...\n")
                 time.sleep(5)
                 try:
-                    connection.execute(text(f"DROP TABLE IF EXISTS {SUB_DEST} CASCADE"))
+                    connection.execute(text(f"DROP TABLE IF EXISTS s2_interim.usaspending_subawards CASCADE"))
                     connection.commit()
-                    logger.info(f"Successfully dropped {SUB_DEST} table.")
+                    logger.info(f"Successfully dropped s2_interim.usaspending_subawards table.")
                 except Exception as e:
                     logger.error(f"Error dropping table: {e}")
                     raise
             else:
-                logger.info(f"{SUB_DEST} table already exists. Exiting to prevent data loss.")
+                logger.info(f"s2_interim.usaspending_subawards table already exists. Exiting to prevent data loss.")
                 return False
 
     try:
         with engine.connect() as connection:
             # Verify source table exists
             table_check_query = text(
-                f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{SUB_SRC}');"
+                f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 's1_raw' AND table_name = 'usaspending_subawards');"
             )
             source_exists = connection.execute(table_check_query).scalar()
             if not source_exists:
@@ -601,25 +579,6 @@ def cleanse_subawards_data(force_rebuild=True):
             logger.info(f"Subawards transformation complete in {minutes}m {seconds}s")
             logger.info(f"Processed {processed_rows:,} subaward rows")
             logger.info(f"Processing speed: {processed_rows/transform_duration:.2f} rows/second")
-
-            # Create indexes for analytics
-            logger.info("\nCreating indexes for subawards analytics...")
-            indexes = [
-                ("idx_subaward_number", "subaward_number"),
-                ("idx_subawardee_name", "subawardee_name"),
-                ("idx_subawardee_uei", "subawardee_uei"),
-                ("idx_subaward_action_date", "subaward_action_date"),
-                ("idx_prime_award_unique_key", "prime_award_unique_key")
-            ]
-            for index_name, columns in indexes:
-                connection.execute(text(f"""
-                    CREATE INDEX IF NOT EXISTS {index_name} 
-                    ON {SUB_DEST}({columns});
-                """))
-                logger.info(f"[+] Created index {index_name} on {columns}")
-            logger.info("\nAnalyzing subawards table for query optimization...")
-            connection.execute(text(f"ANALYZE {SUB_DEST}"))
-            connection.commit()
 
     except Exception as e:
         logger.error(f"\nERROR in subawards cleansing: {str(e)}")

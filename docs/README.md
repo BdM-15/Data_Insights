@@ -26,8 +26,8 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Interactive Sankey Diagram (Agency → Office → Contract)**: Interactive Sankey diagram tracing the flow from parent agency to office and contract levels.
   - _Benefit_: Intuitive visualization of how obligations and actions flow through the federal hierarchy, helping identify bottlenecks, key offices, and contract concentrations for more effective targeting.
 - **Performance Optimizations**: Precomputed filter dependencies, indexed database, and optimized fiscal quarter calculations for faster queries and visualizations. Layout and chart rendering are optimized for large datasets and fast UI response.
-- **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov, SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights. Scaffolding for additional connectors is in place.
-- **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools to support strategic decision-making. Scaffolding for local LLM and MCP agent integration is in place.
+- **Integrated Data Sources**: Combine data from USAspending.gov with SAM.gov (including full-text solicitation enrichment as `Document` objects), SBA SubNet, GovWin IQ, and Bloomberg Government for comprehensive insights. Scaffolding for additional connectors is in place.
+- **AI-Powered Capture Profiles**: Generate comprehensive capture profiles that synthesize intelligence from multiple sources and AI tools—including enriched SAM.gov solicitations—for strategic decision-making. Scaffolding for local LLM and MCP agent integration is in place.
 
 **May 2025 Update:**
 
