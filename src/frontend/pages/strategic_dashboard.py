@@ -78,7 +78,8 @@ def main():
     st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
     # Date values needed by both sidebar and main content
     today = datetime.now().date()
-    default_start = today - timedelta(days=365*5)
+    default_start = today - timedelta(days=365*6)  # 6 years ago
+    # Set up the sidebar with filters and diagnostics
 
     st.title("Capture Dashboard")
     st.markdown("""

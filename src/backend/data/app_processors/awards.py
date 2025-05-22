@@ -118,7 +118,8 @@ def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
     """
     import pandas as pd
     from sqlalchemy import text
-    table_name = "usaprime_cleaned"
+    # Use the new processed table for all queries
+    table_name = "s3_processed.usaspending_prime_awards"
     params = {}
     try:
         query = f"""
@@ -156,7 +157,7 @@ def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
                 return df
     except Exception as e:
         raise ValueError(f"Error querying table '{table_name}': {str(e)}")
-    raise ValueError("No data found in 'usaprime_cleaned' for the given filters.")
+    raise ValueError(f"No data found in '{table_name}' for the given filters.")
 
 def get_unique_naics_codes(engine, table_names=None):
     """
