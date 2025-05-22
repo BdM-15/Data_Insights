@@ -14,7 +14,7 @@ from src.backend.core.database import get_db_engine
 def get_unique_values(
     engine,
     column: str,
-    table: str = "usaprime_cleaned",
+    table: str = "s3_processed.usaspending_prime_awards",
     condition: Optional[str] = None,
     dependencies: Optional[dict] = None,
     add_all: bool = True

@@ -229,7 +229,7 @@ def fetch_quarterly_spending_data(
         fiscal_quarter, 
         SUM(federal_action_obligation) as total_spending
     FROM 
-        usaprime_cleaned
+        s3_processed.usaspending_prime_awards
     WHERE 
         federal_action_obligation IS NOT NULL
     """

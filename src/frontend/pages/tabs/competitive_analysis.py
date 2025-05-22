@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from typing import List
 
-from src.backend.data.processors.competition import get_competitive_landscape
+from src.backend.data.app_processors.competition import get_competitive_landscape
 from src.backend.data.models.data_models import CompetitorPerformance
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.charts.comparison_charts import plot_market_share_bar, plot_contract_type_competition_bar, plot_contract_type_value_analysis

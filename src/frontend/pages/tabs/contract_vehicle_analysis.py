@@ -7,7 +7,7 @@ from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.charts.comparison_charts import (
     plot_contract_vehicle_pie,
 )
-from src.backend.data.processors.awards import get_contract_vehicles
+from src.backend.data.app_processors.awards import get_contract_vehicles
 from src.frontend.components.export import add_export_section
 
 # Define a default color sequence for categorical charts

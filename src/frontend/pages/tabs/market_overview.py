@@ -14,7 +14,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 from src.frontend.utils.formatting import format_value
-from src.backend.data.processors.awards import (
+from src.backend.data.app_processors.awards import (
     get_award_summary,
     get_top_agencies,
     get_quarterly_trends,
@@ -23,7 +23,7 @@ from src.backend.data.processors.awards import (
     get_expiring_contracts,
     get_unique_naics_codes,
 )
-from src.backend.data.processors.competition import get_treemap_data
+from src.backend.data.app_processors.competition import get_treemap_data
 from src.backend.data.models.data_models import (
     AwardSummaryItem, TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, ContractVehicleSummary, TreemapPathElement
 )

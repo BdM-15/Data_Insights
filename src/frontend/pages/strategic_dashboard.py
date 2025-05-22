@@ -44,10 +44,10 @@ from src.frontend.components.filters import get_unique_values
 from src.frontend.components.export import create_download_button, add_export_section
 from src.frontend.styles.theme import THEME
 from src.frontend.styles.custom_css import generate_theme_css
-from src.backend.data.processors.awards import (
+from src.backend.data.app_processors.awards import (
     get_award_summary, get_top_agencies, get_quarterly_trends, get_naics_data, get_agency_obligation_ratio, get_contract_vehicles, get_recipient_award_counts, get_recipient_obligations, get_expiring_contracts, get_unique_naics_codes
 )
-from src.backend.data.processors.competition import get_treemap_data, get_competitive_landscape
+from src.backend.data.app_processors.competition import get_treemap_data, get_competitive_landscape
 from src.frontend.utils.formatting import format_value
 from src.frontend.pages.tabs.market_overview import render_tab as render_market_overview
 from src.frontend.pages.tabs.future_opportunities import render_tab as render_future_opportunities
@@ -122,16 +122,16 @@ def main():
             else:
                 with engine.connect() as conn:
                     from sqlalchemy import text
-                    table_exists = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaprime_cleaned' AND table_schema = 'public')")).fetchone()[0]
+                    table_exists = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaspending_prime_awards' AND table_schema = 's3_processed')")).fetchone()[0]
                     if table_exists:
-                        st.success("[+] Table 'usaprime_cleaned' exists")
-                        row_count = conn.execute(text("SELECT COUNT(*) FROM usaprime_cleaned")).fetchone()[0]
+                        st.success("[+] Table 's3_processed.usaspending_prime_awards' exists")
+                        row_count = conn.execute(text("SELECT COUNT(*) FROM s3_processed.usaspending_prime_awards")).fetchone()[0]
                         st.info(f"Row count: {row_count:,}")
                         if row_count == 0:
-                            st.warning("Table 'usaprime_cleaned' exists but contains 0 rows.")
+                            st.warning("Table 's3_processed.usaspending_prime_awards' exists but contains 0 rows.")
                     else:
-                        st.error("[-] Table 'usaprime_cleaned' does not exist!")
-                        tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")).fetchall()
+                        st.error("[-] Table 's3_processed.usaspending_prime_awards' does not exist!")
+                        tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 's3_processed' ORDER BY table_name")).fetchall()
                         table_list = [t[0] for t in tables]
                         st.info(f"Available tables: {', '.join(table_list)}")
         except Exception as e:

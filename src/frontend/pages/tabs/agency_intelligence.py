@@ -4,8 +4,8 @@ Agency Intelligence tab for the strategic dashboard.
 import streamlit as st
 import pandas as pd
 import numpy as np
-from src.backend.data.processors.agencies import get_top_agencies_by_award_count, get_top_agencies_by_obligation
-from src.backend.data.processors.awards import get_expiring_contracts
+from src.backend.data.app_processors.agencies import get_top_agencies_by_award_count, get_top_agencies_by_obligation
+from src.backend.data.app_processors.awards import get_expiring_contracts
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.utils import apply_plotly_theme
 from src.frontend.components.layouts.grid import section_divider, themed_aggrid, two_column_grid
@@ -54,7 +54,7 @@ def render_tab(df: pd.DataFrame):
         st.metric("Avg Award Value", f"${avg_award_value:,.0f}")
 
     # --- Spending Trends (Quarterly, dual-axis line chart) ---
-    from src.backend.data.processors.awards import get_quarterly_trends
+    from src.backend.data.app_processors.awards import get_quarterly_trends
     from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends
     section_divider("Spending Trends (Quarterly)", icon="📈")
     quarterly_data = get_quarterly_trends(agency_df)
