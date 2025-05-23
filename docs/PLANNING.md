@@ -6,7 +6,7 @@
 
 - **s1_raw**: Ingests and stores unmodified source data (e.g., from USAspending.gov) for full provenance and reproducibility. No transformations or deduplication are performed at this stage. Table names mirror the source.
 - **s2_interim**: Receives cleansed, normalized, and type-corrected data. Deduplication is not performed here; indexes are not created at this stage to maximize write speed. Used as the staging area for further processing.
-- **s3_processed**: Contains deduplicated, performance-optimized, and analytics-ready tables. All indexes, vector/embedding columns, and materialized views are created here. This schema is the foundation for high-performance analytics, AI/LLM, and RAG workflows.
+- **s3_processed**: Contains deduplicated, performance-optimized, and analytics-ready tables. All indexes, vector/embedding columns, materialized views, and all precomputed filter/aggregation tables (filter values, dependencies, quarterly_data, etc.) are created here. This schema is the foundation for high-performance analytics, AI/LLM, and RAG workflows.
 
 #### Key Pipeline Updates (May 2025)
 
@@ -14,10 +14,10 @@
   - Prime deduplication uses `contract_transaction_unique_key` as the primary key.
   - Subaward deduplication uses a composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`).
   - Deduplication reads from `s2_interim` and writes to `s3_processed`.
-  - All index creation logic is now handled in the transformation stage.
+  - All index creation and precomputed table logic is now handled in the transformation stage, and all such tables are created only in `s3_processed`.
 - **Transformation** is fully automated and idempotent:
-  - Uses only `s3_processed.usaspending_prime_awards` as the source for all preprocessing and aggregations.
-  - Creates all recommended indexes and precomputes filter/aggregation tables for high-performance analytics and UI filtering.
+  - Uses only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as the source for all preprocessing and aggregations.
+  - Creates all recommended indexes and precomputes filter/aggregation tables for high-performance analytics and UI filtering, all in `s3_processed`.
   - Computes fiscal year and quarter dynamically from `action_date`.
   - All scripts are modular, schema-aware, and safe for repeated runs.
 - **AI/LLM/RAG Readiness**:

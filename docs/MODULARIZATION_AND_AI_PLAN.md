@@ -41,9 +41,10 @@
 
 #### ETL/Analytics Pipeline Refactor (May 2025)
 
-- The ETL/data pipeline is now modular, schema-aware, and fully automated using a three-stage schema (`s1_raw`, `s2_interim`, `s3_processed`).
-- Deduplication is robust for both prime awards and subawards, and all index creation is handled in transformation.
-- The transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed` as the source.
+- The ETL/data pipeline is modular, schema-aware, and fully automated using a three-stage schema (`s1_raw`, `s2_interim`, `s3_processed`).
+- Deduplication is robust for both prime awards and subawards, and all index creation and precomputed tables (filter values, dependencies, quarterly_data, etc.) are handled in the transformation stage and created only in `s3_processed`.
+- The transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
+- No analytics or reporting is performed on `s1_raw` or `s2_interim` tables.
 - The pipeline is idempotent, future-proofed for AI/LLM/RAG, and ready for downstream agent and RAG integration.
 
 ---

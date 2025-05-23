@@ -39,46 +39,56 @@ The **USAspending.gov Data Explorer** is a Streamlit-based web application desig
 - **Modularized UI and Backend**: All business/data logic is in backend modules, and the frontend is UI-only. Layout, filter, and visualization components are fully modular and reusable.
 - **Logging and Diagnostics**: File-based logging and robust sidebar diagnostics are implemented for traceability and debugging.
 
-### Project Structure
+### Project Structure (May 2025)
 
-The project has been reorganized to follow a modular approach for better code organization, maintainability, and AI extensibility:
+The project is fully modularized for maintainability, performance, and AI extensibility. All analytics, reporting, and precomputed tables are in the `s3_processed` schema. Below is the current folder structure with key modules and their purposes:
 
 ```
 Data_Insights/
-├── config.py                     # Configuration settings (root level)
+├── config.py                     # Centralized configuration access for all environment variables and settings
 ├── app.py                        # Main Streamlit application entry point
-├── requirements.txt              # Dependencies
+├── requirements.txt              # Python dependencies
 ├── .env                          # Environment variables (not in git)
-├── .env.example                  # Example environment variables
-├── data/                         # Data files
-├── docs/                         # Documentation
-├── logs/                         # Log files
-├── tests/                        # Unit tests
-└── src/                          # Source code
-    ├── backend/                  # Backend functionality (all business/data logic)
-    │   ├── core/                 # Core backend functionality
-    │   │   ├── database.py       # Database connection and utilities
-    │   │   ├── maintenance.py    # Database maintenance utilities
-    │   │   └── utils.py          # Common utilities
-    │   ├── data_processing/      # Data processing modules
-    │   │   ├── cleansing.py      # Data cleaning functions
-    │   │   ├── transformation.py # Data transformation
-    │   │   ├── import.py         # Data import utilities
-    │   │   └── migration.py      # Database migration utilities
-    │   ├── data_acquisition/     # Data acquisition modules
-    │   │   ├── sam_gov.py        # SAM.gov API integration
-    │   │   ├── nato_nspa.py      # NATO NSPA data acquisition
-    │   │   ├── usaspending.py    # USAspending.gov current data
-    │   │   └── usaspending_historical.py # USAspending.gov historical data
-    │   └── ai/                   # AI integration and agent scaffolding
-    │       └── mcp/              # Model Context Protocol (MCP) agent integration (web intelligence, doc gen, etc.)
-    └── frontend/                 # Frontend UI functionality (UI-only, all business logic in backend)
-        ├── pages/                # Streamlit multipage components
-        ├── components/           # Reusable UI components (filters, layout, cards, etc.)
-        ├── visualizations/       # Visualization/chart modules (heatmaps, comparison charts, etc.)
-        ├── styles/               # Theme and CSS logic (THEME colors, formatting)
-        └── capture/              # Capture management and profile generation (AI-powered scaffolding)
+├── .env.example                  # Example environment variables for setup
+├── data/                         # Data files (external, intermediate, or for import)
+├── docs/                         # Project documentation (see below for key docs)
+├── logs/                         # Log files for diagnostics and traceability
+├── tests/                        # Unit tests (mirrors app structure)
+└── src/
+    ├── backend/
+    │   ├── core/
+    │   │   ├── database.py           # Database connection management and utilities
+    │   │   ├── maintenance.py        # Database maintenance and optimization utilities
+    │   │   └── utils.py              # Common backend utility functions
+    │   ├── data_processing/
+    │   │   ├── cleansing.py          # Data cleaning and normalization logic
+    │   │   ├── deduplication.py      # Deduplication of prime and subawards (s2_interim → s3_processed)
+    │   │   ├── transformation.py     # Transformation, index creation, and precompute tables (all in s3_processed)
+    │   │   ├── import.py             # CSV to database import utilities
+    │   │   └── migration.py          # Database migration (SQLite → PostgreSQL)
+    │   ├── data_acquisition/
+    │   │   ├── sam_gov.py            # SAM.gov API integration for opportunity data
+    │   │   ├── nato_nspa.py          # NATO NSPA data acquisition
+    │   │   ├── usaspending.py        # USAspending.gov current data acquisition
+    │   │   └── usaspending_historical.py # USAspending.gov historical data acquisition
+    │   └── ai/
+    │       └── mcp/                  # Model Context Protocol (MCP) agent integration and AI tools
+    └── frontend/
+        ├── pages/                    # Streamlit multipage components (main dashboard, tabs, etc.)
+        ├── components/               # Reusable UI components (filters, layout, cards, etc.)
+        ├── visualizations/           # Visualization/chart modules (heatmaps, comparison charts, etc.)
+        ├── styles/                   # Theme and CSS logic (THEME colors, formatting)
+        └── capture/                  # Capture management and profile generation (AI-powered scaffolding)
 ```
+
+**Key Documentation:**
+
+- `MODULARIZATION_AND_AI_PLAN.md`: Modularization and AI integration roadmap
+- `PLANNING.md`: Project vision, architecture, and feature planning
+- `DATABASE_SCHEMA.md`: Database schema, table definitions, and best practices
+- `CAPTUREINTEL.md`: Capture intelligence workflows and strategies
+- `TASKS.md`: Task tracking and milestones
+- `strategic_dashboard_implementation.md`: Dashboard design and implementation details
 
 All new features, modularization, and AI scaffolding are documented in the relevant docs (see `MODULARIZATION_AND_AI_PLAN.md`, `PLANNING.md`, `TASKS.md`, and `strategic_dashboard_implementation.md`).
 
@@ -190,11 +200,13 @@ All new features, modularization, and AI scaffolding are documented in the relev
 4. **Access the Application**:
    - Open the provided local URL in your web browser.
 
-### Recent Pipeline Updates (May 2025)
+### Recent Pipeline & Schema Updates (May 2025)
 
-- The ETL pipeline is now fully automated and modular, using a three-stage schema (`s1_raw`, `s2_interim`, `s3_processed`).
-- Deduplication is robust for both prime awards and subawards, and all index creation is handled in transformation.
-- The transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed` as the source.
+- All analytics, reporting, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are created in the `s3_processed` schema only.
+- The ETL pipeline uses a strict three-stage schema: `s1_raw` (as-ingested), `s2_interim` (cleansed), `s3_processed` (deduplicated, indexed, analytics-ready).
+- All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
+- No analytics or reporting is performed on `s1_raw` or `s2_interim` tables.
+- All legacy table references (e.g., `usaprime_cleaned`) have been removed from the codebase and documentation.
 - The pipeline is idempotent, schema-aware, and ready for high-performance analytics, AI, and RAG workflows.
 
 ---
@@ -301,11 +313,7 @@ For questions or support, please contact the project maintainer.
 
 #### Data Model Update (May 2025)
 
-- **Normalized Slim Tables**: The application now uses two slimmed, normalized tables for federal spending data:
-
-  - `usaspending_prime_awards_slim`
-  - `usaspending_subawards_slim`
-    These contain only the required columns for analytics and AI workflows, including the join key (`prime_award_unique_key`).
-    Tables are kept separate for maintainability and to support AI/LLM-driven analytics. All joins are performed dynamically in queries or by AI agents, not by denormalizing the tables.
-
+- **All analytics and reporting use only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards`**. No legacy or interim tables are referenced.
+- **All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed`** (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
+- **No analytics or reporting is performed on `s1_raw` or `s2_interim` tables.**
 - **AI/LLM/Agent Integration**: The architecture is designed for future integration with Model Context Protocol (MCP) agents and local LLMs (Ollama, etc.), enabling advanced analytics, reasoning, and document generation. Materialized views or denormalized tables may be created for specific reporting needs if required.

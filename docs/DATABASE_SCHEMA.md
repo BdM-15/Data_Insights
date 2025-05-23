@@ -14,10 +14,11 @@ The Data_Insights project uses a three-stage schema approach for all USAspending
 - `s2_interim`: Cleansing, type casting, and standardization. No deduplication or analytics indexes. Used for all ETL downstream logic.
 - `s3_processed`: Final, deduplicated, indexed, and optimized for analytics. All dashboards, APIs, and AI agents should use only this schema.
 
-**Best Practices:**
+**Best Practices (May 2025):**
 
+- All analytics, reporting, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are created in the `s3_processed` schema only.
 - Never run analytics or reporting on `s1_raw` or `s2_interim` tables.
-- Only create performance indexes in the `s3_processed` schema.
+- Only create performance indexes and materialized views in the `s3_processed` schema.
 - All deduplication and business rules are applied in the move from `s2_interim` to `s3_processed`.
 - Table names are always `usaspending_prime_awards` or `usaspending_subawards` (no suffixes for stage).
   **Deduplication Keys:**
@@ -27,7 +28,8 @@ The Data_Insights project uses a three-stage schema approach for all USAspending
 
 **Transformation & Indexing:**
 
-- All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` as the source.
+- All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
+- All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed` (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
 - Filter value tables and dependent filter relationships are precomputed for fast UI filtering and analytics.
 - Quarterly aggregation tables are created for timeline visualizations, with fiscal year/quarter computed dynamically.
 
@@ -168,9 +170,9 @@ The following columns are included in `usaspending_subawards_slim` (as of May 20
 
 Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date`) are included for auditing and ETL tracking.
 
-#### Join Guidance
+#### Join Guidance (May 2025)
 
-- Use `prime_award_unique_key` to join `usaspending_subawards_slim` to `usaspending_prime_awards_slim` for analytics and reporting.
+- Use `prime_award_unique_key` to join `s3_processed.usaspending_subawards` to `s3_processed.usaspending_prime_awards` for analytics and reporting.
 - All joins should be performed dynamically in queries or by AI/LLM agents, not by denormalizing the tables.
 - Materialized views or denormalized tables may be created for specific reporting needs if required, but are not the default.
 

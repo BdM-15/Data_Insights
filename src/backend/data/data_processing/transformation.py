@@ -49,31 +49,71 @@ def create_performance_indexes():
     to optimize analytics, AI, and RAG workloads. Index creation is idempotent and safe to rerun.
     """
     with engine.connect() as connection:
-        # Indexes for s3_processed.usaspending_prime_awards
-        prime_table = "s3_processed.usaspending_prime_awards"
-        prime_indexes = [
-            {"name": "idx_prime_contract_transaction_unique_key", "columns": "contract_transaction_unique_key"},
-            {"name": "idx_prime_award_id_piid", "columns": "award_id_piid"},
-            {"name": "idx_prime_action_date", "columns": "action_date"},
-            {"name": "idx_prime_recipient_name", "columns": "recipient_name"},
-            {"name": "idx_prime_naics_code", "columns": "naics_code"},
-            {"name": "idx_prime_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"}
-        ]
-        for idx in prime_indexes:
-            logger.info(f"Creating index {idx['name']} on {prime_table}({idx['columns']}) if not exists...")
-            connection.execute(text(f"CREATE INDEX IF NOT EXISTS {idx['name']} ON {prime_table} ({idx['columns']})"))
-        # Indexes for s3_processed.usaspending_subawards
-        sub_table = "s3_processed.usaspending_subawards"
-        sub_indexes = [
-            {"name": "idx_sub_prime_award_unique_key", "columns": "prime_award_unique_key"},
-            {"name": "idx_sub_subawardee_uei", "columns": "subawardee_uei"},
-            {"name": "idx_sub_subaward_action_date", "columns": "subaward_action_date"},
-            {"name": "idx_sub_composite_key", "columns": "prime_award_unique_key, subaward_number, subaward_action_date, subaward_amount"}
-        ]
-        for idx in sub_indexes:
-            logger.info(f"Creating index {idx['name']} on {sub_table}({idx['columns']}) if not exists...")
-            connection.execute(text(f"CREATE INDEX IF NOT EXISTS {idx['name']} ON {sub_table} ({idx['columns']})"))
-        logger.info("[OK] All recommended indexes created for s3_processed tables.")
+        # Begin a transaction to ensure DDL is committed
+        with connection.begin():
+            # Helper to drop index if it exists on the table in s3_processed
+            def drop_index_if_exists(index_name: str):
+                sql = f"""
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM pg_indexes 
+                            WHERE schemaname = 's3_processed' AND indexname = '{index_name}'
+                        ) THEN
+                            EXECUTE 'DROP INDEX IF EXISTS s3_processed.{index_name}';
+                        END IF;
+                    END$$;
+                """
+                connection.execute(text(sql))
+
+            prime_table = 's3_processed.usaspending_prime_awards'
+            prime_indexes = [
+                {"name": "s3p_idx_prime_contract_transaction_unique_key", "columns": "contract_transaction_unique_key"},
+                {"name": "s3p_idx_prime_award_id_piid", "columns": "award_id_piid"},
+                {"name": "s3p_idx_prime_action_date", "columns": "action_date"},
+                {"name": "s3p_idx_prime_recipient_name", "columns": "recipient_name"},
+                {"name": "s3p_idx_prime_naics_code", "columns": "naics_code"},
+                {"name": "s3p_idx_prime_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"}
+            ]
+            for idx in prime_indexes:
+                logger.info(f"Ensuring index {idx['name']} on {prime_table}({idx['columns']})...")
+                drop_index_if_exists(idx["name"])
+                try:
+                    connection.execute(text(f'CREATE INDEX {idx["name"]} ON s3_processed.usaspending_prime_awards ({idx["columns"]})'))
+                    logger.info(f"  [OK] Created index {idx['name']} on {prime_table}")
+                except Exception as e:
+                    logger.error(f"  [ERROR] Failed to create index {idx['name']} on {prime_table}: {e}")
+
+            sub_table = 's3_processed.usaspending_subawards'
+            sub_indexes = [
+                {"name": "s3p_idx_sub_prime_award_unique_key", "columns": "prime_award_unique_key"},
+                {"name": "s3p_idx_sub_subawardee_uei", "columns": "subawardee_uei"},
+                {"name": "s3p_idx_sub_subaward_action_date", "columns": "subaward_action_date"},
+                {"name": "s3p_idx_sub_composite_key", "columns": "prime_award_unique_key, subaward_number, subaward_action_date, subaward_amount"}
+            ]
+            for idx in sub_indexes:
+                logger.info(f"Ensuring index {idx['name']} on {sub_table}({idx['columns']})...")
+                drop_index_if_exists(idx["name"])
+                try:
+                    connection.execute(text(f'CREATE INDEX {idx["name"]} ON s3_processed.usaspending_subawards ({idx["columns"]})'))
+                    logger.info(f"  [OK] Created index {idx['name']} on {sub_table}")
+                except Exception as e:
+                    logger.error(f"  [ERROR] Failed to create index {idx['name']} on {sub_table}: {e}")
+
+            logger.info("[OK] All recommended indexes created for s3_processed tables.")
+
+            # Verification step: log all indexes found for the two tables
+            logger.info("Verifying created indexes...")
+            result = connection.execute(text("""
+                SELECT indexname 
+                FROM pg_indexes 
+                WHERE schemaname = 's3_processed' 
+                AND tablename IN ('usaspending_prime_awards', 'usaspending_subawards')
+            """)).fetchall()
+            for row in result:
+                logger.info(f"Found index: {row[0]}")
+            if not result:
+                logger.warning("No indexes found for usaspending_prime_awards or usaspending_subawards!")
 
 def preprocess_data_optimized():
     """
@@ -93,7 +133,8 @@ def preprocess_data_optimized():
     create_performance_indexes()
     
     # Use s3_processed.usaspending_prime_awards as the source table
-    source_table = "s3_processed.usaspending_prime_awards"
+    source_schema = "s3_processed"
+    source_table = f"{source_schema}.usaspending_prime_awards"
     logger.info(f"Using {source_table} as source for transformation")
     logger.info("Starting optimized data preprocessing for app performance...")
     # Check if primary table exists and has data
@@ -117,9 +158,9 @@ def preprocess_data_optimized():
         logger.info(f"Found {source_table} table with {row_count:,} rows.")
     
     with engine.connect() as connection:
-        # Create distinct filter value tables for the UI
+        # Create distinct filter value tables for the UI in s3_processed
         logger.info("\nPrecomputing filter values tables using direct SQL...")
-        
+
         filter_columns = [
             "parent_award_agency_name",
             "funding_sub_agency_name",
@@ -131,16 +172,16 @@ def preprocess_data_optimized():
             "extent_competed",
             "type_of_set_aside"
         ]
-        
+
         filter_tables = []
-        
+
         for column in filter_columns:
             logger.info(f"  - Creating filter values for {column}...")
-            table_name = f"filter_values_{column}"
-            
+            table_name = f"{source_schema}.filter_values_{column}"
+
             # Drop existing table if it exists
             connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
-            
+
             # Create the filter values table with counts
             create_filter_query = text(f"""
                 CREATE TABLE {table_name} AS
@@ -157,26 +198,27 @@ def preprocess_data_optimized():
                 ORDER BY 
                     COUNT(*) DESC
             """)
-            
+
             connection.execute(create_filter_query)
             connection.commit()
-            
+
             # Get row count
             filter_count = connection.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
             filter_tables.append({"name": table_name, "count": filter_count})
-            
+
             logger.info(f"    [OK] Created filter values table for {column}")
-        
-        # Precompute dependent filter relationships (e.g., agency → sub-agency → office)
+
+        # Precompute dependent filter relationships (e.g., agency → sub-agency → office) in s3_processed
         logger.info("\nPrecomputing dependent filter relationships using direct SQL...")
-        
+
+        dependencies_table = f"{source_schema}.filter_dependencies"
         # Drop existing table if it exists
-        connection.execute(text("DROP TABLE IF EXISTS filter_dependencies"))
-        
+        connection.execute(text(f"DROP TABLE IF EXISTS {dependencies_table}"))
+
         # Create the filter dependencies table for hierarchical filters
         logger.info("  - Creating agency to sub-agency dependencies...")
         create_dependencies_query = text(f"""
-            CREATE TABLE filter_dependencies AS
+            CREATE TABLE {dependencies_table} AS
             SELECT 
                 'parent_agency_to_sub_agency' as relationship_type,
                 parent_award_agency_name as parent_value,
@@ -192,14 +234,14 @@ def preprocess_data_optimized():
             ORDER BY 
                 parent_award_agency_name, COUNT(*) DESC
         """)
-        
+
         connection.execute(create_dependencies_query)
         connection.commit()
-        
+
         # Add sub-agency to funding office relationships
         logger.info("  - Creating sub-agency to funding office dependencies...")
         append_dependencies_query = text(f"""
-            INSERT INTO filter_dependencies
+            INSERT INTO {dependencies_table}
             SELECT 
                 'sub_agency_to_funding_office' as relationship_type,
                 funding_sub_agency_name as parent_value,
@@ -215,38 +257,36 @@ def preprocess_data_optimized():
             ORDER BY 
                 funding_sub_agency_name, COUNT(*) DESC
         """)
-        
+
         connection.execute(append_dependencies_query)
         connection.commit()
-        
+
         # Get dependency count
-        dependency_count = connection.execute(text("SELECT COUNT(*) FROM filter_dependencies")).scalar()
-        
+        dependency_count = connection.execute(text(f"SELECT COUNT(*) FROM {dependencies_table}")).scalar()
+
         logger.info(f"  [OK] Created filter_dependencies table with {dependency_count} relationships.")
-        
+
         # Confirm it exists
         filter_dependencies_exists = connection.execute(text(
-            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'filter_dependencies')"
+            f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '{source_schema}' AND table_name = 'filter_dependencies')"
         )).scalar()
-        
+
         if filter_dependencies_exists:
             logger.info(f"    [OK] Confirmed filter_dependencies table exists in database")
         else:
             logger.error("Error: filter_dependencies table was not created successfully")
-        
-        # Create quarterly aggregated data for timeline charts
+
+        # Create quarterly aggregated data for timeline charts in s3_processed
         logger.info("\nPre-aggregating data for visualizations using direct SQL...")
-        
-        # Create quarterly data table
-        logger.info("  - Creating quarterly_data table with fiscal calculations...")
-        
+
+        quarterly_table = f"{source_schema}.quarterly_data"
         # Drop existing table if it exists
-        connection.execute(text("DROP TABLE IF EXISTS quarterly_data"))
-        
+        connection.execute(text(f"DROP TABLE IF EXISTS {quarterly_table}"))
+
         # Create the quarterly data table with fiscal year and quarter calculations (computed on the fly)
         # US Federal Fiscal Year starts in October, so add 3 months to action_date
         create_quarterly_query = text(f"""
-            CREATE TABLE quarterly_data AS
+            CREATE TABLE {quarterly_table} AS
             SELECT 
                 EXTRACT(YEAR FROM action_date + INTERVAL '3 months') AS fiscal_year,
                 EXTRACT(QUARTER FROM action_date + INTERVAL '3 months') AS fiscal_quarter,
@@ -265,91 +305,91 @@ def preprocess_data_optimized():
             ORDER BY 
                 fiscal_year, fiscal_quarter
         """)
-        
+
         connection.execute(create_quarterly_query)
         connection.commit()
-        
+
         # Get quarterly count
-        quarterly_count = connection.execute(text("SELECT COUNT(*) FROM quarterly_data")).scalar()
-        
+        quarterly_count = connection.execute(text(f"SELECT COUNT(*) FROM {quarterly_table}")).scalar()
+
         logger.info(f"  [OK] Created quarterly_data table with {quarterly_count} rows.")
-        
+
         # Confirm it exists
         quarterly_data_exists = connection.execute(text(
-            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'quarterly_data')"
+            f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '{source_schema}' AND table_name = 'quarterly_data')"
         )).scalar()
-        
+
         if quarterly_data_exists:
             logger.info(f"    [OK] Confirmed quarterly_data table exists in database")
         else:
             logger.error("Error: quarterly_data table was not created successfully")
-        
+
         # Final optimization: ANALYZE tables for query planning
         logger.info("\nPerforming final optimization and cleanup...")
-        
+
         # List of tables to analyze
         tables_to_analyze = [
             source_table,
-            "quarterly_data",
-            "filter_dependencies"
+            quarterly_table,
+            dependencies_table
         ] + [table["name"] for table in filter_tables]
-        
+
         for table in tables_to_analyze:
             connection.execute(text(f"ANALYZE {table}"))
             logger.info(f"  [OK] Analyzed {table} table for optimal query performance")
-        
-        # Clean up any temporary tables
-        temp_tables_query = text("""
+
+        # Clean up any temporary tables in s3_processed (if any)
+        temp_tables_query = text(f"""
             SELECT tablename FROM pg_tables 
             WHERE tablename LIKE 'temp_%' 
-            AND schemaname = 'public'
+            AND schemaname = '{source_schema}'
         """)
-        
+
         temp_tables = [row[0] for row in connection.execute(temp_tables_query).fetchall()]
-        
+
         if temp_tables:
             logger.info(f"Found {len(temp_tables)} temporary tables to clean up:")
-            
+
             for table_name in temp_tables:
                 logger.info(f"  - Dropping temporary table: {table_name}")
-                connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+                connection.execute(text(f"DROP TABLE IF EXISTS {source_schema}.{table_name}"))
                 logger.info(f"    [OK] Removed temporary table {table_name}")
-        
-        # Get final table stats for the report
-        all_tables_query = text("""
+
+        # Get final table stats for the report (only s3_processed tables)
+        all_tables_query = text(f"""
             SELECT 
                 tablename, 
-                (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = tablename) as column_count,
+                (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '{source_schema}' AND table_name = tablename) as column_count,
                 pg_relation_size(quote_ident(tablename)) as table_size
             FROM 
                 pg_tables 
             WHERE 
-                schemaname = 'public' AND
+                schemaname = '{source_schema}' AND
                 tablename NOT LIKE 'pg_%' AND
                 tablename NOT LIKE 'sql_%'
             ORDER BY 
                 tablename
         """)
-        
+
         all_tables = connection.execute(all_tables_query).fetchall()
-        
+
         tables_with_counts = []
-        
+
         for table_name, column_count, table_size in all_tables:
             # Skip tables that are not part of our application
             if ("_" in table_name and not table_name.startswith("filter_") and 
                 not table_name == "quarterly_data" and
-                not table_name.startswith("usaprime_")):
+                not table_name.startswith("usaspending_")):
                 continue
-                
-            row_count = connection.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+
+            row_count = connection.execute(text(f"SELECT COUNT(*) FROM {source_schema}.{table_name}")).scalar()
             tables_with_counts.append({
                 "name": table_name,
                 "row_count": row_count,
                 "column_count": column_count,
                 "size_bytes": table_size
             })
-        
+
         # Store results for application tables
         app_tables = []
         for table in tables_with_counts:
