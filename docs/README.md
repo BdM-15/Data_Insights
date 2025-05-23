@@ -203,21 +203,21 @@ All new features, modularization, and AI scaffolding are documented in the relev
 ### Recent Pipeline & Schema Updates (May 2025)
 
 - **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are now created exclusively in the `s3_processed` schema.**
-    - This ensures a single, high-performance, analytics-ready layer for all downstream use.
+  - This ensures a single, high-performance, analytics-ready layer for all downstream use.
 - **Source Tables:**
-    - `s3_processed.usaspending_prime_awards`: Main deduplicated, analytics-ready contract data table. **All analytics, reporting, and dashboard queries now use this as the sole source for prime award data.**
-    - `s3_processed.usaspending_subawards`: Deduplicated subaward data. **All subaward analytics use this table as the source.**
+  - `s3_processed.usaspending_prime_awards`: Main deduplicated, analytics-ready contract data table. **All analytics, reporting, and dashboard queries now use this as the sole source for prime award data.**
+  - `s3_processed.usaspending_subawards`: Deduplicated subaward data. **All subaward analytics use this table as the source.**
 - **Precomputed & Aggregation Tables (all in `s3_processed`):**
-    - `filter_values_*`: Precomputed filter values for each column (for fast UI filtering)
-    - `filter_dependencies`: Precomputed dependencies between filters
-    - `quarterly_data`: Pre-aggregated data for visualizations
-    - **All new analytics, reporting, and dashboard tables are created in `s3_processed` only. No analytics or reporting tables are created outside this schema.**
+  - `filter_values_*`: Precomputed filter values for each column (for fast UI filtering)
+  - `filter_dependencies`: Precomputed dependencies between filters
+  - `quarterly_data`: Pre-aggregated data for visualizations
+  - **All new analytics, reporting, and dashboard tables are created in `s3_processed` only. No analytics or reporting tables are created outside this schema.**
 - **Direct SQL Analytics:** All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend). This ensures maximum performance and leverages database indexes.
 - **Materialized Views:** For high-traffic or default dashboard queries (e.g., "Top Competitors by Market Share"), materialized views in `s3_processed` are recommended to provide instant load times. These should be refreshed after each ETL/transform run. For highly dynamic, ad-hoc filters, the index-optimized base tables are sufficient.
 - **Indexing:** All recommended indexes are now created in `s3_processed` during the transformation stage, including:
-    - Composite indexes for high-frequency filter and grouping columns (e.g., `recipient_parent_name, recipient_name, funding_sub_agency_name` for competitive landscape/treemap)
-    - Indexes on `federal_action_obligation`, `modification_number`, `funding_sub_agency_name`, and all major filter columns
-    - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+  - Composite indexes for high-frequency filter and grouping columns (e.g., `recipient_parent_name, recipient_name, funding_sub_agency_name` for competitive landscape/treemap)
+  - Indexes on `federal_action_obligation`, `modification_number`, `funding_sub_agency_name`, and all major filter columns
+  - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
 
 **Summary:** All analytics, reporting, and dashboard queries are now filter-aware, SQL-backed, and index-optimized, using only the `s3_processed` schema as the source. Materialized views are recommended for the most common, high-traffic queries to ensure instant dashboard performance.
 
@@ -328,6 +328,7 @@ For questions or support, please contact the project maintainer.
 #### Data Model Update (May 2025)
 
 **All analytics, reporting, indexes, and precomputed tables are now created exclusively in the `s3_processed` schema.**
+
 - All analytics and reporting use only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources. No legacy or interim tables are referenced.
 - All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed` (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
 - No analytics or reporting is performed on `s1_raw` or `s2_interim` tables.

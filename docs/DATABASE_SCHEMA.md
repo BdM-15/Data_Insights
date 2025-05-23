@@ -1,4 +1,5 @@
 # USAspending Data Architecture & Schema (May 2025)
+
 ## Schema & Table Naming Conventions
 
 ## Schema & Table Naming Conventions (May 2025 Update)
@@ -20,10 +21,12 @@ The Data_Insights project uses a strict three-stage schema approach for all USAs
 - **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
 
 **Deduplication Keys:**
+
 - Prime awards: `contract_transaction_unique_key` (unique transaction key)
 - Subawards: Composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`)
 
 **Transformation & Indexing:**
+
 - All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
 - All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed` (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
 - Composite and single-column indexes are created for all major filter/grouping columns (e.g., `recipient_parent_name, recipient_name, funding_sub_agency_name`, `federal_action_obligation`, `modification_number`, etc.)
