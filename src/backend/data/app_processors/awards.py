@@ -10,34 +10,71 @@ from src.backend.data.models.data_models import (
     TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, AwardSummaryItem, QuarterlyTrend, ContractVehicleSummary, RecipientAwardCount, RecipientObligation, ExpiringContract
 )
 
-def get_award_summary(df: pd.DataFrame) -> list:
+from src.backend.core.database import get_db_engine
+from sqlalchemy import text
+def get_award_summary(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
     """
-    Calculate summary metrics from the data.
+    Calculate executive summary metrics using direct SQL for performance.
     Args:
-        df: DataFrame containing award data
+        naics_code: Optional NAICS code filter
+        start_date: Optional start date (YYYY-MM-DD)
+        end_date: Optional end date (YYYY-MM-DD)
+        agency: Optional agency filter
+        contractor: Optional contractor/recipient filter
+        psc: Optional PSC code filter
     Returns:
         List of AwardSummaryItem models
     """
-    if df.empty:
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    if naics_code:
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency:
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor:
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc:
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    query = f"""
+        SELECT
+            SUM(federal_action_obligation) AS total_obligations,
+            COUNT(*) FILTER (WHERE modification_number = '0') AS total_award_actions,
+            CASE WHEN COUNT(*) FILTER (WHERE modification_number = '0') > 0
+                 THEN SUM(federal_action_obligation) / COUNT(*) FILTER (WHERE modification_number = '0')
+                 ELSE 0 END AS avg_award_value,
+            COUNT(DISTINCT contract_award_unique_key) FILTER (WHERE modification_number = '0') AS active_contracts
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+    """
+    with engine.connect() as connection:
+        result = connection.execute(text(query), params).fetchone()
         return [
-            AwardSummaryItem(category="total_obligations", value=0),
-            AwardSummaryItem(category="total_award_actions", value=0),
-            AwardSummaryItem(category="avg_award_value", value=0),
-            AwardSummaryItem(category="active_contracts", value=0)
+            AwardSummaryItem(category="total_obligations", value=float(result[0] or 0)),
+            AwardSummaryItem(category="total_award_actions", value=int(result[1] or 0)),
+            AwardSummaryItem(category="avg_award_value", value=float(result[2] or 0)),
+            AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
         ]
-    # Filter for base awards (no modifications)
-    base_awards = df[df['modification_number'] == '0']
-    # Calculate metrics
-    total_obligations = df['federal_action_obligation'].sum()
-    total_award_actions = len(base_awards)
-    avg_award_value = total_obligations / total_award_actions if total_award_actions > 0 else 0
-    active_contracts = len(base_awards)
-    return [
-        AwardSummaryItem(category="total_obligations", value=total_obligations),
-        AwardSummaryItem(category="total_award_actions", value=total_award_actions),
-        AwardSummaryItem(category="avg_award_value", value=avg_award_value),
-        AwardSummaryItem(category="active_contracts", value=active_contracts)
-    ]
 
 def get_top_agencies(df: pd.DataFrame, metric: str = "count", n: int = 15) -> list:
     """
