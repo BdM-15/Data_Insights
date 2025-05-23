@@ -77,8 +77,11 @@
 - **ETL Pipeline Refactor, Deduplication, and Transformation Automation**:
   - ✅ Refactored ETL scripts to use `s1_raw`, `s2_interim`, and `s3_processed` schemas with clear naming conventions
   - ✅ Deduplication script now robustly deduplicates both prime awards and subawards, reading from `s2_interim` and writing to `s3_processed`
-  - ✅ All index creation logic moved to transformation, which is now fully automated and idempotent
-  - ✅ Transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed` as the source
+  - ✅ All index creation and precomputed table logic is now handled in the transformation stage, and all such tables are created only in `s3_processed`.
+  - ✅ **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are now created exclusively in the `s3_processed` schema.**
+  - ✅ **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend), using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.**
+  - ✅ **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
+  - ✅ All references to legacy/interim tables (e.g., `usaprime_cleaned`) have been removed from the codebase and documentation.
   - ✅ Pipeline is modular, schema-aware, and ready for high-performance analytics, AI, and RAG workflows
   - Status: ✅ Complete (May 2025)
 - ~~**Fix filter dependencies JSON handling**~~:

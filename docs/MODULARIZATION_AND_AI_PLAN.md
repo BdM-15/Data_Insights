@@ -42,8 +42,10 @@
 #### ETL/Analytics Pipeline Refactor (May 2025)
 
 - The ETL/data pipeline is modular, schema-aware, and fully automated using a three-stage schema (`s1_raw`, `s2_interim`, `s3_processed`).
-- Deduplication is robust for both prime awards and subawards, and all index creation and precomputed tables (filter values, dependencies, quarterly_data, etc.) are handled in the transformation stage and created only in `s3_processed`.
-- The transformation script creates all recommended indexes and precomputes filter/aggregation tables for analytics and AI, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
+- **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are now created exclusively in the `s3_processed` schema.**
+- Deduplication is robust for both prime awards and subawards, and all index creation and precomputed tables are handled in the transformation stage and created only in `s3_processed`.
+- **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend), using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.**
+- **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
 - No analytics or reporting is performed on `s1_raw` or `s2_interim` tables.
 - The pipeline is idempotent, future-proofed for AI/LLM/RAG, and ready for downstream agent and RAG integration.
 
@@ -433,6 +435,10 @@ src/
 
 - **Theme modularization is complete:** All theme colors and CSS are now centralized in `src/frontend/styles/theme.py` and `custom_css.py`. The dashboard imports these modules for consistent styling.
 - **Backend data processing is fully modularized:** All data processing and database logic have been moved out of the Streamlit frontend and into backend modules (`src/backend/data/processors/awards.py`, `agencies.py`, `competition.py`).
+  - **All analytics, reporting, indexes, and precomputed tables are now created exclusively in the `s3_processed` schema.**
+  - **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend), using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.**
+  - **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
+  - See `src/backend/data/data_processing/transformation.py` and `docs/DATABASE_SCHEMA.md` for implementation details.
 - **Frontend is UI-only:** The Streamlit dashboard now only handles UI and calls backend functions for all data and processing. No business/data logic remains in the frontend.
 - **Sidebar diagnostics restored and improved:** Diagnostics for DB connection, table existence, and row count for `usaprime_cleaned` are now robust and match the original backup dashboard style.
 - **File-based logging implemented:** All major operations and errors are logged to `logs/dashboard.log` for traceability and debugging.

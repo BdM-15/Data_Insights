@@ -221,14 +221,22 @@ Data_Insights/
   - Applied to NATO NSPA data source with immediate reliability improvements
   - Prepared foundation for seamless integration of future data sources
 - **PostgreSQL Tables**:
-  - `usaprime_cleaned`: Main table with contract data
-  - `filter_values_*`: Precomputed filter values for each column
-  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency)
-  - `quarterly_data`: Pre-aggregated data for visualizations
+  - `s3_processed.usaspending_prime_awards`: Main deduplicated, analytics-ready contract data table (all analytics, reporting, and precomputed tables now use this as the source)
+  - `s3_processed.usaspending_subawards`: Deduplicated subaward data
+  - `filter_values_*`: Precomputed filter values for each column (in `s3_processed`)
+  - `filter_dependencies`: Precomputed dependencies between filters (in `s3_processed`)
+  - `quarterly_data`: Pre-aggregated data for visualizations (in `s3_processed`)
+  - All new analytics, reporting, and dashboard tables are created in `s3_processed` only
 - **Indexes**:
-  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`
-  - Composite index: `idx_filter_composite` on frequently filtered columns
-  - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+  - All recommended indexes are now created in `s3_processed` during the transformation stage, including:
+    - `recipient_parent_name, recipient_name, funding_sub_agency_name` (for competitive landscape/treemap)
+    - `federal_action_obligation`, `modification_number`, `funding_sub_agency_name`, and all major filter columns
+    - Composite indexes for high-frequency filter and grouping columns
+    - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+- **Materialized Views** (Recommended for Top Competitors by Market Share):
+  - For the "Top Competitors by Market Share" dashboard section, consider creating a materialized view in `s3_processed` for the most common filter combinations (e.g., by fiscal year, by NAICS, by agency) to provide instant load times for default or high-traffic queries.
+  - Materialized views are most beneficial when the same aggregations are queried frequently or for default dashboard views. For highly dynamic, ad-hoc filters, the current index-optimized approach is sufficient.
+  - Refresh materialized views after each ETL/transform run to keep analytics up to date.
 
 ## User Interface & UX Enhancements
 
@@ -708,7 +716,7 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
   - **Interactive Sankey Diagram (Agency → Office → Contract)**: Add an interactive Sankey diagram as the last visual, tracing the flow from parent agency to office level and further into contract levels.
     - _Reason/Benefit_: This provides a clear, intuitive visualization of how obligations and actions flow through the federal hierarchy, helping users identify bottlenecks, key offices, and contract concentrations for more effective targeting.
   - Implement dynamic filtering with real-time visualization updates
-  - Add market share analysis for contractors within selected NAICS codes
+  - Add market share analysis for contractors within selected NAICS codes (now fully SQL-backed, filter-aware, and optimized for performance)
   - Include opportunity timeline showing contract expirations and projected solicitations
 
 - **Generate Capture Profile**:
@@ -800,7 +808,7 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
 - Add pagination or lazy loading to the DataFrame to handle large datasets more efficiently.
 - Enhance visualizations with interactive features (e.g., tooltips, drill-downs).
 - Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
-- Optimize database queries further if performance issues arise with larger datasets.
+  - Optimize database queries further if performance issues arise with larger datasets. All dashboard metrics and visualizations now use direct SQL with filter-aware, index-optimized queries, and all analytics/reporting tables are created in `s3_processed` only.
 
 ## Implementation Status & Roadmap
 

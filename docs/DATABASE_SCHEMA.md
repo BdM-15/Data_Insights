@@ -1,37 +1,40 @@
 # USAspending Data Architecture & Schema (May 2025)
-
 ## Schema & Table Naming Conventions
 
-The Data_Insights project uses a three-stage schema approach for all USAspending data to ensure clear data lineage, robust ETL, and high-performance analytics:
+## Schema & Table Naming Conventions (May 2025 Update)
 
-- **s1_raw**: Contains as-ingested, unmodified data from USAspending.gov. No transformations, no deduplication, no indexes except for ingestion/PKs. Example: `s1_raw.usaspending_prime_awards`, `s1_raw.usaspending_subawards`
-- **s2_interim**: Contains cleaned and standardized data, but not deduplicated or indexed for analytics. Used for all downstream processing. Example: `s2_interim.usaspending_prime_awards`, `s2_interim.usaspending_subawards`
-- **s3_processed**: Contains deduplicated, analytics-ready data with all performance indexes. Used for dashboards, reporting, and AI/LLM workflows. Example: `s3_processed.usaspending_prime_awards`, `s3_processed.usaspending_subawards`
+The Data_Insights project uses a strict three-stage schema approach for all USAspending data, but **all analytics, reporting, indexes, and precomputed tables are now created exclusively in the `s3_processed` schema** for maximum performance and clarity:
 
-**Intent of Each Stage:**
+- **s1_raw**: As-ingested, unmodified data from USAspending.gov. Immutable, for audit and reprocessing only. No analytics or reporting is performed on these tables.
+- **s2_interim**: Cleaned and standardized data, but not deduplicated or indexed for analytics. Used only for ETL processing. No analytics or reporting is performed on these tables.
+- **s3_processed**: Deduplicated, analytics-ready data with all performance indexes, precomputed filter/aggregation tables, and (optionally) materialized views. **All dashboards, APIs, analytics, and AI agents use only this schema.**
 
-- `s1_raw`: Immutable, for audit and reprocessing. Only ingestion logic writes here.
-- `s2_interim`: Cleansing, type casting, and standardization. No deduplication or analytics indexes. Used for all ETL downstream logic.
-- `s3_processed`: Final, deduplicated, indexed, and optimized for analytics. All dashboards, APIs, and AI agents should use only this schema.
+**Key Practices (May 2025):**
 
-**Best Practices (May 2025):**
+- **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are created in the `s3_processed` schema only.**
+- **Never run analytics or reporting on `s1_raw` or `s2_interim` tables.**
+- **Only create performance indexes and materialized views in the `s3_processed` schema.**
+- **All deduplication and business rules are applied in the move from `s2_interim` to `s3_processed`.**
+- **Table names are always `usaspending_prime_awards` or `usaspending_subawards` (no suffixes for stage).**
+- **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend).**
+- **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
 
-- All analytics, reporting, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are created in the `s3_processed` schema only.
-- Never run analytics or reporting on `s1_raw` or `s2_interim` tables.
-- Only create performance indexes and materialized views in the `s3_processed` schema.
-- All deduplication and business rules are applied in the move from `s2_interim` to `s3_processed`.
-- Table names are always `usaspending_prime_awards` or `usaspending_subawards` (no suffixes for stage).
-  **Deduplication Keys:**
-
+**Deduplication Keys:**
 - Prime awards: `contract_transaction_unique_key` (unique transaction key)
 - Subawards: Composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`)
 
 **Transformation & Indexing:**
-
 - All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
 - All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed` (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
+- Composite and single-column indexes are created for all major filter/grouping columns (e.g., `recipient_parent_name, recipient_name, funding_sub_agency_name`, `federal_action_obligation`, `modification_number`, etc.)
+- PostgreSQL-specific index optimizations (B-tree, GIN) are used for improved query performance.
 - Filter value tables and dependent filter relationships are precomputed for fast UI filtering and analytics.
 - Quarterly aggregation tables are created for timeline visualizations, with fiscal year/quarter computed dynamically.
+
+**Summary:**
+All analytics, reporting, and dashboard queries are now filter-aware, SQL-backed, and index-optimized, using only the `s3_processed` schema as the source. Materialized views are recommended for the most common, high-traffic queries to ensure instant dashboard performance.
+
+**See also:** `src/backend/data/data_processing/transformation.py` for index/materialized view creation logic.
 
 ---
 
