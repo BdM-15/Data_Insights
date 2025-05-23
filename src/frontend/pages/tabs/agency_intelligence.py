@@ -57,7 +57,12 @@ def render_tab(df: pd.DataFrame):
     from src.backend.data.app_processors.awards import get_quarterly_trends
     from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends
     section_divider("Spending Trends (Quarterly)", icon="📈")
-    quarterly_data = get_quarterly_trends(agency_df)
+    # Use SQL-backed, filter-aware quarterly trends
+    quarterly_data = get_quarterly_trends(
+        agency=selected_agency,
+        naics_code=selected_naics
+        # Optionally add start_date/end_date if available in the UI context
+    )
     if quarterly_data:
         qtr_df = pd.DataFrame([q.dict() for q in quarterly_data])
         fig = plot_quarterly_trends(qtr_df, THEME, config={"title": f"{selected_agency} Obligations & Award Actions by Quarter"})

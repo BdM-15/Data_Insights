@@ -1,4 +1,3 @@
-
 """
 Data Transformation Script for USASpending Contract Data.
 
@@ -74,7 +73,12 @@ def create_performance_indexes():
                 {"name": "s3p_idx_prime_action_date", "columns": "action_date"},
                 {"name": "s3p_idx_prime_recipient_name", "columns": "recipient_name"},
                 {"name": "s3p_idx_prime_naics_code", "columns": "naics_code"},
-                {"name": "s3p_idx_prime_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"}
+                {"name": "s3p_idx_prime_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"},
+                # Treemap-specific indexes for competitive landscape visualization
+                {"name": "s3p_idx_treemap_grouping", "columns": "recipient_parent_name, recipient_name, funding_sub_agency_name"},
+                {"name": "s3p_idx_treemap_obligation", "columns": "federal_action_obligation"},
+                {"name": "s3p_idx_treemap_modification", "columns": "modification_number"},
+                {"name": "s3p_idx_funding_sub_agency", "columns": "funding_sub_agency_name"}
             ]
             for idx in prime_indexes:
                 logger.info(f"Ensuring index {idx['name']} on {prime_table}({idx['columns']})...")

@@ -76,69 +76,158 @@ def get_award_summary(
             AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
         ]
 
-def get_top_agencies(df: pd.DataFrame, metric: str = "count", n: int = 15) -> list:
+from src.backend.core.database import get_db_engine
+from sqlalchemy import text
+def get_top_agencies(
+    metric: str = "count",
+    n: int = 15,
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
     """
-    Get top agencies by award count or obligation amount.
+    Get top agencies by award count or obligation amount using direct SQL.
     Args:
-        df: DataFrame containing award data
         metric: 'count' for award actions, 'obligation' for dollar amount
         n: Number of top agencies to return
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
     Returns:
         List of TopAgencyByCount or TopAgencyByObligation models
     """
-    if df.empty:
-        return []
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    if naics_code:
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency:
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor:
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc:
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
     if metric == "count":
-        base_df = df[df['modification_number'] == '0']
-        agency_data = base_df.groupby('parent_award_agency_name').size().reset_index(name='award_count')
-        agency_data = agency_data.sort_values('award_count', ascending=False).head(n)
-        return [TopAgencyByCount(**row) for row in agency_data.to_dict(orient='records')]
+        query = f"""
+            SELECT parent_award_agency_name, COUNT(*) AS award_count
+            FROM s3_processed.usaspending_prime_awards
+            {where_clause}
+            AND modification_number = '0'
+            GROUP BY parent_award_agency_name
+            ORDER BY award_count DESC
+            LIMIT :n
+        """
+        params["n"] = n
+        with engine.connect() as connection:
+            result = connection.execute(text(query), params).fetchall()
+            return [TopAgencyByCount(parent_award_agency_name=row[0], award_count=row[1]) for row in result]
     else:
-        agency_data = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().reset_index()
-        agency_data = agency_data.sort_values('federal_action_obligation', ascending=False).head(n)
-        return [TopAgencyByObligation(**row) for row in agency_data.to_dict(orient='records')]
+        query = f"""
+            SELECT parent_award_agency_name, SUM(federal_action_obligation) AS federal_action_obligation
+            FROM s3_processed.usaspending_prime_awards
+            {where_clause}
+            GROUP BY parent_award_agency_name
+            ORDER BY federal_action_obligation DESC
+            LIMIT :n
+        """
+        params["n"] = n
+        with engine.connect() as connection:
+            result = connection.execute(text(query), params).fetchall()
+            return [TopAgencyByObligation(parent_award_agency_name=row[0], federal_action_obligation=row[1]) for row in result]
 
-def get_quarterly_trends(df: pd.DataFrame) -> list:
+
+# Supports: Strategic Dashboard > Market Overview tab > Obligations and Award Actions Trend section > Quarterly Trends Chart
+def get_quarterly_trends(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
     """
-    Calculate quarterly trends for obligations and award actions.
-    Both obligations and award actions should be cumulative within each fiscal year.
+    Calculate quarterly trends for obligations and award actions using direct SQL.
+    Both obligations and award actions are cumulative within each fiscal year.
+    Supports: Strategic Dashboard > Market Overview tab > Obligations and Award Actions Trend section > Quarterly Trends Chart
     Args:
-        df: DataFrame containing award data
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
     Returns:
         List of QuarterlyTrend Pydantic models
     """
-    if df.empty:
-        return []
-    df['action_date'] = pd.to_datetime(df['action_date'])
-    df['fiscal_year'] = df['action_date'].dt.year
-    df.loc[df['action_date'].dt.month >= 10, 'fiscal_year'] = df['action_date'].dt.year + 1
-    month_to_fiscal_quarter = {
-        1: 2, 2: 2, 3: 2,
-        4: 3, 5: 3, 6: 3,
-        7: 4, 8: 4, 9: 4,
-        10: 1, 11: 1, 12: 1
-    }
-    df['fiscal_quarter'] = df['action_date'].dt.month.map(month_to_fiscal_quarter)
-    df['fiscal_period'] = df['fiscal_year'].astype(str) + '-Q' + df['fiscal_quarter'].astype(str)
-    base_awards = df[df['modification_number'] == '0']
-    award_counts = base_awards.groupby(['fiscal_year', 'fiscal_quarter', 'fiscal_period']).size().reset_index(name='award_count')
-    obligations = df.groupby(['fiscal_year', 'fiscal_quarter', 'fiscal_period'])['federal_action_obligation'].sum().reset_index()
-    award_counts = award_counts.sort_values(['fiscal_year', 'fiscal_quarter'])
-    obligations = obligations.sort_values(['fiscal_year', 'fiscal_quarter'])
-    obligations['federal_action_obligation'] = obligations.groupby('fiscal_year')['federal_action_obligation'].cumsum()
-    award_counts['award_count'] = award_counts.groupby('fiscal_year')['award_count'].cumsum()
-    quarterly_data = pd.merge(award_counts, obligations, on=['fiscal_year', 'fiscal_quarter', 'fiscal_period'], how='outer').fillna(0)
-    quarterly_data = quarterly_data.sort_values(['fiscal_year', 'fiscal_quarter'])
-    # Convert to list of QuarterlyTrend models
-    result = []
-    for _, row in quarterly_data.iterrows():
-        result.append(QuarterlyTrend(
-            quarter=row['fiscal_period'],
-            year=int(row['fiscal_year']),
-            total_obligation=float(row['federal_action_obligation']),
-            award_count=int(row['award_count'])
-        ))
-    return result
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    if naics_code:
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency:
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor:
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc:
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    # SQL: Calculate fiscal year/quarter, obligations, and award actions (base awards only)
+    query = f"""
+        SELECT
+            EXTRACT(YEAR FROM action_date + INTERVAL '3 months') AS fiscal_year,
+            EXTRACT(QUARTER FROM action_date + INTERVAL '3 months') AS fiscal_quarter,
+            CONCAT(EXTRACT(YEAR FROM action_date + INTERVAL '3 months'), '-Q', EXTRACT(QUARTER FROM action_date + INTERVAL '3 months')) AS fiscal_period,
+            COUNT(*) FILTER (WHERE modification_number = '0') AS award_count,
+            SUM(federal_action_obligation) AS total_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        GROUP BY fiscal_year, fiscal_quarter, fiscal_period
+        ORDER BY fiscal_year, fiscal_quarter
+    """
+    with engine.connect() as connection:
+        result = connection.execute(text(query), params).fetchall()
+        # Convert to list of QuarterlyTrend models
+        # Cumulative within each fiscal year
+        from collections import defaultdict
+        year_award_cum = defaultdict(int)
+        year_ob_cum = defaultdict(float)
+        trends = []
+        for row in result:
+            year = int(row[0])
+            quarter = int(row[1])
+            period = str(row[2])
+            award_count = int(row[3] or 0)
+            total_ob = float(row[4] or 0)
+            year_award_cum[year] += award_count
+            year_ob_cum[year] += total_ob
+            trends.append(QuarterlyTrend(
+                quarter=period,
+                year=year,
+                total_obligation=year_ob_cum[year],
+                award_count=year_award_cum[year]
+            ))
+        return trends
 
 def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
     """
@@ -238,42 +327,88 @@ def get_unique_naics_codes(engine, table_names=None):
     except Exception:
         return ["561210", "All"]
 
-def get_agency_obligation_ratio(df: pd.DataFrame) -> list:
+
+# Supports: Strategic Dashboard > Market Overview tab > Capture Intensity section > Capture Intensity Scatter Plot
+def get_agency_obligation_ratio(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
     """
-    Calculate agency obligation ratio metrics for scatter plot analysis.
+    Calculate agency obligation ratio metrics for scatter plot analysis using direct SQL.
+    Supports: Strategic Dashboard > Market Overview tab > Capture Intensity section > Capture Intensity Scatter Plot
     Args:
-        df: DataFrame containing award data
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
     Returns:
         List of AgencyRatioMetrics models
     """
-    if df.empty:
-        return []
-    # Calculate award actions (base awards only)
-    base_awards = df[df['modification_number'] == '0']
-    award_count_per_agency = base_awards.groupby('parent_award_agency_name').size().rename('award_count')
-
-    # Calculate obligations (sum of all obligations for all rows, not just base awards)
-    obligation_per_agency = df.groupby('parent_award_agency_name')['federal_action_obligation'].sum().rename('federal_action_obligation')
-
-    # Merge to ensure all agencies are included
-    agency_ratio = pd.concat([award_count_per_agency, obligation_per_agency], axis=1).fillna(0).reset_index()
-
-    # Calculate average award value (obligations / award actions)
-    agency_ratio['avg_award_value'] = agency_ratio.apply(
-        lambda row: row['federal_action_obligation'] / row['award_count'] if row['award_count'] > 0 else 0,
-        axis=1
-    )
-    # Reason: Use avg_award_value for scatter size, but cap for outliers
-    agency_ratio['scatter_size'] = np.abs(agency_ratio['avg_award_value'])
-    size_cap = agency_ratio['scatter_size'].quantile(0.95)
-    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].clip(upper=size_cap)
-    min_size = 5
-    agency_ratio['scatter_size'] = agency_ratio['scatter_size'].apply(lambda x: max(x, min_size))
-    agency_ratio['award_count_normalized'] = np.log1p(agency_ratio['award_count'])
-    agency_ratio['obligation_normalized'] = np.log1p(agency_ratio['federal_action_obligation'])
-    agency_ratio['award_count_original'] = agency_ratio['award_count']
-    agency_ratio['obligation_original'] = agency_ratio['federal_action_obligation']
-    return [AgencyRatioMetrics(**row) for row in agency_ratio.to_dict(orient='records')]
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    if naics_code:
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency:
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor:
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc:
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    # SQL: Get award count (base awards), obligations, and avg award value per agency
+    query = f"""
+        SELECT
+            parent_award_agency_name,
+            COUNT(*) FILTER (WHERE modification_number = '0') AS award_count,
+            SUM(federal_action_obligation) AS federal_action_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        GROUP BY parent_award_agency_name
+    """
+    with engine.connect() as connection:
+        result = connection.execute(text(query), params).fetchall()
+        # Prepare for normalization and scatter size logic
+        rows = []
+        for row in result:
+            agency_name = row[0]
+            award_count = int(row[1] or 0)
+            obligation = float(row[2] or 0)
+            avg_award_value = obligation / award_count if award_count > 0 else 0
+            rows.append({
+                "parent_award_agency_name": agency_name,
+                "award_count": award_count,
+                "federal_action_obligation": obligation,
+                "avg_award_value": avg_award_value
+            })
+        # Reason: Use avg_award_value for scatter size, but cap for outliers
+        import numpy as np
+        scatter_sizes = np.array([abs(r["avg_award_value"]) for r in rows])
+        if len(scatter_sizes) > 0:
+            size_cap = np.quantile(scatter_sizes, 0.95)
+        else:
+            size_cap = 1
+        min_size = 5
+        for r in rows:
+            r["scatter_size"] = max(min(r["avg_award_value"], size_cap), min_size)
+            r["award_count_normalized"] = np.log1p(r["award_count"])
+            r["obligation_normalized"] = np.log1p(r["federal_action_obligation"])
+            r["award_count_original"] = r["award_count"]
+            r["obligation_original"] = r["federal_action_obligation"]
+        return [AgencyRatioMetrics(**r) for r in rows]
 
 def get_contract_vehicles(df: pd.DataFrame) -> list:
     """
