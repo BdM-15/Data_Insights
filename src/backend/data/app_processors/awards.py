@@ -547,3 +547,321 @@ def format_value(value, is_currency=False):
 
     # Add dollar sign if requested
     return f"${formatted}" if is_currency else formatted
+
+# Optimized query functions using materialized views where possible
+
+def get_award_summary_optimized(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get award summary using materialized view when possible, fallback to direct query.
+    Much faster for common filter patterns.
+    """
+    engine = get_db_engine()
+    
+    # If no date filters and single-filter queries, try materialized view first
+    if not start_date and not end_date and not contractor:
+        with engine.connect() as connection:
+            # Try materialized view for common single-filter cases
+            if naics_code and not agency and not psc:
+                result = connection.execute(text("""
+                    SELECT total_obligations, total_award_actions, avg_award_value, active_contracts
+                    FROM s3_processed.mv_award_summary_metrics
+                    WHERE filter_category = 'NAICS' AND filter_value = :naics_code
+                """), {"naics_code": naics_code}).fetchone()
+                if result:
+                    return [
+                        AwardSummaryItem(category="total_obligations", value=float(result[0] or 0)),
+                        AwardSummaryItem(category="total_award_actions", value=int(result[1] or 0)),
+                        AwardSummaryItem(category="avg_award_value", value=float(result[2] or 0)),
+                        AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
+                    ]
+            elif agency and not naics_code and not psc:
+                result = connection.execute(text("""
+                    SELECT total_obligations, total_award_actions, avg_award_value, active_contracts
+                    FROM s3_processed.mv_award_summary_metrics
+                    WHERE filter_category = 'AGENCY' AND filter_value = :agency
+                """), {"agency": agency}).fetchone()
+                if result:
+                    return [
+                        AwardSummaryItem(category="total_obligations", value=float(result[0] or 0)),
+                        AwardSummaryItem(category="total_award_actions", value=int(result[1] or 0)),
+                        AwardSummaryItem(category="avg_award_value", value=float(result[2] or 0)),
+                        AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
+                    ]
+            elif psc and not naics_code and not agency:
+                result = connection.execute(text("""
+                    SELECT total_obligations, total_award_actions, avg_award_value, active_contracts
+                    FROM s3_processed.mv_award_summary_metrics
+                    WHERE filter_category = 'PSC' AND filter_value = :psc
+                """), {"psc": psc}).fetchone()
+                if result:
+                    return [
+                        AwardSummaryItem(category="total_obligations", value=float(result[0] or 0)),
+                        AwardSummaryItem(category="total_award_actions", value=int(result[1] or 0)),
+                        AwardSummaryItem(category="avg_award_value", value=float(result[2] or 0)),
+                        AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
+                    ]
+            elif not naics_code and not agency and not psc:
+                # Global summary
+                result = connection.execute(text("""
+                    SELECT total_obligations, total_award_actions, avg_award_value, active_contracts
+                    FROM s3_processed.mv_award_summary_metrics
+                    WHERE filter_category = 'ALL' AND filter_value = 'ALL'
+                """)).fetchone()
+                if result:
+                    return [
+                        AwardSummaryItem(category="total_obligations", value=float(result[0] or 0)),
+                        AwardSummaryItem(category="total_award_actions", value=int(result[1] or 0)),
+                        AwardSummaryItem(category="avg_award_value", value=float(result[2] or 0)),
+                        AwardSummaryItem(category="active_contracts", value=int(result[3] or 0))
+                    ]
+    
+    # Fallback to original implementation for complex queries
+    return get_award_summary(naics_code, start_date, end_date, agency, contractor, psc)
+
+
+def get_top_agencies_optimized(
+    metric: str = "count",
+    n: int = 15,
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get top agencies using materialized view when possible.
+    Falls back to direct query for complex filters.
+    """
+    engine = get_db_engine()
+    
+    # Use materialized view for simple cases without date/contractor filters
+    if not start_date and not end_date and not contractor and not agency:
+        with engine.connect() as connection:
+            if metric == "count":
+                if not naics_code and not psc:
+                    # Simple top agencies by count
+                    result = connection.execute(text("""
+                        SELECT parent_award_agency_name, award_count
+                        FROM s3_processed.mv_top_agencies
+                        ORDER BY rank_by_count
+                        LIMIT :n
+                    """), {"n": n}).fetchall()
+                    return [TopAgencyByCount(parent_award_agency_name=row[0], award_count=row[1]) for row in result]
+                elif naics_code:
+                    # Filter by NAICS using string search (materialized view contains comma-separated NAICS codes)
+                    result = connection.execute(text("""
+                        SELECT parent_award_agency_name, award_count
+                        FROM s3_processed.mv_top_agencies
+                        WHERE all_naics_codes LIKE '%' || :naics_code || '%'
+                        ORDER BY rank_by_count
+                        LIMIT :n
+                    """), {"naics_code": naics_code, "n": n}).fetchall()
+                    return [TopAgencyByCount(parent_award_agency_name=row[0], award_count=row[1]) for row in result]
+            else:  # obligation
+                if not naics_code and not psc:
+                    # Simple top agencies by obligation
+                    result = connection.execute(text("""
+                        SELECT parent_award_agency_name, federal_action_obligation
+                        FROM s3_processed.mv_top_agencies
+                        ORDER BY rank_by_obligation
+                        LIMIT :n
+                    """), {"n": n}).fetchall()
+                    return [TopAgencyByObligation(parent_award_agency_name=row[0], federal_action_obligation=row[1]) for row in result]
+                elif naics_code:
+                    # Filter by NAICS using string search
+                    result = connection.execute(text("""
+                        SELECT parent_award_agency_name, federal_action_obligation
+                        FROM s3_processed.mv_top_agencies
+                        WHERE all_naics_codes LIKE '%' || :naics_code || '%'
+                        ORDER BY rank_by_obligation
+                        LIMIT :n
+                    """), {"naics_code": naics_code, "n": n}).fetchall()
+                    return [TopAgencyByObligation(parent_award_agency_name=row[0], federal_action_obligation=row[1]) for row in result]
+    
+    # Fallback to original implementation for complex queries
+    return get_top_agencies(metric, n, naics_code, start_date, end_date, agency, contractor, psc)
+
+
+def get_quarterly_trends_optimized(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get quarterly trends using materialized view when possible.
+    Much faster for common agency/NAICS filtering patterns.
+    """
+    engine = get_db_engine()
+    
+    # Use materialized view for simple agency or NAICS filters without date/contractor restrictions
+    if not start_date and not end_date and not contractor and not psc:
+        with engine.connect() as connection:
+            if agency and not naics_code:
+                # Agency-specific trends
+                result = connection.execute(text("""
+                    SELECT fiscal_year, fiscal_quarter, fiscal_period, 
+                           cumulative_award_count, cumulative_obligation
+                    FROM s3_processed.mv_quarterly_trends_optimized
+                    WHERE parent_award_agency_name = :agency
+                        AND naics_code IS NULL
+                    ORDER BY fiscal_year, fiscal_quarter
+                """), {"agency": agency}).fetchall()
+            elif naics_code and not agency:
+                # NAICS-specific trends
+                result = connection.execute(text("""
+                    SELECT fiscal_year, fiscal_quarter, fiscal_period,
+                           cumulative_award_count, cumulative_obligation
+                    FROM s3_processed.mv_quarterly_trends_optimized
+                    WHERE naics_code = :naics_code
+                        AND parent_award_agency_name IS NULL
+                    ORDER BY fiscal_year, fiscal_quarter
+                """), {"naics_code": naics_code}).fetchall()
+            elif not agency and not naics_code:
+                # Overall trends
+                result = connection.execute(text("""
+                    SELECT fiscal_year, fiscal_quarter, fiscal_period,
+                           cumulative_award_count, cumulative_obligation
+                    FROM s3_processed.mv_quarterly_trends_optimized
+                    WHERE parent_award_agency_name IS NULL
+                        AND naics_code IS NULL
+                    ORDER BY fiscal_year, fiscal_quarter
+                """)).fetchall()
+            else:
+                # Both agency and NAICS specified - fall back to direct query
+                return get_quarterly_trends(naics_code, start_date, end_date, agency, contractor, psc)
+            
+            # Convert to QuarterlyTrend models
+            trends = []
+            for row in result:
+                trends.append(QuarterlyTrend(
+                    quarter=str(row[2]),
+                    year=int(row[0]),
+                    total_obligation=float(row[4] or 0),
+                    award_count=int(row[3] or 0)
+                ))
+            return trends
+    
+    # Fallback to original implementation for complex queries
+    return get_quarterly_trends(naics_code, start_date, end_date, agency, contractor, psc)
+
+
+def get_agency_obligation_ratio_optimized(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get agency obligation ratio using materialized view when possible.
+    Provides pre-calculated scatter plot data for better performance.
+    """
+    engine = get_db_engine()
+    
+    # Use materialized view for simple cases without filters
+    if not naics_code and not start_date and not end_date and not agency and not contractor and not psc:
+        with engine.connect() as connection:
+            result = connection.execute(text("""
+                SELECT parent_award_agency_name, award_count, federal_action_obligation,
+                       avg_award_value, scatter_size_raw, award_count_normalized, obligation_normalized
+                FROM s3_processed.mv_agency_obligation_ratio
+                ORDER BY federal_action_obligation DESC
+            """)).fetchall()
+            
+            # Apply size capping logic
+            scatter_sizes = [row[4] for row in result]
+            size_cap = np.quantile(scatter_sizes, 0.95) if scatter_sizes else 100
+            
+            rows = []
+            for row in result:
+                scatter_size = min(max(row[4], 5), size_cap)  # Apply cap and minimum
+                rows.append(AgencyRatioMetrics(
+                    parent_award_agency_name=row[0],
+                    award_count=int(row[1]),
+                    federal_action_obligation=float(row[2]),
+                    avg_award_value=float(row[3]),
+                    scatter_size=scatter_size,
+                    award_count_normalized=float(row[5]),
+                    obligation_normalized=float(row[6]),
+                    award_count_original=int(row[1]),
+                    obligation_original=float(row[2])
+                ))
+            return rows
+    
+    # Fallback to original implementation for filtered queries
+    return get_agency_obligation_ratio(naics_code, start_date, end_date, agency, contractor, psc)
+
+
+def get_expiring_contracts_optimized(
+    months_ahead: int = 24,
+    naics_code: str = None,
+    agency: str = None,
+    contractor: str = None,
+    limit: int = 100
+) -> list:
+    """
+    OPTIMIZED: Get expiring contracts using materialized view.
+    Much faster than calculating end dates on-the-fly.
+    """
+    engine = get_db_engine()
+    
+    with engine.connect() as connection:
+        filters = []
+        params = {"months_ahead": months_ahead, "limit": limit}
+        
+        if naics_code:
+            filters.append("naics_code = :naics_code")
+            params["naics_code"] = naics_code
+        if agency:
+            filters.append("parent_award_agency_name = :agency")
+            params["agency"] = agency
+        if contractor:
+            filters.append("recipient_name = :contractor")
+            params["contractor"] = contractor
+        
+        where_clause = ""
+        if filters:
+            where_clause = "WHERE " + " AND ".join(filters)
+        
+        # Use materialized view for fast expiring contracts lookup
+        query = f"""
+            SELECT contract_award_unique_key, award_id_piid, recipient_name,
+                   parent_award_agency_name, funding_sub_agency_name,
+                   federal_action_obligation, potential_total_value_of_award,
+                   effective_end_date, days_to_expiration, expiration_timeframe,
+                   date_quality
+            FROM s3_processed.mv_expiring_contracts
+            {where_clause}
+            AND days_to_expiration <= :months_ahead * 30  -- Convert months to approximate days
+            ORDER BY days_to_expiration, federal_action_obligation DESC
+            LIMIT :limit
+        """
+        
+        result = connection.execute(text(query), params).fetchall()
+        
+        contracts = []
+        for row in result:
+            contracts.append(ExpiringContract(
+                contract_award_unique_key=row[0] or '',
+                recipient_name=row[2],
+                parent_award_agency_name=row[3],
+                funding_sub_agency_name=row[4],
+                federal_action_obligation=float(row[5] or 0),
+                period_of_performance_current_end_date=row[7],
+                potential_total_value_of_award=float(row[6] or 0),
+                days_to_expiration=int(row[8] or 0)
+            ))
+        
+        return contracts

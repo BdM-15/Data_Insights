@@ -45,7 +45,9 @@ from src.frontend.components.export import create_download_button, add_export_se
 from src.frontend.styles.theme import THEME
 from src.frontend.styles.custom_css import generate_theme_css
 from src.backend.data.app_processors.awards import (
-    get_award_summary, get_top_agencies, get_quarterly_trends, get_naics_data, get_agency_obligation_ratio, get_contract_vehicles, get_recipient_award_counts, get_recipient_obligations, get_expiring_contracts, get_unique_naics_codes
+    get_award_summary, get_top_agencies, get_quarterly_trends, get_naics_data, get_agency_obligation_ratio, get_contract_vehicles, get_recipient_award_counts, get_recipient_obligations, get_expiring_contracts, get_unique_naics_codes,
+    # Import optimized functions for better performance
+    get_award_summary_optimized, get_top_agencies_optimized, get_quarterly_trends_optimized, get_agency_obligation_ratio_optimized, get_expiring_contracts_optimized
 )
 from src.backend.data.app_processors.competition import get_treemap_data, get_competitive_landscape
 from src.frontend.utils.formatting import format_value

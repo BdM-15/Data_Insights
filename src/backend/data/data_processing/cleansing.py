@@ -129,11 +129,12 @@ def cleanse_data(force_rebuild=True):
                 logger.warning("These rows will be preserved but may cause issues with PRIMARY KEY constraint")
 
             # Create optimized destination table with SQL - using contract_transaction_unique_key as PRIMARY KEY
-            create_table_query = text(f"""
+            create_table_query = text(f"""                
                 CREATE TABLE {PRIME_DEST} (
                     contract_transaction_unique_key TEXT PRIMARY KEY,
                     contract_award_unique_key TEXT,
                     action_date_fiscal_year TEXT,
+                    action_date_fiscal_quarter INTEGER,
                     action_date DATE,
                     parent_award_id_piid TEXT,
                     award_id_piid TEXT,
@@ -208,11 +209,19 @@ def cleanse_data(force_rebuild=True):
             # --- CLEANSING LOGIC ---
             # Reason: Standardize type_of_set_aside, apply rules for extent_competed/type_of_set_aside
             transform_sql = text(rf"""
-                INSERT INTO {PRIME_DEST}
-                SELECT DISTINCT ON (contract_transaction_unique_key)
+                INSERT INTO {PRIME_DEST}                SELECT DISTINCT ON (contract_transaction_unique_key)
                     contract_transaction_unique_key,
                     contract_award_unique_key,
                     action_date_fiscal_year::text,
+                    -- Calculate fiscal quarter from action_date (supports quarterly trend analysis and strategic dashboard performance)
+                    -- US Federal fiscal year quarters: Q1 (Oct-Dec), Q2 (Jan-Mar), Q3 (Apr-Jun), Q4 (Jul-Sep)
+                    CASE 
+                        WHEN EXTRACT(MONTH FROM action_date) IN (10, 11, 12) THEN 1
+                        WHEN EXTRACT(MONTH FROM action_date) IN (1, 2, 3) THEN 2
+                        WHEN EXTRACT(MONTH FROM action_date) IN (4, 5, 6) THEN 3
+                        WHEN EXTRACT(MONTH FROM action_date) IN (7, 8, 9) THEN 4
+                        ELSE NULL
+                    END AS action_date_fiscal_quarter,
                     action_date::date,
                     parent_award_id_piid,
                     award_id_piid,

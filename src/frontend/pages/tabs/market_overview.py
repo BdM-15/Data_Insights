@@ -22,6 +22,12 @@ from src.backend.data.app_processors.awards import (
     get_contract_vehicles,
     get_expiring_contracts,
     get_unique_naics_codes,
+    # Import optimized functions for better performance
+    get_award_summary_optimized,
+    get_top_agencies_optimized, 
+    get_quarterly_trends_optimized,
+    get_agency_obligation_ratio_optimized,
+    get_expiring_contracts_optimized
 )
 from src.backend.data.app_processors.competition import get_treemap_data
 from src.backend.data.models.data_models import (
@@ -55,9 +61,8 @@ def render_tab(df: pd.DataFrame):
         start_date = _to_str_date(df['action_date'].min()) if 'action_date' in df.columns and not df.empty else None
         end_date = _to_str_date(df['action_date'].max()) if 'action_date' in df.columns and not df.empty else None
         agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
-        naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None
-        # Use new SQL-backed summary function
-        summary = get_award_summary(
+        naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None        # Use optimized SQL-backed summary function for better performance
+        summary = get_award_summary_optimized(
             naics_code=naics,
             start_date=start_date,
             end_date=end_date,
@@ -113,8 +118,8 @@ def render_tab(df: pd.DataFrame):
         # Obligations and Award Actions Trend
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Obligations and Award Actions Trend")
-            quarterly_data = get_quarterly_trends(
+            st.subheader("Obligations and Award Actions Trend")            
+            quarterly_data = get_quarterly_trends_optimized(
                 naics_code=naics,
                 start_date=start_date,
                 end_date=end_date,
