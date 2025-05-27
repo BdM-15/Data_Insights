@@ -229,61 +229,121 @@ def get_quarterly_trends(
             ))
         return trends
 
-def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
+def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None, agency=None, limit=None):
     """
-    Retrieve award data for a specified NAICS code and date range from the 'usaprime_cleaned' table only.
+    OPTIMIZED: Get NAICS data using targeted queries instead of loading full DataFrames.
+    Replaces the legacy DataFrame-loading approach with efficient SQL queries.
+    
     Args:
-        engine: SQLAlchemy engine for database connection
+        engine: Database engine (maintained for compatibility)
         naics_code: NAICS code to filter by (default: 561210)
         start_date: Start date for filtering (YYYY-MM-DD)
         end_date: End date for filtering (YYYY-MM-DD)
+        agency: Optional agency filter
+        limit: Optional row limit (None = no limit, returns all matching data)
+    
     Returns:
-        DataFrame containing filtered data
-    Raises:
-        ValueError: If no data is found in the table or connection fails
+        DataFrame containing essential columns for dashboard visualization
+    """
+    # Delegate to the optimized function
+    return get_naics_data_optimized(
+        naics_code=naics_code,
+        start_date=start_date, 
+        end_date=end_date,
+        agency=agency,
+        limit=limit
+    )
+
+
+def get_naics_data_optimized(
+    naics_code: str = "561210", 
+    start_date: str = None, 
+    end_date: str = None,
+    agency: str = None,    limit: int = None
+):
+    """
+    OPTIMIZED: Get NAICS data using targeted queries with optimal performance.
+    Returns complete dataset for comprehensive analysis and visualization.
+    
+    Args:
+        naics_code: NAICS code to filter by (default: 561210)
+        start_date: Start date for filtering (YYYY-MM-DD)
+        end_date: End date for filtering (YYYY-MM-DD)
+        agency: Optional agency filter
+        limit: Optional row limit (None = no limit, returns all matching data)
+    
+    Returns:
+        DataFrame containing essential columns for dashboard visualization
     """
     import pandas as pd
+    import logging
     from sqlalchemy import text
-    # Use the new processed table for all queries
-    table_name = "s3_processed.usaspending_prime_awards"
+    
+    engine = get_db_engine()
+    filters = []
     params = {}
+    
+    # Build filter conditions
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    # Add limit only if specified
+    limit_clause = ""
+    if limit:
+        limit_clause = "LIMIT :limit"
+        params["limit"] = limit
+    
+    # Use targeted query that returns only essential columns for dashboard
+    query = f"""
+        SELECT 
+            action_date,
+            modification_number,
+            federal_action_obligation,
+            parent_award_agency_name,
+            funding_sub_agency_name,
+            funding_office_name,
+            recipient_name,
+            recipient_parent_name,
+            award_type,
+            naics_code,
+            type_of_contract_pricing,
+            extent_competed,
+            product_or_service_code,
+            contract_award_unique_key
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        ORDER BY federal_action_obligation DESC, action_date DESC
+        {limit_clause}
+    """
+    
     try:
-        query = f"""
-            SELECT 
-                action_date,
-                modification_number,
-                federal_action_obligation,
-                parent_award_agency_name,
-                funding_sub_agency_name,
-                funding_office_name,
-                recipient_name,
-                recipient_parent_name,
-                award_type,
-                naics_code,
-                type_of_idc,
-                multiple_or_single_award_idv,
-                type_of_contract_pricing,
-                extent_competed,
-                transaction_description
-            FROM {table_name}
-            WHERE 1=1
-        """
-        if naics_code and naics_code != "All":
-            query += " AND naics_code = :naics_code"
-            params["naics_code"] = naics_code
-        if start_date:
-            query += " AND action_date >= :start_date"
-            params["start_date"] = start_date
-        if end_date:
-            query += " AND action_date <= :end_date"
-            params["end_date"] = end_date
         with engine.connect() as conn:
             df = pd.read_sql(text(query), conn, params=params)
-            if not df.empty:
-                return df
+            
+            # Log performance metrics
+            logger = logging.getLogger(__name__)
+            logger.info(f"get_naics_data_optimized returned {len(df):,} rows with filters: {params}")
+            
+            return df
     except Exception as e:
-        raise ValueError(f"Error querying table '{table_name}': {str(e)}")
-    raise ValueError(f"No data found in '{table_name}' for the given filters.")
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_naics_data_optimized: {str(e)}")
+        # Return empty DataFrame on error instead of raising
+        return pd.DataFrame()
 
 def get_unique_naics_codes(engine, table_names=None):
     """
@@ -865,3 +925,541 @@ def get_expiring_contracts_optimized(
             ))
         
         return contracts
+
+def get_geographic_state_obligations(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get state obligations using SQL instead of pandas groupby.
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+    
+    Returns:
+        List of dictionaries with location and value for geographic analysis
+    """
+    import logging
+    from sqlalchemy import text
+    
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    query = f"""
+        SELECT 
+            recipient_state_code as location,
+            SUM(federal_action_obligation) as value
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND recipient_state_code IS NOT NULL
+        GROUP BY recipient_state_code
+        ORDER BY value DESC
+    """
+    
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(query), params).fetchall()
+            return [{"location": row[0], "value": float(row[1])} for row in result]
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_geographic_state_obligations: {str(e)}")
+        return []
+
+def get_contract_vehicle_agency_analysis(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get agency-vehicle preference data using SQL instead of pandas groupby.
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+    
+    Returns:
+        List of dictionaries for agency-vehicle analysis
+    """
+    import logging
+    from sqlalchemy import text
+    
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    query = f"""
+        SELECT 
+            parent_award_agency_name,
+            award_type,
+            SUM(federal_action_obligation) as federal_action_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND modification_number = '0'
+        GROUP BY parent_award_agency_name, award_type
+        ORDER BY parent_award_agency_name, federal_action_obligation DESC
+    """
+    
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(query), params).fetchall()
+            return [{"parent_award_agency_name": row[0], "award_type": row[1], "federal_action_obligation": float(row[2])} for row in result]
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_contract_vehicle_agency_analysis: {str(e)}")
+        return []
+
+def get_contract_vehicle_success_rates(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> list:
+    """
+    OPTIMIZED: Get vehicle success rates (obligation by vehicle type) using SQL.
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+    
+    Returns:
+        List of dictionaries for vehicle success rate analysis
+    """
+    import logging
+    from sqlalchemy import text
+    
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    query = f"""
+        SELECT 
+            award_type as contract_vehicle,
+            SUM(federal_action_obligation) as obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND modification_number = '0'
+        GROUP BY award_type
+        ORDER BY obligation DESC
+    """
+    
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(query), params).fetchall()
+            return [{"contract_vehicle": row[0], "obligation": float(row[1])} for row in result]
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_contract_vehicle_success_rates: {str(e)}")
+        return []
+
+def get_contract_type_analysis(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> dict:
+    """
+    OPTIMIZED: Get contract type competition and value analysis using SQL.
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+    
+    Returns:
+        Dictionary with 'competition' and 'value' analysis data
+    """
+    import logging
+    from sqlalchemy import text
+    
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    # Competition analysis query
+    competition_query = f"""
+        SELECT 
+            type_of_contract_pricing as contract_type,
+            COUNT(DISTINCT recipient_name) as number_of_competitors
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND type_of_contract_pricing IS NOT NULL
+        GROUP BY type_of_contract_pricing
+        ORDER BY number_of_competitors DESC
+        LIMIT 10
+    """
+    
+    # Value analysis query  
+    value_query = f"""
+        SELECT 
+            type_of_contract_pricing as contract_type,
+            SUM(federal_action_obligation) as total_obligation,
+            COUNT(DISTINCT recipient_name) as number_of_competitors
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND type_of_contract_pricing IS NOT NULL
+        GROUP BY type_of_contract_pricing
+        ORDER BY total_obligation DESC
+        LIMIT 10
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Get competition data
+            competition_result = conn.execute(text(competition_query), params).fetchall()
+            competition_data = []
+            for row in competition_result:
+                contract_type = row[0]
+                contract_type_display = contract_type
+                if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in contract_type.upper():
+                    contract_type_display = 'FIXED PRICE WITH EPA'
+                elif contract_type.startswith('ORDER DEPENDENT'):
+                    contract_type_display = 'ORDER DEPENDENT'
+                
+                contract_type_hover = ''
+                if contract_type.startswith('ORDER DEPENDENT'):
+                    contract_type_hover = 'IDV ALLOWS PRICING ARRANGEMENT TO BE DETERMINED SEPARATELY FOR EACH ORDER'
+                
+                competition_data.append({
+                    "Contract Type": contract_type,
+                    "Contract Type Display": contract_type_display,
+                    "Contract Type Hover": contract_type_hover,
+                    "Number of Competitors": int(row[1])
+                })
+            
+            # Get value data
+            value_result = conn.execute(text(value_query), params).fetchall()
+            value_data = []
+            for row in value_result:
+                contract_type = row[0]
+                contract_type_display = contract_type
+                if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in contract_type.upper():
+                    contract_type_display = 'FIXED PRICE WITH EPA'
+                elif contract_type.startswith('ORDER DEPENDENT'):
+                    contract_type_display = 'ORDER DEPENDENT'
+                
+                contract_type_hover = ''
+                if contract_type.startswith('ORDER DEPENDENT'):
+                    contract_type_hover = 'IDV ALLOWS PRICING ARRANGEMENT TO BE DETERMINED SEPARATELY FOR EACH ORDER'
+                
+                total_obligation = float(row[1])
+                number_of_competitors = int(row[2])
+                avg_obligation = total_obligation / number_of_competitors if number_of_competitors > 0 else 0
+                
+                value_data.append({
+                    "Contract Type": contract_type,
+                    "Contract Type Display": contract_type_display,
+                    "Contract Type Hover": contract_type_hover,
+                    "Total Obligation": total_obligation,
+                    "Number of Competitors": number_of_competitors,
+                    "Average Obligation": avg_obligation
+                })
+            
+            return {
+                "competition": competition_data,
+                "value": value_data
+            }
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_contract_type_analysis: {str(e)}")
+        return {"competition": [], "value": []}
+
+def get_agency_top_data(
+    agency: str,
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    contractor: str = None,
+    psc: str = None
+) -> dict:
+    """
+    OPTIMIZED: Get top NAICS, PSC, and contractors for a specific agency using SQL.
+    
+    Args:
+        agency: Required agency name
+        naics_code, start_date, end_date, contractor, psc: Optional filters
+    
+    Returns:
+        Dictionary with 'naics', 'psc', and 'contractors' data
+    """
+    import logging
+    from sqlalchemy import text
+    
+    if not agency or agency == "All":
+        return {"naics": [], "psc": [], "contractors": []}
+    
+    engine = get_db_engine()
+    filters = ["parent_award_agency_name = :agency"]
+    params = {"agency": agency}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = "WHERE " + " AND ".join(filters)
+    
+    # Top NAICS query
+    naics_query = f"""
+        SELECT 
+            naics_code,
+            naics_description,
+            SUM(federal_action_obligation) as federal_action_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND naics_code IS NOT NULL
+        AND naics_description IS NOT NULL
+        GROUP BY naics_code, naics_description
+        ORDER BY federal_action_obligation DESC
+        LIMIT 10
+    """
+    
+    # Top PSC query
+    psc_query = f"""
+        SELECT 
+            product_or_service_code,
+            product_or_service_code_description,
+            SUM(federal_action_obligation) as federal_action_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND product_or_service_code IS NOT NULL
+        AND product_or_service_code_description IS NOT NULL
+        GROUP BY product_or_service_code, product_or_service_code_description
+        ORDER BY federal_action_obligation DESC
+        LIMIT 10
+    """
+    
+    # Top contractors query
+    contractors_query = f"""
+        SELECT 
+            recipient_name,
+            SUM(federal_action_obligation) as federal_action_obligation
+        FROM s3_processed.usaspending_prime_awards
+        {where_clause}
+        AND recipient_name IS NOT NULL
+        GROUP BY recipient_name
+        ORDER BY federal_action_obligation DESC
+        LIMIT 10
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Get NAICS data
+            naics_result = conn.execute(text(naics_query), params).fetchall()
+            naics_data = [{"naics_code": row[0], "naics_description": row[1], "federal_action_obligation": float(row[2])} for row in naics_result]
+            
+            # Get PSC data
+            psc_result = conn.execute(text(psc_query), params).fetchall()
+            psc_data = [{"product_or_service_code": row[0], "product_or_service_code_description": row[1], "federal_action_obligation": float(row[2])} for row in psc_result]
+            
+            # Get contractors data
+            contractors_result = conn.execute(text(contractors_query), params).fetchall()
+            contractors_data = [{"recipient_name": row[0], "federal_action_obligation": float(row[1])} for row in contractors_result]
+            
+            return {
+                "naics": naics_data,
+                "psc": psc_data,
+                "contractors": contractors_data
+            }
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_agency_top_data: {str(e)}")
+        return {"naics": [], "psc": [], "contractors": []}
+
+def get_competitor_agency_relationships(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None,
+    top_n: int = 5
+) -> list:
+    """
+    OPTIMIZED: Get competitor-agency relationships for heatmap visualization using SQL.
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+        top_n: Number of top competitors to include (default 5)
+    
+    Returns:
+        List of dictionaries for competitor-agency heatmap
+    """
+    import logging
+    from sqlalchemy import text
+    
+    engine = get_db_engine()
+    filters = []
+    params = {}
+    
+    if naics_code and naics_code != "All":
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency and agency != "All":
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor and contractor != "All":
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc and psc != "All":
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    
+    params["top_n"] = top_n
+    query = f"""
+        WITH top_competitors AS (
+            SELECT recipient_name
+            FROM s3_processed.usaspending_prime_awards
+            {where_clause}
+            GROUP BY recipient_name
+            ORDER BY SUM(federal_action_obligation) DESC
+            LIMIT :top_n
+        ),
+        competitor_agencies AS (
+            SELECT 
+                recipient_name,
+                parent_award_agency_name,
+                SUM(federal_action_obligation) as federal_action_obligation,
+                ROW_NUMBER() OVER (PARTITION BY recipient_name ORDER BY SUM(federal_action_obligation) DESC) as agency_rank
+            FROM s3_processed.usaspending_prime_awards
+            {where_clause}
+            AND recipient_name IN (SELECT recipient_name FROM top_competitors)
+            GROUP BY recipient_name, parent_award_agency_name
+        )
+        SELECT 
+            recipient_name,
+            parent_award_agency_name,
+            federal_action_obligation
+        FROM competitor_agencies
+        WHERE agency_rank <= 3
+        ORDER BY recipient_name, federal_action_obligation DESC
+    """
+    
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(query), params).fetchall()
+            return [{"recipient_name": row[0], "parent_award_agency_name": row[1], "federal_action_obligation": float(row[2])} for row in result]
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_competitor_agency_relationships: {str(e)}")
+        return []

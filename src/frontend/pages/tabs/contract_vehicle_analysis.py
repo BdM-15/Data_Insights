@@ -3,6 +3,7 @@ Contract Vehicle Analysis tab for the strategic dashboard.
 """
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.charts.comparison_charts import (
     plot_contract_vehicle_pie,
@@ -42,24 +43,45 @@ def render_tab(df: pd.DataFrame):
         st.plotly_chart(fig, use_container_width=True, key="contract_vehicle_pie")
         add_export_section(vehicle_df, section_title="Export Contract Vehicle Data", file_prefix="contract_vehicles")
     else:
-        st.info("No contract vehicle data available for the selected filters.")
-
-    # --- Vehicle Preference by Agency (Stacked Bar Chart) ---
+        st.info("No contract vehicle data available for the selected filters.")    # --- Vehicle Preference by Agency (Stacked Bar Chart) ---
     st.subheader("Vehicle Preference by Agency")
     if not df.empty and 'parent_award_agency_name' in df.columns and 'award_type' in df.columns and 'federal_action_obligation' in df.columns:
-        agency_vehicle = df[df['modification_number'] == '0'].groupby([
-            'parent_award_agency_name', 'award_type']
-        )['federal_action_obligation'].sum().reset_index()
-        agency_pivot = agency_vehicle.pivot(index="parent_award_agency_name", columns="award_type", values="federal_action_obligation").fillna(0)
-        import plotly.express as px
-        fig_agency = px.bar(
-            agency_pivot,
-            x=agency_pivot.index,
-            y=agency_pivot.columns,
-            title="Contract Vehicle Preference by Agency",
-            labels={"value": "Obligation ($)", "parent_award_agency_name": "Agency"},
-            color_discrete_sequence=CATEGORY_COLORS
-        )
+        # Use optimized SQL function for better performance
+        from src.backend.data.app_processors.awards import get_contract_vehicle_agency_analysis
+        
+        # Get current filter context
+        naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None
+        start_date = df['action_date'].min().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+        end_date = df['action_date'].max().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+        agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
+        
+        agency_vehicle_data = get_contract_vehicle_agency_analysis(
+            naics_code=naics,
+            start_date=start_date,
+            end_date=end_date,
+            agency=agency
+        )        
+        agency_vehicle = pd.DataFrame(agency_vehicle_data) if agency_vehicle_data else pd.DataFrame(columns=['parent_award_agency_name', 'award_type', 'federal_action_obligation'])
+        
+        if not agency_vehicle.empty:
+            # Use original data for stacked bar chart instead of pivot
+            fig_agency = px.bar(
+                agency_vehicle,
+                x="parent_award_agency_name",
+                y="federal_action_obligation",
+                color="award_type",
+                title="Contract Vehicle Preference by Agency",
+                labels={"federal_action_obligation": "Obligation ($)", "parent_award_agency_name": "Agency"},
+                color_discrete_sequence=CATEGORY_COLORS
+            )
+        else:
+            # Create empty chart
+            fig_agency = px.bar(
+                x=[],
+                y=[],
+                title="Contract Vehicle Preference by Agency",
+                labels={"y": "Obligation ($)", "x": "Agency"}
+            )
         st.plotly_chart(fig_agency, use_container_width=True, key="vehicle_pref_agency")
         add_export_section(agency_vehicle, section_title="Export Agency-Vehicle Data", file_prefix="agency_vehicle_pref")
     else:
@@ -76,13 +98,19 @@ def render_tab(df: pd.DataFrame):
         st.plotly_chart(fig_trend, use_container_width=True, key="single_multi_trend")
         add_export_section(trend_df, section_title="Export Award Trends Data", file_prefix="award_trends")
     else:
-        st.info("No award trend data available.")
-
-    # --- Vehicle Success Rate (Obligation by Vehicle Type, Bar Chart) ---
+        st.info("No award trend data available.")    # --- Vehicle Success Rate (Obligation by Vehicle Type, Bar Chart) ---
     st.subheader("Vehicle Success Rate (Obligation by Vehicle Type)")
     if not df.empty and 'award_type' in df.columns and 'federal_action_obligation' in df.columns:
-        vehicle_success = df[df['modification_number'] == '0'].groupby('award_type')['federal_action_obligation'].sum().reset_index()
-        vehicle_success = vehicle_success.rename(columns={'award_type': 'contract_vehicle', 'federal_action_obligation': 'obligation'})
+        # Use optimized SQL function for better performance
+        from src.backend.data.app_processors.awards import get_contract_vehicle_success_rates
+        
+        vehicle_success_data = get_contract_vehicle_success_rates(
+            naics_code=naics,
+            start_date=start_date,
+            end_date=end_date,
+            agency=agency
+        )
+        vehicle_success = pd.DataFrame(vehicle_success_data) if vehicle_success_data else pd.DataFrame(columns=['contract_vehicle', 'obligation'])
         fig_success = px.bar(vehicle_success, x="contract_vehicle", y="obligation",
                             title="Vehicle Success Rate (Total Obligation)",
                             labels={"obligation": "Obligation ($)", "contract_vehicle": "Vehicle Type"},

@@ -106,8 +106,7 @@ def main():
         <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-text">Visualizations</div></div>
         <div class="nav-item"><div class="nav-icon">📑</div><div class="nav-text">Capture Profiles</div></div>
         <div class="nav-item"><div class="nav-icon">🤖</div><div class="nav-text">AI Tools</div></div>
-        """, unsafe_allow_html=True)
-        # Use the new sidebar_filters utility for all filter controls
+        """, unsafe_allow_html=True)        # Use the new sidebar_filters utility for all filter controls
         filters = sidebar_filters(default_start, today)
         st.markdown("""
         <div class="user-section">
@@ -115,32 +114,6 @@ def main():
             <p style="font-size: 0.8rem;">Data Insights v1.0<br>Last updated: April 2025</p>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("### Diagnostics")
-        try:
-            engine, db_status = get_db_connection_with_status()
-            for msg in db_status["messages"]:
-                st.info(msg)
-            if not db_status["success"]:
-                st.error(db_status["error"])
-            else:
-                with engine.connect() as conn:
-                    from sqlalchemy import text
-                    table_exists = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaspending_prime_awards' AND table_schema = 's3_processed')")).fetchone()[0]
-                    if table_exists:
-                        st.success("[+] Table 's3_processed.usaspending_prime_awards' exists")
-                        row_count = conn.execute(text("SELECT COUNT(*) FROM s3_processed.usaspending_prime_awards")).fetchone()[0]
-                        st.info(f"Row count: {row_count:,}")
-                        if row_count == 0:
-                            st.warning("Table 's3_processed.usaspending_prime_awards' exists but contains 0 rows.")
-                    else:
-                        st.error("[-] Table 's3_processed.usaspending_prime_awards' does not exist!")
-                        tables = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 's3_processed' ORDER BY table_name")).fetchall()
-                        table_list = [t[0] for t in tables]
-                        st.info(f"Available tables: {', '.join(table_list)}")
-        except Exception as e:
-            st.error(f"Diagnostics error: {str(e)}")
-            logger.error(f"Diagnostics error: {str(e)}")
-            logger.error(traceback.format_exc())
         return filters
 
     def main_content(filters):
@@ -171,27 +144,39 @@ def main():
                 "end_date": today.strftime("%Y-%m-%d"),
                 "agency": "All"
             }
-            st.experimental_rerun()
-        # Load data based on current filters
-        with st.spinner("Loading data..."):
-            try:
-                naics_code = st.session_state.filter_params["naics_code"] or "561210"
-                start_date_str = st.session_state.filter_params["start_date"]
-                end_date_str = st.session_state.filter_params["end_date"]
-                logger.info(f"Loading data with filters: NAICS={naics_code}, Start={start_date_str}, End={end_date_str}")
-                engine = get_db_engine()
-                df = get_naics_data(engine, naics_code, start_date_str, end_date_str)
-                if st.session_state.filter_params["agency"] and st.session_state.filter_params["agency"] != "All":
-                    df = df[df["parent_award_agency_name"] == st.session_state.filter_params["agency"]]
-                    logger.info(f"Applied agency filter: {st.session_state.filter_params['agency']}")
-                st.sidebar.info(f"Loaded {len(df):,} rows after filters.")
-                logger.info(f"Loaded {len(df):,} rows after filters.")
-            except Exception as e:
-                st.sidebar.error(f"Error loading data: {str(e)}")
-                st.sidebar.error(traceback.format_exc())
-                logger.error(f"Error loading data: {str(e)}")
-                logger.error(traceback.format_exc())
-                df = pd.DataFrame()
+            st.experimental_rerun()        # Load data based on current filters
+        try:
+            # Simple timing for diagnostics
+            data_load_start = datetime.now()
+            
+            naics_code = st.session_state.filter_params["naics_code"] or "561210"
+            start_date_str = st.session_state.filter_params["start_date"]
+            end_date_str = st.session_state.filter_params["end_date"]
+            logger.info(f"Loading data with filters: NAICS={naics_code}, Start={start_date_str}, End={end_date_str}")
+            
+            # Use optimized function for data loading
+            from src.backend.data.app_processors.awards import get_naics_data_optimized
+            df = get_naics_data_optimized(
+                naics_code=naics_code,
+                start_date=start_date_str,
+                end_date=end_date_str,                agency=st.session_state.filter_params["agency"] if st.session_state.filter_params["agency"] != "All" else None
+            )
+              # Calculate and store timing for diagnostics
+            data_load_time = (datetime.now() - data_load_start).total_seconds()
+            st.session_state["data_load_time"] = data_load_time
+            st.session_state["data_row_count"] = len(df)
+            # Clear any previous error state on successful load
+            st.session_state["data_load_error"] = None
+            st.session_state["data_load_traceback"] = None
+            logger.info(f"Loaded {len(df):,} rows in {data_load_time:.1f}s")
+            
+        except Exception as e:
+            # Store error information for diagnostics display in filters
+            st.session_state["data_load_error"] = str(e)
+            st.session_state["data_load_traceback"] = traceback.format_exc()
+            logger.error(f"Error loading data: {str(e)}")
+            logger.error(traceback.format_exc())
+            df = pd.DataFrame()
         # Main dashboard tabs
         tab1, tab_future, tab2, tab3, tab4, tab5 = st.tabs([
             "Market Overview", 

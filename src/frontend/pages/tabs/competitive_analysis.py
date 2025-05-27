@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 from typing import List
 
 from src.backend.data.app_processors.competition import get_competitive_landscape
+from src.backend.data.app_processors.awards import get_competitor_agency_relationships, get_contract_type_analysis
 from src.backend.data.models.data_models import CompetitorPerformance
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.charts.comparison_charts import plot_market_share_bar, plot_contract_type_competition_bar, plot_contract_type_value_analysis
@@ -63,92 +64,75 @@ def render_tab(df: pd.DataFrame):
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
-            # Market Position Analysis and Competitor-Agency Relationships in two columns
-            st.subheader("Market Position & Agency Relationships")
+            # Market Position Analysis and Competitor-Agency Relationships in two columns            st.subheader("Market Position & Agency Relationships")
             col1, col2 = st.columns([1, 1])
             with col1:
                 fig = plot_competitive_position_scatter(top_competitors, THEME)
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
-                if 'parent_award_agency_name' in df.columns and not df.empty:
-                    competitor_agency = df.groupby(['recipient_name', 'parent_award_agency_name'])['federal_action_obligation'].sum().reset_index()
-                    top_5_competitors = competitors_df.nlargest(5, 'market_share')['recipient_name'].tolist()
-                    competitor_agency = competitor_agency[competitor_agency['recipient_name'].isin(top_5_competitors)]
-                    competitor_top_agencies = {}
-                    for competitor in top_5_competitors:
-                        competitor_data = competitor_agency[competitor_agency['recipient_name'] == competitor]
-                        top_agencies = competitor_data.nlargest(3,'federal_action_obligation')
-                        competitor_top_agencies[competitor] = top_agencies
-                    heatmap_data = []
-                    for competitor in top_5_competitors:
-                        if competitor in competitor_top_agencies:
-                            for _, row in competitor_top_agencies[competitor].iterrows():
-                                heatmap_data.append({
-                                    'Competitor': competitor,
-                                    'Agency': row['parent_award_agency_name'],
-                                    'Obligation': row['federal_action_obligation']
-                                })
-                    if heatmap_data:
-                        heatmap_df = pd.DataFrame(heatmap_data)
-                        pivot_df = heatmap_df.pivot_table(
-                            values='Obligation',
-                            index='Competitor',
-                            columns='Agency',
-                            aggfunc='sum',
-                            fill_value=0
-                        )
-                        normalized_pivot = pivot_df.div(pivot_df.max(axis=1), axis=0)
-                        fig = plot_competitor_agency_heatmap(normalized_pivot, THEME, config={"height": 600, "legend_font_size": 14, "title": None})
-                        # Remove chart title from the Plotly figure (handles px.imshow bug)
-                        fig.update_layout(title=None, title_text=None)
-                        if hasattr(fig.layout, 'title'):
-                            fig.layout.title.text = ''
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.info("Insufficient data to generate competitor-agency relationships.")
+                # Use optimized SQL function for competitor-agency relationships
+                
+                # Get current filter context
+                naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None
+                start_date = df['action_date'].min().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+                end_date = df['action_date'].max().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+                agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
+                
+                competitor_agency_data = get_competitor_agency_relationships(
+                    naics_code=naics,
+                    start_date=start_date,
+                    end_date=end_date,
+                    agency=agency
+                )
+                
+                if competitor_agency_data:
+                    heatmap_df = pd.DataFrame(competitor_agency_data)
+                    pivot_df = heatmap_df.pivot_table(
+                        values='federal_action_obligation',
+                        index='recipient_name',
+                        columns='parent_award_agency_name',
+                        aggfunc='sum',
+                        fill_value=0
+                    )
+                    normalized_pivot = pivot_df.div(pivot_df.max(axis=1), axis=0)
+                    fig = plot_competitor_agency_heatmap(normalized_pivot, THEME, config={"height": 600, "legend_font_size": 14, "title": None})
+                    # Remove chart title from the Plotly figure (handles px.imshow bug)
+                    fig.update_layout(title=None, title_text=None)                    
+                    if hasattr(fig.layout, 'title'):
+                        fig.layout.title.text = ''
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.info("Agency data not available to generate competitor-agency relationships.")
-
+                    st.info("Insufficient data to generate competitor-agency relationships.")
+            
             # Contract Type Analysis in two columns
             st.subheader("Contract Type Analysis")
             col1, col2 = st.columns([1, 1])
             with col1:
-                if 'type_of_contract_pricing' in df.columns and not df.empty:
-                    contract_type_competition = df.groupby('type_of_contract_pricing')['recipient_name'].nunique().reset_index()
-                    contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
-                    # Shorten long contract type names for display, add hover for full description
-                    contract_type_competition['Contract Type Display'] = contract_type_competition['Contract Type'].apply(
-                        lambda x: 'FIXED PRICE WITH EPA' if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in x.upper() else x
-                    )
-                    contract_type_competition['Contract Type Display'] = contract_type_competition['Contract Type Display'].apply(
-                        lambda x: 'ORDER DEPENDENT' if x.startswith('ORDER DEPENDENT') else x
-                    )
-                    contract_type_competition['Contract Type Hover'] = contract_type_competition['Contract Type'].apply(
-                        lambda x: 'IDV ALLOWS PRICING ARRANGEMENT TO BE DETERMINED SEPARATELY FOR EACH ORDER' if x.startswith('ORDER DEPENDENT') else ''
-                    )
+                # Use optimized SQL function for contract type analysis
+                
+                # Get current filter context
+                naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None
+                start_date = df['action_date'].min().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+                end_date = df['action_date'].max().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+                agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
+                
+                contract_type_data = get_contract_type_analysis(
+                    naics_code=naics,
+                    start_date=start_date,
+                    end_date=end_date,
+                    agency=agency
+                )
+                
+                if contract_type_data.get('competition'):
+                    contract_type_competition = pd.DataFrame(contract_type_data['competition'])
                     top_contract_types = contract_type_competition.head(10)
                     fig = plot_contract_type_competition_bar(top_contract_types, THEME, config={"hover_col": "Contract Type Hover"})
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("Contract type data not available for analysis.")
             with col2:
-                if 'type_of_contract_pricing' in df.columns and not df.empty:
-                    contract_type_value = df.groupby('type_of_contract_pricing')['federal_action_obligation'].sum().reset_index()
-                    contract_type_value.columns = ['Contract Type', 'Total Obligation']
-                    contract_type_competition = df.groupby('type_of_contract_pricing')['recipient_name'].nunique().reset_index()
-                    contract_type_competition.columns = ['Contract Type', 'Number of Competitors']
-                    contract_type_analysis = pd.merge(contract_type_competition, contract_type_value, on='Contract Type')
-                    contract_type_analysis['Average Obligation'] = contract_type_analysis['Total Obligation'] / contract_type_analysis['Number of Competitors']
-                    # Shorten long contract type names for display, add hover for full description
-                    contract_type_analysis['Contract Type Display'] = contract_type_analysis['Contract Type'].apply(
-                        lambda x: 'FIXED PRICE WITH EPA' if 'FIXED PRICE WITH ECONOMIC PRICE ADJUST' in x.upper() else x
-                    )
-                    contract_type_analysis['Contract Type Display'] = contract_type_analysis['Contract Type Display'].apply(
-                        lambda x: 'ORDER DEPENDENT' if x.startswith('ORDER DEPENDENT') else x
-                    )
-                    contract_type_analysis['Contract Type Hover'] = contract_type_analysis['Contract Type'].apply(
-                        lambda x: 'IDV ALLOWS PRICING ARRANGEMENT TO BE DETERMINED SEPARATELY FOR EACH ORDER' if x.startswith('ORDER DEPENDENT') else ''
-                    )
+                if contract_type_data.get('value'):
+                    contract_type_analysis = pd.DataFrame(contract_type_data['value'])
                     top_value_types = contract_type_analysis.nlargest(10, 'Total Obligation')
                     fig = plot_contract_type_value_analysis(top_value_types, THEME, config={"hover_col": "Contract Type Hover"})
                     st.plotly_chart(fig, use_container_width=True)
