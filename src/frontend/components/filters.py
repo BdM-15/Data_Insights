@@ -107,78 +107,117 @@ def get_unique_values(
 def sidebar_filters(
     default_start: datetime.date,
     today: datetime.date
-) -> Dict[str, Any]:
+) -> None: # Return type is None as it now modifies session_state and reruns
     """
     Render sidebar filter controls for the dashboard.
+    Reads initial filter values from st.session_state.filter_params.
+    Updates st.session_state.filter_params on Apply/Clear and triggers a rerun.
+    Displays diagnostics based on st.session_state (e.g., data_row_count).
+
     Args:
-        default_start: Default start date for date range
+        default_start: Default start date for date range (used if session state is missing for some reason)
         today: Default end date (today)
-    Returns:
-        Dictionary of selected filter values
     """
     engine = get_db_engine()
     st.markdown("## Filters")
     
-    # Add simple timing diagnostics
     filters_start = datetime.now()
-    
+
+    # Get current filter values from session_state, or use defaults
+    current_params = st.session_state.get("filter_params", {})
+    naics_value = current_params.get("naics_code", "561210")
+    start_date_value = current_params.get("start_date", default_start)
+    end_date_value = current_params.get("end_date", today)
+    agency_value = current_params.get("agency", "All")
+
     # NAICS filter
-    naics_start = datetime.now()
+    naics_start_time = datetime.now()
     try:
         naics_options = get_unique_values(engine, "naics_code")
-        naics_time = (datetime.now() - naics_start).total_seconds()
-    except Exception:
+        # Ensure current session state value is in options, or add it (e.g., if manually set via URL)
+        if naics_value not in naics_options and naics_value != "All":
+            naics_options.append(naics_value) # Or handle as an error/reset
+            naics_options.sort()
+            if "All" in naics_options and naics_options[0] != "All":
+                 naics_options.remove("All")
+                 naics_options.insert(0, "All")
+        naics_idx = naics_options.index(naics_value) if naics_value in naics_options else 0
+    except Exception as e:
+        st.error(f"Failed to load NAICS options: {e}")
         naics_options = ["561210", "All"]
-        naics_time = 0
-    selected_naics = st.selectbox("NAICS Code", naics_options, index=0, key="sidebar_naics")
+        naics_idx = 0
+    naics_load_duration = (datetime.now() - naics_start_time).total_seconds()
+    selected_naics = st.selectbox("NAICS Code", naics_options, index=naics_idx, key="sidebar_naics_widget")
     
     # Date range
     st.subheader("Date Range")
-    start_date = st.date_input("Start Date", value=default_start, key="sidebar_start_date")
-    end_date = st.date_input("End Date", value=today, key="sidebar_end_date")
-    if start_date > end_date:
+    selected_start_date = st.date_input("Start Date", value=start_date_value, key="sidebar_start_date_widget")
+    selected_end_date = st.date_input("End Date", value=end_date_value, key="sidebar_end_date_widget")
+    if selected_start_date > selected_end_date:
         st.error("Start date must be before end date")
-        end_date = start_date
-      # Agency filter
-    agency_start = datetime.now()
+        # selected_end_date = selected_start_date # Keep it simple, user will correct
+
+    # Agency filter
+    agency_start_time = datetime.now()
     try:
         agency_options = get_unique_values(engine, "parent_award_agency_name")
-        agency_time = (datetime.now() - agency_start).total_seconds()
-    except Exception:
+        if agency_value not in agency_options and agency_value != "All":
+            agency_options.append(agency_value)
+            agency_options.sort()
+            if "All" in agency_options and agency_options[0] != "All":
+                agency_options.remove("All")
+                agency_options.insert(0, "All")
+        agency_idx = agency_options.index(agency_value) if agency_value in agency_options else 0
+    except Exception as e:
+        st.error(f"Failed to load Agency options: {e}")
         agency_options = ["All"]
-        agency_time = 0
-    selected_agency = st.selectbox("Agency", agency_options, key="sidebar_agency")
+        agency_idx = 0
+    agency_load_duration = (datetime.now() - agency_start_time).total_seconds()
+    selected_agency = st.selectbox("Agency", agency_options, index=agency_idx, key="sidebar_agency_widget")
     
     # Filter buttons
     col1, col2 = st.columns(2)
     with col1:
-        apply_filters = st.button("Apply Filters", use_container_width=True, key="sidebar_apply_filters")
+        apply_filters_button = st.button("Apply Filters", use_container_width=True, key="sidebar_apply_filters_button")
     with col2:
-        clear_filters = st.button("Clear Filters", use_container_width=True, key="sidebar_clear_filters")
+        clear_filters_button = st.button("Clear Filters", use_container_width=True, key="sidebar_clear_filters_button")
 
-    # Handle Clear Filters: reset all filters to default values and rerun
-    if clear_filters:
-        st.query_params.clear()  # Clear any query params (new Streamlit API)
-        st.session_state.clear()  # Clear all session state (safe since filters are only widgets)
-        st.rerun()  # Use new Streamlit rerun API    # Performance Diagnostics Section (below filter buttons)
-    total_filter_time = (datetime.now() - filters_start).total_seconds()
+    if apply_filters_button:
+        st.session_state.filter_params = {
+            "naics_code": selected_naics,
+            "start_date": selected_start_date,
+            "end_date": selected_end_date,
+            "agency": selected_agency
+        }
+        st.rerun()
+
+    if clear_filters_button:
+        today_date = datetime.now().date()
+        default_start_date = today_date - timedelta(days=365 * 6)
+        st.session_state.filter_params = {
+            "naics_code": "561210",
+            "start_date": default_start_date,
+            "end_date": today_date,
+            "agency": "All"
+        }
+        # Clear widget states by changing their keys or explicitly resetting them if Streamlit version allows
+        # For simplicity, we rely on rerun and session_state to repopulate them correctly.
+        st.rerun()
+
+    # Performance Diagnostics Section (below filter buttons)
+    total_filter_ui_time = (datetime.now() - filters_start).total_seconds()
     
-    st.markdown("---")  # Separator line
+    st.markdown("---")
     with st.expander("⏱️ Performance Diagnostics", expanded=False):
-        st.markdown("**Filter Loading Times:**")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("NAICS Options", f"{naics_time:.3f}s", delta=None)
-            st.metric("Agency Options", f"{agency_time:.3f}s", delta=None)
-        with col2:
-            st.metric("Total Filter Load", f"{total_filter_time:.3f}s", delta=None)
-            # Show data loading time if available in session state
-            data_load_time = st.session_state.get("data_load_time", None)
-            if data_load_time is not None:
-                row_count = st.session_state.get("data_row_count", "N/A")
-                st.metric("Data Load Time", f"{data_load_time:.1f}s", delta=f"{row_count} rows" if row_count != "N/A" else None)
-            
-        # Cache status
+        st.markdown("**Filter UI Component Loading Times:**")
+        diag_col1, diag_col2 = st.columns(2)
+        with diag_col1:
+            st.metric("NAICS Options Query", f"{naics_load_duration:.3f}s")
+            st.metric("Agency Options Query", f"{agency_load_duration:.3f}s")
+        with diag_col2:
+            st.metric("Total Filter UI Render", f"{total_filter_ui_time:.3f}s")
+        
+        # Cache status (remains useful for get_unique_values)
         st.markdown("**Cache Status:**")
         naics_cache_key = _get_cache_key("naics_code", "s3_processed.usaspending_prime_awards", "", {})
         agency_cache_key = _get_cache_key("parent_award_agency_name", "s3_processed.usaspending_prime_awards", "", {})
@@ -192,9 +231,9 @@ def sidebar_filters(
             st.write(f"Agency: {agency_cached}")
             
         # Performance alerts
-        if total_filter_time > 5:
+        if total_filter_ui_time > 5:
             st.error("🔴 Slow filter loading detected (>5s)")
-        elif total_filter_time > 2:
+        elif total_filter_ui_time > 2:
             st.warning("🟡 Moderate filter loading time (>2s)")
         else:
             st.success("🟢 Fast filter loading (<2s)")
@@ -204,42 +243,31 @@ def sidebar_filters(
         timing_data = {
             "Component": ["NAICS Query", "Agency Query", "UI Rendering", "Total"],
             "Time (ms)": [
-                f"{naics_time*1000:.1f}",
-                f"{agency_time*1000:.1f}", 
-                f"{(total_filter_time - naics_time - agency_time)*1000:.1f}",
-                f"{total_filter_time*1000:.1f}"
+                f"{naics_load_duration*1000:.1f}",
+                f"{agency_load_duration*1000:.1f}", 
+                f"{(total_filter_ui_time - naics_load_duration - agency_load_duration)*1000:.1f}",
+                f"{total_filter_ui_time*1000:.1f}"
             ]
         }
         st.dataframe(timing_data, hide_index=True, use_container_width=True)
           # Performance tips
-        if total_filter_time > 2:
+        if total_filter_ui_time > 2:
             st.info("💡 **Performance Tips:** Clear browser cache or restart app to refresh caches")
             
-        # Database Diagnostics Section
+        # Consolidated Database Diagnostics Section
         st.markdown("**Database Status:**")
-          # Show data loading status if available
+        
+        # Retrieve data loading status from session_state here
         data_load_time = st.session_state.get("data_load_time", None)
-        data_row_count = st.session_state.get("data_row_count", None)
+        data_row_count_session = st.session_state.get("data_row_count", None)
         data_load_error = st.session_state.get("data_load_error", None)
-        
-        if data_load_error:
-            # Show error information
-            st.error(f"❌ Error loading data: {data_load_error}")
-            # Optionally show traceback in an expander for debugging
-            data_load_traceback = st.session_state.get("data_load_traceback", None)
-            if data_load_traceback:
-                with st.expander("🐛 Error Details (for debugging)", expanded=False):
-                    st.code(data_load_traceback, language='python')
-        elif data_load_time is not None and data_row_count is not None:
-            if data_row_count > 0:
-                st.success(f"✅ Data loaded successfully: {data_row_count:,} records in {data_load_time:.1f}s")
-            else:
-                st.warning(f"⚠️ No data returned from query (completed in {data_load_time:.1f}s)")
-        
+        data_load_traceback = st.session_state.get("data_load_traceback", None) # Ensure traceback is also fetched
+
+        # General Database Information
         try:
             from src.backend.core.database import get_db_connection_with_status
             engine, db_status = get_db_connection_with_status()
-            for msg in db_status["messages"]:
+            for msg in db_status["messages"]: # Displays Host, Port, DB Name
                 st.info(msg)
             if not db_status["success"]:
                 st.error(db_status["error"])
@@ -249,9 +277,10 @@ def sidebar_filters(
                     table_exists = conn.execute(text("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'usaspending_prime_awards' AND table_schema = 's3_processed')")).fetchone()[0]
                     if table_exists:
                         st.success("[+] Table 's3_processed.usaspending_prime_awards' exists")
-                        row_count = conn.execute(text("SELECT COUNT(*) FROM s3_processed.usaspending_prime_awards")).fetchone()[0]
-                        st.info(f"Row count: {row_count:,}")
-                        if row_count == 0:
+                        db_table_total_row_count = conn.execute(text("SELECT COUNT(*) FROM s3_processed.usaspending_prime_awards")).fetchone()[0]
+                        st.info(f"Total rows in table: {db_table_total_row_count:,}")
+                        
+                        if db_table_total_row_count == 0:
                             st.warning("Table 's3_processed.usaspending_prime_awards' exists but contains 0 rows.")
                     else:
                         st.error("[-] Table 's3_processed.usaspending_prime_awards' does not exist!")
@@ -261,19 +290,33 @@ def sidebar_filters(
         except Exception as e:
             st.error(f"Database diagnostics error: {str(e)}")
             import logging
-            logger = logging.getLogger(__name__)
+            logger = logging.getLogger(__name__) # Ensure logger is defined or imported
             logger.error(f"Database diagnostics error: {str(e)}")
             import traceback
             logger.error(traceback.format_exc())
 
-    return {
-        "naics_code": selected_naics,
-        "start_date": start_date,
-        "end_date": end_date,
-        "agency": selected_agency,
-        "apply_filters": apply_filters,
-        "clear_filters": clear_filters,
-    }
+        # Data Loading Diagnostic Message (at the bottom of Database Status)
+        if data_load_error:
+            st.error(f"❌ Error loading data: {data_load_error}")
+            if data_load_traceback:
+                with st.expander("🐛 Error Details", expanded=False):
+                    st.code(data_load_traceback, language='python')
+        elif data_load_time is not None and data_row_count_session is not None:
+            if isinstance(data_row_count_session, int):
+                if data_row_count_session > 0:
+                    st.info(f"Loaded {data_row_count_session:,} rows in {data_load_time:.2f} secs.")
+                elif data_row_count_session == 0:
+                    st.warning(f"Loaded 0 rows in {data_load_time:.2f} secs. (No data matches filters)")
+                else: # Should not happen for counts
+                    st.info(f"Loaded {data_row_count_session:,} rows in {data_load_time:.2f} secs.") 
+            else: # Fallback for unexpected types
+                 st.info(f"Data loading status: {data_row_count_session} records, {data_load_time:.2f}s")
+        else:
+            st.caption("Data loading status will appear here after filters are applied.")
+            
+    # This function no longer returns filter values directly.
+    # It modifies st.session_state.filter_params and triggers st.rerun().
+    # The main app (strategic_dashboard.py) reads from st.session_state.filter_params.
 
 # --- (Optional) Advanced Filter Block for future expansion ---
 # def advanced_filters(...):

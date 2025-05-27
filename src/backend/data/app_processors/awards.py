@@ -6,6 +6,11 @@ Move all award-related data processing logic here for modularization.
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import streamlit as st # Added to set session_state
+import logging # Added for logger
+
+logger = logging.getLogger(__name__) # Module-level logger
+
 from src.backend.data.models.data_models import (
     TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, AwardSummaryItem, QuarterlyTrend, ContractVehicleSummary, RecipientAwardCount, RecipientObligation, ExpiringContract
 )
@@ -229,13 +234,12 @@ def get_quarterly_trends(
             ))
         return trends
 
-def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None, agency=None, limit=None):
+def get_naics_data(naics_code="561210", start_date=None, end_date=None, agency=None, limit=None):
     """
     OPTIMIZED: Get NAICS data using targeted queries instead of loading full DataFrames.
     Replaces the legacy DataFrame-loading approach with efficient SQL queries.
     
     Args:
-        engine: Database engine (maintained for compatibility)
         naics_code: NAICS code to filter by (default: 561210)
         start_date: Start date for filtering (YYYY-MM-DD)
         end_date: End date for filtering (YYYY-MM-DD)
@@ -259,11 +263,13 @@ def get_naics_data_optimized(
     naics_code: str = "561210", 
     start_date: str = None, 
     end_date: str = None,
-    agency: str = None,    limit: int = None
+    agency: str = None,
+    limit: int = None
 ):
     """
     OPTIMIZED: Get NAICS data using targeted queries with optimal performance.
     Returns complete dataset for comprehensive analysis and visualization.
+    Sets st.session_state.data_row_count, st.session_state.data_load_time, and st.session_state.data_load_error.
     
     Args:
         naics_code: NAICS code to filter by (default: 561210)
@@ -275,14 +281,18 @@ def get_naics_data_optimized(
     Returns:
         DataFrame containing essential columns for dashboard visualization
     """
-    import pandas as pd
-    import logging
-    from sqlalchemy import text
+    from sqlalchemy import text # Keep local import if it was like that
     
     engine = get_db_engine()
     filters = []
     params = {}
-    
+    # logger is already initialized at the module level
+
+    # Initialize session state keys to default values
+    st.session_state.data_row_count = 0
+    st.session_state.data_load_time = 0.0
+    st.session_state.data_load_error = None
+
     # Build filter conditions
     if naics_code and naics_code != "All":
         filters.append("naics_code = :naics_code")
@@ -330,20 +340,32 @@ def get_naics_data_optimized(
         {limit_clause}
     """
     
+    query_start_time = datetime.now()
     try:
         with engine.connect() as conn:
             df = pd.read_sql(text(query), conn, params=params)
             
-            # Log performance metrics
-            logger = logging.getLogger(__name__)
-            logger.info(f"get_naics_data_optimized returned {len(df):,} rows with filters: {params}")
+            actual_load_time = (datetime.now() - query_start_time).total_seconds()
+            
+            # Update Streamlit session state directly
+            st.session_state.data_row_count = len(df)
+            st.session_state.data_load_time = actual_load_time
+            # st.session_state.data_load_error = None # Already set to None by default
+
+            logger.info(f"get_naics_data_optimized (awards.py) returned {len(df):,} rows, set session_state. Time: {actual_load_time:.2f}s. Filters: {params}")
             
             return df
     except Exception as e:
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error in get_naics_data_optimized: {str(e)}")
-        # Return empty DataFrame on error instead of raising
-        return pd.DataFrame()
+        actual_load_time = (datetime.now() - query_start_time).total_seconds()
+        logger.error(f"Error in get_naics_data_optimized (awards.py): {str(e)}. Time: {actual_load_time:.2f}s")
+        
+        # st.session_state.data_row_count = 0 # Already set to 0 by default
+        st.session_state.data_load_time = actual_load_time
+        st.session_state.data_load_error = str(e)
+        # logger.error(traceback.format_exc()) # Optionally log full traceback to session_state if needed by filters.py
+        # st.session_state.data_load_traceback = traceback.format_exc()
+        
+        return pd.DataFrame() # Return empty DataFrame on error
 
 def get_unique_naics_codes(engine, table_names=None):
     """
