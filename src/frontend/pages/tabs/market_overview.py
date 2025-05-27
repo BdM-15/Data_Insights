@@ -14,7 +14,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 from src.frontend.utils.formatting import format_value
-from src.backend.data.processors.awards import (
+from src.backend.data.app_processors.awards import (
     get_award_summary,
     get_top_agencies,
     get_quarterly_trends,
@@ -22,8 +22,14 @@ from src.backend.data.processors.awards import (
     get_contract_vehicles,
     get_expiring_contracts,
     get_unique_naics_codes,
+    # Import optimized functions for better performance
+    get_award_summary_optimized,
+    get_top_agencies_optimized, 
+    get_quarterly_trends_optimized,
+    get_agency_obligation_ratio_optimized,
+    get_expiring_contracts_optimized
 )
-from src.backend.data.processors.competition import get_treemap_data
+from src.backend.data.app_processors.competition import get_treemap_data
 from src.backend.data.models.data_models import (
     AwardSummaryItem, TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, ContractVehicleSummary, TreemapPathElement
 )
@@ -41,12 +47,29 @@ def render_tab(df: pd.DataFrame):
         df: Filtered DataFrame for the dashboard
     """
     if not df.empty:
-        # Executive Summary Metrics
+        # Executive Summary Metrics (SQL-based, filter-aware)
         st.subheader("Executive Summary")
-        summary: List[AwardSummaryItem] = get_award_summary(df)
+        # Extract filters from DataFrame if possible (fallback to defaults)
+        # Handle both pd.Timestamp and datetime.date for min/max
+        def _to_str_date(val):
+            if pd.isnull(val):
+                return None
+            if hasattr(val, 'date'):
+                return str(val.date())
+            return str(val)
+
+        start_date = _to_str_date(df['action_date'].min()) if 'action_date' in df.columns and not df.empty else None
+        end_date = _to_str_date(df['action_date'].max()) if 'action_date' in df.columns and not df.empty else None
+        agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
+        naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None        # Use optimized SQL-backed summary function for better performance
+        summary = get_award_summary_optimized(
+            naics_code=naics,
+            start_date=start_date,
+            end_date=end_date,
+            agency=agency
+        )
         expiring_contracts = get_expiring_contracts(df, months_ahead=24)
         from src.frontend.visualizations.components.metric_cards import metric_card
-        # Center the metric cards row
         st.markdown("""
             <div style='display: flex; justify-content: center; align-items: flex-end; width: 100%; margin-bottom: 0.5rem;'>
         """, unsafe_allow_html=True)
@@ -95,8 +118,13 @@ def render_tab(df: pd.DataFrame):
         # Obligations and Award Actions Trend
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Obligations and Award Actions Trend")
-            quarterly_data = get_quarterly_trends(df)
+            st.subheader("Obligations and Award Actions Trend")            
+            quarterly_data = get_quarterly_trends_optimized(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency
+            )
             if quarterly_data:
                 qtr_df = pd.DataFrame([q.dict() for q in quarterly_data])
                 fig = plot_quarterly_trends(qtr_df, THEME)
@@ -105,7 +133,12 @@ def render_tab(df: pd.DataFrame):
                 st.warning("Insufficient data for quarterly trends visualization.")
         with col2:
             st.subheader("Capture Intensity")
-            agency_ratio: List[AgencyRatioMetrics] = get_agency_obligation_ratio(df)
+            agency_ratio: List[AgencyRatioMetrics] = get_agency_obligation_ratio(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency
+            )
             if agency_ratio and len(agency_ratio) > 1:
                 agency_df = pd.DataFrame([a.dict() for a in agency_ratio])
                 fig = plot_capture_intensity_scatter(agency_df, THEME)
@@ -126,9 +159,16 @@ def render_tab(df: pd.DataFrame):
                 st.warning("Insufficient data for contract vehicle analysis.")
         with col2:
             st.subheader("Competitive Landscape")
-            treemap_data: List[TreemapPathElement] = get_treemap_data(df)
+            # Use SQL-backed, filter-aware treemap data function
+            treemap_data: List[TreemapPathElement] = get_treemap_data(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency,
+                limit=10
+            )
             if treemap_data:
-                treemap_df = pd.DataFrame([t.dict() for t in treemap_data]).head(10)
+                treemap_df = pd.DataFrame([t.dict() for t in treemap_data])
                 fig = plot_treemap_competitive_landscape(treemap_df, THEME)
                 st.plotly_chart(fig, use_container_width=True)
             else:
@@ -138,7 +178,14 @@ def render_tab(df: pd.DataFrame):
         st.subheader("Top Agencies Analysis")
         col1, col2 = st.columns(2)
         with col1:
-            top_agencies_count: List[TopAgencyByCount] = get_top_agencies(df, metric="count", n=15)
+            top_agencies_count: List[TopAgencyByCount] = get_top_agencies(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency,
+                metric="count",
+                n=15
+            )
             if top_agencies_count:
                 count_df = pd.DataFrame([a.dict() for a in top_agencies_count])
                 fig = plot_top_agencies_bar(count_df, value_col="award_count", label_col="parent_award_agency_name", theme=THEME, config={"title": "Top Agencies by Award Actions", "x_label": "Award Actions", "y_label": "Agency"})
@@ -146,7 +193,14 @@ def render_tab(df: pd.DataFrame):
             else:
                 st.warning("Insufficient data for top agencies by award actions.")
         with col2:
-            top_agencies_dollars: List[TopAgencyByObligation] = get_top_agencies(df, metric="obligation", n=15)
+            top_agencies_dollars: List[TopAgencyByObligation] = get_top_agencies(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency,
+                metric="obligation",
+                n=15
+            )
             if top_agencies_dollars:
                 dollars_df = pd.DataFrame([a.dict() for a in top_agencies_dollars])
                 fig = plot_top_agencies_obligation_bar(dollars_df, THEME)

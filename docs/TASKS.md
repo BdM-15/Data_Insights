@@ -19,15 +19,12 @@
 - **Fix fiscal quarter calculation for government fiscal year**:
   - ✅ Updated fiscal year and quarter calculation to correctly align with government fiscal year (Oct 1 - Sep 30)
   - ✅ Fixed NaN handling in quarterly data visualization
-- **Improve SAM.gov API Integration**:
-  - ✅ Implemented robust rate limiting with exponential backoff to handle API rate limits
-  - ✅ Added automatic retry mechanism with configurable maximum retries
-  - ✅ Enhanced error handling with specific error types (rate limit, connection, general)
-  - ✅ Implemented detailed logging with timestamps for debugging
-  - ✅ Created a daily request quota tracking system
-  - ✅ Added cache invalidation and session refresh mechanisms
-  - ✅ Enabled fetching of future opportunity data to align with project vision of combining historical contract data with upcoming opportunities
-  - Status: ✅ Completed. Script now works reliably with SAM.gov API rate limitations.
+    **SAM.gov Solicitation Enrichment Pipeline**:
+  - ✅ Foundation: API integration, robust rate limiting, deduplication, and full-text solicitation ingestion
+  - ✅ Sample enrichment function and Document model usage in `/src/backend/data_acquisition/sam_gov_enrichment_example.py`
+  - ✅ Documentation in `/docs/PLANNING.md` and `/docs/CAPTUREINTEL.md`
+  - Next: Implement embedding generation, semantic search, and RAG workflows
+  - Status: ✅ Foundation complete, ready for implementation
 - **Implement Automated Schema Migration for Data Sources**:
   - ✅ Created dynamic schema detection and adaptation system for external data sources
   - ✅ Implemented automatic column addition when source data formats change
@@ -69,12 +66,24 @@
   - Status: ✅ Completed, database now fully operational
 
 - ~~**Optimize Data Cleansing Process**~~:
+
   - ✅ Completely redesigned data_cleansing.py using direct SQL transformations
   - ✅ Reduced processing time from 3.5+ hours to under 12 minutes for 22 million records
   - ✅ Achieved processing speeds of ~29,000 rows per second
   - ✅ Removed 3.6 million duplicate records (16.58% of the original data)
   - ✅ Fixed data type handling issues for proper data normalization
   - Status: ✅ Completed with dramatic performance improvements
+
+- **ETL Pipeline Refactor, Deduplication, and Transformation Automation**:
+  - ✅ Refactored ETL scripts to use `s1_raw`, `s2_interim`, and `s3_processed` schemas with clear naming conventions
+  - ✅ Deduplication script now robustly deduplicates both prime awards and subawards, reading from `s2_interim` and writing to `s3_processed`
+  - ✅ All index creation and precomputed table logic is now handled in the transformation stage, and all such tables are created only in `s3_processed`.
+  - ✅ **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are now created exclusively in the `s3_processed` schema.**
+  - ✅ **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend), using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.**
+  - ✅ **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
+  - ✅ All references to legacy/interim tables (e.g., `usaprime_cleaned`) have been removed from the codebase and documentation.
+  - ✅ Pipeline is modular, schema-aware, and ready for high-performance analytics, AI, and RAG workflows
+  - Status: ✅ Complete (May 2025)
 - ~~**Fix filter dependencies JSON handling**~~:
   - ✅ Fixed JSON handling in the `get_unique_values` function to properly handle both string JSON and parsed list types
   - ✅ Resolved error: "the JSON object must be str, bytes or bytearray, not list" when selecting parent filter values

@@ -1,0 +1,16 @@
+{
+    "prime_awards": {
+        "source_table": "usaprime_cleaned",
+        "target_table": "usaprime_deduplicated",
+        "deduplication_key": "contract_transaction_unique_key",
+        "original_count": 17640371,
+        "deduplicated_count": 17640371,
+        "removed_count": 0,
+        "removed_percent": 0.0
+    },
+    "subawards": {
+        "error": "Source table usasubawards_cleaned not found"
+    },
+    "processing_time_seconds": 159.23,
+    "timestamp": "2025-05-22T11:18:13.621761"
+}

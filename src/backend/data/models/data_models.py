@@ -126,6 +126,10 @@ class PrimeCompetitorDetails(BaseModel):
 
 
 class PrimeContractAwardDetails(BaseModel):
+    embedding: Optional[List[float]] = None  # For semantic search/vector storage
+    created_at: Optional[date] = None
+    updated_at: Optional[date] = None
+    source: Optional[str] = None  # Provenance tracking
     """
     Core award details for a prime contract record.
     """
@@ -200,6 +204,10 @@ class PrimeSolicitationDetails(BaseModel):
 # ---------------- Subaward Data Models for Capability Gap Analysis ----------------
 
 class SubcontractAwardDetails(BaseModel):
+    embedding: Optional[List[float]] = None  # For semantic search/vector storage
+    created_at: Optional[date] = None
+    updated_at: Optional[date] = None
+    source: Optional[str] = None  # Provenance tracking
     """
     Core award details for a subaward (subcontract) record.
 
@@ -248,6 +256,21 @@ class SubcontractCompetitorDetails(BaseModel):
 
 
 class SubcontractRequirementsDetails(BaseModel):
+    metadata: Optional[dict] = None  # For unstructured or enriched data
+# ---------------- Document Model for RAG/Web Enrichment ----------------
+class Document(BaseModel):
+    """
+    Generic document/attachment model for RAG, web enrichment, and semantic search.
+    """
+    document_id: str
+    related_contract_id: Optional[str] = None
+    text: Optional[str] = None
+    embedding: Optional[List[float]] = None
+    source_url: Optional[str] = None
+    document_type: Optional[str] = None
+    created_at: Optional[date] = None
+    updated_at: Optional[date] = None
+    metadata: Optional[dict] = None
     """
     Requirement and place of performance details for a subaward record.
 

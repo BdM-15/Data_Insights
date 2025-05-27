@@ -28,7 +28,7 @@ def get_naics_data(engine, naics_code="561210", start_date=None, end_date=None):
 
     # List of table names to search for NAICS data
     table_names = [
-        "usaprime_cleaned",
+        "s3_processed.usaspending_prime_awards",
         "usaspending_cleaned",
         "usaprime",
         "usaspending",

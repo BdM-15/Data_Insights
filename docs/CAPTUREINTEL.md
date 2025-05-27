@@ -1310,3 +1310,13 @@ The data sources will directly enhance proposal development:
 - The same pipeline and schema will be used for competitor research, enabling direct side-by-side analysis.
 - All data is processed and enriched by AI agents to extract key capabilities, relationships, and news, supporting semantic search and advanced analytics.
 - JSON is the preferred storage format for extensibility, queryability, and AI-driven enrichment; markdown/Word/PDF can be generated for reporting as needed.
+
+### SAM.gov Solicitation Enrichment Pipeline (May 2025)
+
+To maximize the value of opportunity and requirement data, the project ingests and enriches full-text SAM.gov solicitations as `Document` objects. This enables:
+
+- Storing and searching the full text of active/inactive solicitations for richer context
+- Linking solicitations to contracts/opportunities for capability/gap analysis
+- Generating embeddings for semantic search and RAG workflows
+- Using AI/LLM to extract requirements, keywords, and capability gaps from real solicitation language
+  See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` for a sample enrichment function and `/docs/PLANNING.md` for the full pipeline plan.

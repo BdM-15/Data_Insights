@@ -3,7 +3,7 @@ Future Opportunities tab for the strategic dashboard.
 """
 import streamlit as st
 import pandas as pd
-from src.backend.data.processors.future_opportunities import get_future_opportunities
+from src.backend.data.app_processors.future_opportunities import get_future_opportunities
 from src.backend.data.models.data_models import FutureOpportunity
 import plotly.express as px
 from datetime import date
@@ -19,7 +19,7 @@ def render_tab(df: pd.DataFrame = None):
     Args:
         df: Filtered DataFrame for the dashboard (already filtered by main sidebar)
     """
-    from src.backend.data.processors.awards import get_expiring_contracts
+    from src.backend.data.app_processors.awards import get_expiring_contracts
     import numpy as np
 
     st.header("Future Opportunities")

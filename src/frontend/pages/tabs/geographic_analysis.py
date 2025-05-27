@@ -3,6 +3,11 @@ Geographic Analysis tab for the strategic dashboard.
 """
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+from src.backend.data.app_processors.awards import get_geographic_state_obligations
+from src.frontend.visualizations.charts.geo_charts import plot_choropleth_map
+from src.frontend.styles.theme import THEME
+from src.frontend.components.export import add_export_section
 
 def render_tab(df: pd.DataFrame):
     """
@@ -11,18 +16,30 @@ def render_tab(df: pd.DataFrame):
     Args:
         df: Filtered DataFrame for the dashboard
     """
-    st.header("Geographic Analysis")
+    st.header("Geographic Analysis")    
     st.markdown("""
     Explore contract spending and award patterns by geography. Use the sidebar filters to refine by agency, NAICS, or date range.
     """)
-
+    
     # --- Regional Spending Patterns (Choropleth Map) ---
-    st.subheader("Regional Spending Patterns (by State)")
+    st.subheader("Regional Spending Patterns (by State)")    
     if 'recipient_state_code' in df.columns:
-        state_obligation = df.groupby('recipient_state_code')['federal_action_obligation'].sum().reset_index()
-        state_obligation = state_obligation.rename(columns={'recipient_state_code': 'location', 'federal_action_obligation': 'value'})
-        from src.frontend.visualizations.charts.geo_charts import plot_choropleth_map
-        from src.frontend.styles.theme import THEME
+        # Use optimized SQL function for better performance
+        
+        # Get current filter context (extract filters from session state if available)
+        naics = df['naics_code'].iloc[0] if 'naics_code' in df.columns and len(df['naics_code'].unique()) == 1 else None
+        start_date = df['action_date'].min().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+        end_date = df['action_date'].max().strftime('%Y-%m-%d') if 'action_date' in df.columns and not df.empty else None
+        agency = df['parent_award_agency_name'].iloc[0] if 'parent_award_agency_name' in df.columns and len(df['parent_award_agency_name'].unique()) == 1 else None
+        
+        state_obligations = get_geographic_state_obligations(
+            naics_code=naics,
+            start_date=start_date,
+            end_date=end_date,
+            agency=agency
+        )        
+        state_obligation = pd.DataFrame(state_obligations) if state_obligations else pd.DataFrame(columns=['location', 'value'])
+        
         # Define a default color sequence for categorical charts
         CATEGORY_COLORS = [
             THEME["primary"],
@@ -38,19 +55,19 @@ def render_tab(df: pd.DataFrame):
             'locationmode': 'USA-states',
             'colorbar_title': 'Obligation ($)',
             'geo_scope': 'usa'
-        }
+        }        
         fig_map = plot_choropleth_map(state_obligation, config, THEME)
         st.plotly_chart(fig_map, use_container_width=True, key="geo_choropleth")
-        from src.frontend.components.export import add_export_section
+        
         add_export_section(state_obligation, section_title="Export State Obligation Data", file_prefix="state_obligations")
     else:
         st.info("No state/location data available for geographic analysis.")
 
     # --- Performance by Location (Top States Bar Chart) ---
-    st.subheader("Top States by Total Obligation")
+    st.subheader("Top States by Total Obligation")    
     if 'recipient_state_code' in df.columns:
         top_states = state_obligation.sort_values('value', ascending=False).head(10)
-        import plotly.express as px
+        
         fig_bar = px.bar(top_states, x='location', y='value',
                         title='Top States by Total Obligation',
                         labels={'location': 'State', 'value': 'Obligation ($)'},

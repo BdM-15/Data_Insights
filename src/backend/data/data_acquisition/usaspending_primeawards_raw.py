@@ -1,8 +1,8 @@
-# usaspending_subawards.py
+# usaspending_historical_pg.py
 """
-USAspending.gov subaward data acquisition script using bulk download API.
+Enhanced USAspending.gov historical data acquisition script with PostgreSQL support.
 
-This script fetches subaward data from USAspending.gov using
+This script fetches historical contract award data from USAspending.gov using
 their bulk download API and stores it in a PostgreSQL database for further analysis.
 It includes improved pagination, enhanced logging, and better error handling.
 """
@@ -32,8 +32,8 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import config
 
-# Configure logging
-def setup_logging(log_file: str = 'logs/usaspending_subawards.log'):
+# Configure rich and colorful logging
+def setup_logging(log_file: str = 'logs/usaspending_historical.log'):
     """Set up enhanced logging with formatting."""
     # Create logs directory if it doesn't exist
     log_dir = os.path.dirname(log_file)
@@ -41,7 +41,7 @@ def setup_logging(log_file: str = 'logs/usaspending_subawards.log'):
         os.makedirs(log_dir)
     
     # Configure logger
-    logger = logging.getLogger("usaspending_subawards")
+    logger = logging.getLogger("usaspending_historical")
     logger.setLevel(logging.INFO)
     
     # Clear existing handlers
@@ -69,29 +69,90 @@ def setup_logging(log_file: str = 'logs/usaspending_subawards.log'):
     # Prevent propagation to root logger (this avoids duplicate messages)
     logger.propagate = False
     
+    # Disable the root logger handlers to prevent duplicate logging
+    root_logger = logging.getLogger()
+    root_logger.handlers = []
+    
     return logger
 
 # Set up logging
 logger = setup_logging()
 
-# CONSTANTS
+# FEATURE: Constants
 USASPENDING_API_URL = "https://api.usaspending.gov/api/v2/bulk_download/awards/"
-CUSTOM_ARCHIVE_DIR = r'D:\Github - Working\archive\subawards'  # Custom archive location as specified
-REQUEST_TIMEOUT = 60  # Timeout for requests
+CUSTOM_ARCHIVE_DIR = r'D:\Github - Working\archive'  # Custom archive location as specified
+REQUEST_TIMEOUT = 60  # Increased timeout
 DOWNLOAD_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 MAX_WAIT_SECONDS = 900  # 15 minutes maximum wait time
 MAX_CONSECUTIVE_FAILURES = 3  # Maximum number of consecutive failures before backing off
-CHUNK_DAYS = 7  # Days per chunk for processing
+CHUNK_DAYS = 7  # Increased from 2 to 7 days for faster processing
 
 # Ensure archive directory exists
 os.makedirs(CUSTOM_ARCHIVE_DIR, exist_ok=True)
 
-# DB Table name
-TABLE_NAME = "usaspending_subawards"
+# Target field list for our raw table - these are the exact fields we want from the API
+TARGET_FIELDS = [
+    "contract_transaction_unique_key",
+    "contract_award_unique_key",
+    "action_date_fiscal_year",
+    "action_date",
+    "parent_award_id_piid",
+    "award_id_piid",
+    "modification_number",
+    "federal_action_obligation",
+    "total_dollars_obligated",
+    "potential_total_value_of_award",
+    "total_outlayed_amount_for_overall_award",
+    "period_of_performance_start_date",
+    "period_of_performance_current_end_date",
+    "period_of_performance_potential_end_date",
+    "ordering_period_end_date",
+    "primary_place_of_performance_city_name",
+    "primary_place_of_performance_state_code",
+    "prime_award_base_transaction_description",
+    "transaction_description",
+    "naics_code",
+    "naics_description",
+    "product_or_service_code",
+    "product_or_service_code_description",
+    "dod_acquisition_program_description",
+    "parent_award_agency_name",
+    "awarding_sub_agency_name",
+    "awarding_office_name",
+    "funding_agency_name",
+    "funding_sub_agency_name",
+    "funding_office_name",
+    "recipient_name",
+    "recipient_uei",
+    "recipient_parent_name",
+    "recipient_parent_uei",
+    "solicitation_date",
+    "solicitation_procedures", 
+    "extent_competed",
+    "type_of_set_aside",
+    "fair_opportunity_limited_sources",
+    "other_than_full_and_open_competition",
+    "number_of_offers_received",
+    "subcontracting_plan",
+    "government_furnished_property",
+    "type_of_contract_pricing",
+    "action_type",
+    "award_type",
+    "type_of_idc",
+    "idv_type",
+    "undefinitized_action",
+    "program_acronym",
+    "multi_year_contract",
+    "multiple_or_single_award_idv",
+    "usaspending_permalink"
+]
 
-# Database Connection
+# DB Table name (fully qualified for s1_raw schema)
+TABLE_NAME = "s1_raw.usaspending_prime_awards_slim"
+
+# FEATURE: PostgreSQL Database Connection
 def get_db_connection():
     """
     Create a connection to the PostgreSQL database.
@@ -112,10 +173,11 @@ def get_db_connection():
         logger.error(f"Error connecting to PostgreSQL database: {e}")
         raise
 
-# Database Management Functions
+# FEATURE: Database Management Functions
 def setup_progress_tracking(conn):
     """
-    Create a dedicated usaspending_subawards_progress table for tracking progress.
+    Create a dedicated usaspending_historical_progress table for tracking progress.
+    This function will check if the table exists and preserve it if it does.
     Args:
         conn: PostgreSQL connection
     """
@@ -125,7 +187,7 @@ def setup_progress_tracking(conn):
         cursor.execute("""
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
-            WHERE table_name = 'usaspending_subawards_progress'
+            WHERE table_name = 'usaspending_historical_progress'
         )
         """)
         
@@ -134,7 +196,7 @@ def setup_progress_tracking(conn):
         if not table_exists:
             # Create a dedicated progress tracking table if it doesn't exist
             cursor.execute("""
-            CREATE TABLE usaspending_subawards_progress (
+            CREATE TABLE usaspending_historical_progress (
                 id SERIAL PRIMARY KEY,
                 last_fetched_date DATE,
                 last_page_processed INTEGER DEFAULT 0,
@@ -147,17 +209,17 @@ def setup_progress_tracking(conn):
             
             # Insert initial record
             cursor.execute("""
-            INSERT INTO usaspending_subawards_progress 
+            INSERT INTO usaspending_historical_progress 
             (last_fetched_date, status)
             VALUES (%s, %s)
             """, (None, 'pending'))
             
             conn.commit()
-            logger.info("Created dedicated progress tracking table: usaspending_subawards_progress")
+            logger.info("Created dedicated progress tracking table: usaspending_historical_progress")
         else:
             # Table exists, retrieve current progress
             cursor.execute("""
-            SELECT last_fetched_date, status FROM usaspending_subawards_progress WHERE id = 1
+            SELECT last_fetched_date, status FROM usaspending_historical_progress WHERE id = 1
             """)
             result = cursor.fetchone()
             if result:
@@ -168,6 +230,51 @@ def setup_progress_tracking(conn):
     except Exception as e:
         conn.rollback()
         logger.error(f"Error setting up progress tracking: {e}")
+        raise
+    finally:
+        cursor.close()
+
+def setup_awards_table(conn):
+    """
+    Create the usaspending_prime_awards_slim table if it doesn't exist.
+    Uses dynamic column creation based on the columns we get from the API.
+    Args:
+        conn: PostgreSQL connection
+    """
+    cursor = conn.cursor()
+    try:
+        # First check if table exists
+        cursor.execute(f"""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 's1_raw' AND table_name = 'usaspending_prime_awards_slim'
+        )
+        """)
+        table_exists = cursor.fetchone()[0]
+        if not table_exists:
+            columns = []
+            for field in TARGET_FIELDS:
+                if field == "contract_transaction_unique_key":
+                    columns.append(f"{field} TEXT PRIMARY KEY")
+                else:
+                    columns.append(f"{field} TEXT")
+            columns.append("created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
+            columns.append("updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
+            columns.append("fetch_date DATE")
+            columns_sql = ", ".join(columns)
+            cursor.execute(f"""
+            CREATE TABLE {TABLE_NAME} (
+                {columns_sql}
+            )
+            """)
+            conn.commit()
+            logger.info(f"Created table {TABLE_NAME}")
+        else:
+            logger.info(f"Table {TABLE_NAME} already exists")
+            
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error creating awards table: {e}")
         raise
     finally:
         cursor.close()
@@ -184,7 +291,7 @@ def get_last_fetched_progress(conn):
     try:
         cursor.execute("""
         SELECT last_fetched_date, last_page_processed
-        FROM usaspending_subawards_progress
+        FROM usaspending_historical_progress
         WHERE id = 1
         """)
         result = cursor.fetchone()
@@ -218,7 +325,7 @@ def update_fetch_progress(conn, date=None, page=0, records=0, status='in_progres
     try:
         if date:
             cursor.execute("""
-            UPDATE usaspending_subawards_progress
+            UPDATE usaspending_historical_progress
             SET last_fetched_date = %s,
                 last_page_processed = %s,
                 total_records_processed = total_records_processed + %s,
@@ -228,7 +335,7 @@ def update_fetch_progress(conn, date=None, page=0, records=0, status='in_progres
             """, (date, page, records, status))
         else:
             cursor.execute("""
-            UPDATE usaspending_subawards_progress
+            UPDATE usaspending_historical_progress
             SET last_page_processed = %s,
                 total_records_processed = total_records_processed + %s,
                 status = %s,
@@ -243,104 +350,16 @@ def update_fetch_progress(conn, date=None, page=0, records=0, status='in_progres
     finally:
         cursor.close()
 
-def setup_subawards_table(conn):
-    """
-    Create the usaspending_subawards table if it doesn't exist.
-    The table structure will be created dynamically based on the actual data received.
-    Args:
-        conn: PostgreSQL connection
-    """
-    cursor = conn.cursor()
-    try:
-        # First check if table exists
-        cursor.execute("""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = %s
-        )
-        """, (TABLE_NAME,))
-        
-        table_exists = cursor.fetchone()[0]
-        
-        if not table_exists:
-            # Create a simple table with id, then we'll add columns as needed
-            cursor.execute(f"""
-            CREATE TABLE {TABLE_NAME} (
-                id SERIAL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                fetch_date DATE
-            )
-            """)
-            
-            conn.commit()
-            logger.info(f"Created initial table {TABLE_NAME}")
-        else:
-            logger.info(f"Table {TABLE_NAME} already exists")
-            
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Error creating subawards table: {e}")
-        raise
-    finally:
-        cursor.close()
-
-def ensure_columns_exist(conn, df):
-    """
-    Ensure all columns from the DataFrame exist in the database table.
-    Args:
-        conn: PostgreSQL connection
-        df: DataFrame with data to insert
-    """
-    if df.empty:
-        return
-    
-    # Get column names from the DataFrame
-    df_columns = df.columns.tolist()
-    
-    cursor = conn.cursor()
-    try:
-        # Get existing columns from the database
-        cursor.execute(f"""
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = '{TABLE_NAME}'
-        """)
-        
-        existing_columns = [row[0] for row in cursor.fetchall()]
-        
-        # Add any missing columns
-        for col in df_columns:
-            if col.lower() not in [c.lower() for c in existing_columns]:
-                # Add the column if it doesn't exist
-                try:
-                    cursor.execute(f"""
-                    ALTER TABLE {TABLE_NAME} 
-                    ADD COLUMN "{col}" TEXT
-                    """)
-                    logger.info(f"Added column '{col}' to {TABLE_NAME}")
-                except Exception as e:
-                    logger.warning(f"Could not add column {col}: {e}")
-        
-        conn.commit()
-        
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Error ensuring columns exist: {e}")
-        raise
-    finally:
-        cursor.close()
-
-# Data Fetching with Improved Error Handling
+# FEATURE: Data Fetching with Improved Error Handling
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=60),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
     retry=retry_if_exception_type((requests.exceptions.RequestException,)),
     before_sleep=lambda retry_state: logger.info(f"Retrying USAspending fetch (attempt {retry_state.attempt_number})...")
 )
-def request_subawards_download(start_str, end_str):
+def request_usaspending_download(start_str, end_str):
     """
-    Request a bulk download of subawards from USAspending.gov API.
+    Request a bulk download from USAspending.gov API.
     Args:
         start_str: Start date string (YYYY-MM-DD)
         end_str: End date string (YYYY-MM-DD)
@@ -349,7 +368,10 @@ def request_subawards_download(start_str, end_str):
     """
     payload = {
         "filters": {
-            "sub_award_types": ["procurement"],  # Request only procurement subawards
+            "prime_award_types": [
+                "A", "B", "C", "D", "IDV_A", "IDV_B", "IDV_B_A", "IDV_B_B", 
+                "IDV_B_C", "IDV_C", "IDV_D", "IDV_E"
+            ],
             "date_type": "action_date",
             "date_range": {
                 "start_date": start_str,
@@ -363,48 +385,23 @@ def request_subawards_download(start_str, end_str):
                 }
             ]
         },
-        "file_format": "csv"
+        "file_format": "csv",
+        "columns": TARGET_FIELDS  # Only request the columns we need
     }
     
-    logger.info(f"Requesting USAspending subawards data for {start_str} to {end_str}")
+    logger.info(f"Requesting USAspending data for {start_str} to {end_str}")
+    response = requests.post(USASPENDING_API_URL, json=payload, timeout=REQUEST_TIMEOUT)
+    response.raise_for_status()
+    result = response.json()
     
-    try:
-        # Log the payload for debugging
-        logger.debug(f"Request payload: {json.dumps(payload, indent=2)}")
-        
-        response = requests.post(USASPENDING_API_URL, json=payload, timeout=REQUEST_TIMEOUT)
-        
-        # Log response details for debugging
-        logger.debug(f"Response status: {response.status_code}")
-        
-        # Try to get response content
-        try:
-            response_data = response.json()
-            logger.debug(f"Response data: {json.dumps(response_data, indent=2)[:1000]}")
-        except:
-            logger.warning(f"Could not parse response as JSON: {response.text[:200]}")
-            
-        # Raise for HTTP errors
-        response.raise_for_status()
-        
-        result = response.json()
-        
-        status_url = result.get("status_url")
-        file_url = result.get("file_url")
-        
-        if not status_url or not file_url:
-            raise ValueError(f"No download URL or status URL returned from USAspending API: {result}")
-        
-        logger.info(f"Request submitted successfully. Status URL: {status_url}")
-        return status_url, file_url
-        
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error occurred: {e}")
-        logger.error(f"Response content: {e.response.text[:500]}")
-        raise
-    except Exception as e:
-        logger.error(f"Error requesting download: {e}")
-        raise
+    status_url = result.get("status_url")
+    file_url = result.get("file_url")
+    
+    if not status_url or not file_url:
+        raise ValueError("No download URL or status URL returned from USAspending API")
+    
+    logger.info(f"Request submitted successfully. Status URL: {status_url}")
+    return status_url, file_url
 
 def wait_for_file_generation(status_url):
     """
@@ -414,8 +411,7 @@ def wait_for_file_generation(status_url):
     Returns:
         bool: True if file is ready, False otherwise
     """
-    # ...existing code...
-    max_status_attempts = 60
+    max_status_attempts = 60  # Increased from 20
     wait_seconds = 30
     total_waited = 0
     
@@ -509,7 +505,7 @@ def download_and_process_file(file_url, start_str, end_str):
     Returns:
         DataFrame: Raw data as DataFrame
     """
-    max_download_attempts = 5
+    max_download_attempts = 10
     
     # Create a progress bar for the download
     logger.info("Downloading generated file...")
@@ -517,7 +513,7 @@ def download_and_process_file(file_url, start_str, end_str):
     for attempt in range(max_download_attempts):
         try:
             # Stream download with progress indication
-            file_response = requests.get(file_url, headers=DOWNLOAD_HEADERS, timeout=REQUEST_TIMEOUT * 2, stream=True)
+            file_response = requests.get(file_url, headers=DOWNLOAD_HEADERS, timeout=REQUEST_TIMEOUT, stream=True)
             file_response.raise_for_status()
             
             # Get content length if available
@@ -528,7 +524,7 @@ def download_and_process_file(file_url, start_str, end_str):
             
             # Download file with progress updates
             content = io.BytesIO()
-            for data in file_response.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
+            for data in file_response.iter_content(chunk_size=1024):
                 progress_bar.update(len(data))
                 content.write(data)
             
@@ -538,55 +534,42 @@ def download_and_process_file(file_url, start_str, end_str):
         except Exception as e:
             logger.error(f"Download attempt {attempt + 1} failed: {e}")
             if attempt < max_download_attempts - 1:
-                wait_time = (attempt + 1) * 60  # Exponential backoff
-                logger.info(f"Waiting {wait_time} seconds before retrying...")
-                time.sleep(wait_time)
+                time.sleep(15)
             else:
                 raise ValueError("Failed to download file after multiple attempts")
     
-    # Extract and process the CSV file
+    # Archive the downloaded file
+    csv_filename = f"usaspending_{start_str}_to_{end_str}.csv"
+    archive_path = os.path.join(CUSTOM_ARCHIVE_DIR, csv_filename)
+    
+    # Extract the zip file
     logger.info("Extracting and processing downloaded file...")
     try:
         with zipfile.ZipFile(content) as z:
             csv_files = [f for f in z.namelist() if f.endswith('.csv')]
             if not csv_files:
                 raise ValueError("No CSV files found in the USAspending zip file")
-            
-            # Get CSV file info
-            csv_info = z.getinfo(csv_files[0])
-            csv_size = csv_info.file_size
-            
-            # Save the CSV to the archive folder with a formatted name
-            csv_filename = f"usaspending_subawards_{start_str}_to_{end_str}.csv"
-            csv_path = os.path.join(CUSTOM_ARCHIVE_DIR, csv_filename)
-            
+                
+            # Save the CSV to the archive folder
             with z.open(csv_files[0]) as csv_file:
-                with open(csv_path, 'wb') as f:
-                    logger.info(f"Saving extracted CSV ({csv_size:,} bytes) to: {csv_path}")
+                with open(archive_path, 'wb') as f:
                     shutil.copyfileobj(csv_file, f)
+                logger.info(f"Saved CSV backup to: {archive_path}")
                 
-            # Read the CSV into a DataFrame
-            logger.info(f"Reading CSV data from: {csv_path}")
-            df = pd.read_csv(csv_path, dtype=str, low_memory=False)
-            
-            # Just log the count of columns without printing them all
-            logger.info(f"CSV contains {len(df.columns)} columns")
-            
-            # Add fetch date
-            df['fetch_date'] = datetime.now().strftime('%Y-%m-%d')
-            
-            logger.info(f"Successfully loaded {len(df)} records from CSV")
-            
-            # We don't need to save the zip file
-            logger.info(f"Skipping ZIP file storage to save space")
-            
-            return df
+            # Read the CSV into a DataFrame without any transformations
+            with z.open(csv_files[0]) as csv_file:
+                df = pd.read_csv(csv_file, low_memory=False)
+                logger.info(f"Loaded {len(df)} records from CSV")
                 
+                # Add fetch date only
+                df['fetch_date'] = datetime.now().strftime('%Y-%m-%d')
+                
+                return df
     except Exception as e:
         logger.error(f"Error extracting or processing zip file: {e}")
         raise
 
-def insert_into_postgres(conn, df, batch_size=1000):
+def insert_into_postgres(conn, df, batch_size=5000):
     """
     Insert raw data into PostgreSQL with batching and proper error handling.
     Args:
@@ -594,13 +577,6 @@ def insert_into_postgres(conn, df, batch_size=1000):
         df: DataFrame to insert
         batch_size: Number of records per batch insertion
     """
-    if df.empty:
-        logger.warning("No data to insert into PostgreSQL")
-        return 0
-    
-    # Ensure all columns exist in the database table
-    ensure_columns_exist(conn, df)
-        
     cursor = conn.cursor()
     
     try:
@@ -614,41 +590,45 @@ def insert_into_postgres(conn, df, batch_size=1000):
         progress_bar = tqdm(total=total_records, desc="DB Insert", unit="records")
         
         # Process in batches
-        records_inserted = 0
         for i in range(0, total_records, batch_size):
             batch_df = df.iloc[i:i+batch_size]
             
             # Get column names from the dataframe
-            columns = batch_df.columns.tolist()
+            columns = [col for col in batch_df.columns]
             
-            # Create SQL for insertion - simple insert with no conflict handling
+            # Create column list and SQL for insertion
             columns_sql = ', '.join([f'"{col}"' for col in columns])
             placeholders = ', '.join(['%s'] * len(columns))
             
-            # Simple insert SQL without ON CONFLICT clause
+            # Handle conflicts - update if record exists
+            on_conflict = """
+            ON CONFLICT (contract_transaction_unique_key) 
+            DO UPDATE SET 
+                updated_at = CURRENT_TIMESTAMP,
+                fetch_date = EXCLUDED.fetch_date
+            """
+            
+            # Prepare SQL
             insert_sql = f"""
             INSERT INTO {TABLE_NAME} ({columns_sql})
             VALUES ({placeholders})
+            {on_conflict}
             """
             
             # Convert DataFrame to list of tuples
-            rows = []
-            for _, row in batch_df.iterrows():
-                row_values = [row.get(col) if pd.notna(row.get(col)) else None for col in columns]
-                rows.append(tuple(row_values))
+            rows = [tuple(row) for row in batch_df[columns].replace({np.nan: None}).values]
             
-            # Execute batch insert
+            # Execute with batch insert
             cursor.executemany(insert_sql, rows)
             conn.commit()
             
             # Update progress
-            records_inserted += len(batch_df)
             progress_bar.update(len(batch_df))
         
         progress_bar.close()
-        logger.info(f"Successfully inserted {records_inserted} records into {TABLE_NAME}")
+        logger.info(f"Successfully inserted {total_records} records into {TABLE_NAME}")
         
-        return records_inserted
+        return total_records
     except Exception as e:
         conn.rollback()
         logger.error(f"Error inserting data into PostgreSQL: {e}")
@@ -656,17 +636,20 @@ def insert_into_postgres(conn, df, batch_size=1000):
     finally:
         cursor.close()
 
-def fetch_subawards_chunk(conn, start_date, end_date):
+# FEATURE: Advanced Fetch with Date Chunking
+def fetch_historical_chunk(conn, start_date, end_date, page=0):
     """
-    Fetch a chunk of subawards data.
+    Fetch a chunk of historical USAspending data.
     Args:
         conn: PostgreSQL connection
         start_date: Start date as datetime
         end_date: End date as datetime
+        page: Current page number (not used for pagination, kept for compatibility)
     Returns:
-        tuple: (records_processed, success)
+        tuple: (records_processed, current_page, success)
     """
     records_processed = 0
+    current_page = page
     
     try:
         # Format dates for API
@@ -674,43 +657,39 @@ def fetch_subawards_chunk(conn, start_date, end_date):
         end_str = end_date.strftime("%Y-%m-%d")
         
         # Step 1: Request the download
-        status_url, file_url = request_subawards_download(start_str, end_str)
+        status_url, file_url = request_usaspending_download(start_str, end_str)
         
         # Step 2: Wait for file generation
         if not wait_for_file_generation(status_url):
             logger.error(f"File generation timed out for {start_str} to {end_str}")
-            return records_processed, False
+            return records_processed, current_page, False
         
-        # Step 3: Download and process the file
+        # Step 3: Download and process the file (no transformations)
         df = download_and_process_file(file_url, start_str, end_str)
         
         # Step 4: Insert raw data into PostgreSQL
         records_processed = insert_into_postgres(conn, df)
         
         logger.info(f"Successfully processed {records_processed} records for {start_str} to {end_str}")
-        return records_processed, True
+        return records_processed, current_page + 1, True
         
     except Exception as e:
-        logger.error(f"Error in fetch_subawards_chunk: {e}")
-        return records_processed, False
+        logger.error(f"Error in fetch_historical_chunk: {e}")
+        return records_processed, current_page, False
 
-def fetch_subawards_historical(start_date_str="2012-10-01", end_date_str="2025-04-30"):
-    """
-    Main function to fetch historical USAspending subawards data.
-    Args:
-        start_date_str: Start date string (YYYY-MM-DD)
-        end_date_str: End date string (YYYY-MM-DD)
-    """
+# FEATURE: Main Function with Enhanced Progress Tracking
+def fetch_usaspending_historical():
+    """Main function to fetch historical USAspending data with enhanced tracking."""
     conn = None
     consecutive_failures = 0
     
     try:
-        logger.info("Starting USAspending subawards data acquisition")
+        logger.info("Starting USAspending historical data acquisition")
         logger.info(f"Using archive directory: {CUSTOM_ARCHIVE_DIR}")
         
-        # Define date range
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+        # Define date range - adjusted to start from 2022-02-02 and go back to 2012-09-30
+        start_date = datetime.strptime("2022-01-27", "%Y-%m-%d")
+        end_date = datetime.strptime("2025-04-30", "%Y-%m-%d")
         
         logger.info(f"Date range set: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         
@@ -719,46 +698,47 @@ def fetch_subawards_historical(start_date_str="2012-10-01", end_date_str="2025-0
         
         # Set up tables
         setup_progress_tracking(conn)
-        setup_subawards_table(conn)
+        setup_awards_table(conn)
         
         # Get last fetched progress
-        last_fetched_date, _ = get_last_fetched_progress(conn)
+        last_fetched_date, last_page = get_last_fetched_progress(conn)
         
         # If we have a last fetched date, start from there
         if last_fetched_date:
             logger.info(f"Resuming from last fetched date: {last_fetched_date}")
-            # Add one day to ensure we start from the next period
-            current_start = last_fetched_date + timedelta(days=1)
+            # Subtract one day to ensure overlap and no missed data
+            current_end = last_fetched_date - timedelta(days=1)
         else:
-            # If no previous fetch, start from the start date
-            current_start = start_date
-            logger.info(f"Starting new fetch from {current_start.strftime('%Y-%m-%d')}")
+            # If no previous fetch, start from the end date (2022-02-02)
+            current_end = end_date
+            logger.info(f"Starting new fetch from {current_end.strftime('%Y-%m-%d')}")
         
         # Create a progress bar for the entire date range
-        total_days = (end_date - current_start).days + 1
+        total_days = (current_end - start_date).days
         with tqdm(total=total_days, desc="Overall Progress", unit="days") as progress_bar:
-            # Process in chunks
-            while current_start <= end_date:
+            # Process in chunks, working backward
+            while current_end >= start_date:
                 try:
-                    # Calculate chunk end date
-                    current_end = min(current_start + timedelta(days=CHUNK_DAYS - 1), end_date)
+                    # Calculate chunk start date (7 days at a time)
+                    current_start = max(current_end - timedelta(days=CHUNK_DAYS - 1), start_date)
                     chunk_days = (current_end - current_start).days + 1
                     
                     logger.info(f"Processing chunk: {current_start.strftime('%Y-%m-%d')} to {current_end.strftime('%Y-%m-%d')} ({chunk_days} days)")
                     
                     # Fetch the chunk
-                    records, success = fetch_subawards_chunk(conn, current_start, current_end)
+                    records, page, success = fetch_historical_chunk(conn, current_start, current_end, last_page)
                     
                     if success:
                         # Update progress and reset failure counter
-                        update_fetch_progress(conn, current_end, 0, records, 'completed')
+                        update_fetch_progress(conn, current_start, page, records, 'completed')
                         consecutive_failures = 0
                         
                         # Update progress bar
                         progress_bar.update(chunk_days)
                         
                         # Move to next chunk
-                        current_start = current_end + timedelta(days=1)
+                        current_end = current_start - timedelta(days=1)
+                        last_page = 0  # Reset page for new date
                     else:
                         consecutive_failures += 1
                         if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
@@ -771,24 +751,24 @@ def fetch_subawards_historical(start_date_str="2012-10-01", end_date_str="2025-0
                 
                 except KeyboardInterrupt:
                     logger.info("Process interrupted by user")
-                    update_fetch_progress(conn, current_start, 0, 0, 'interrupted')
+                    update_fetch_progress(conn, current_start, last_page, 0, 'interrupted')
                     return False
                 except Exception as e:
                     logger.error(f"Error processing chunk: {e}")
                     if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                         logger.error("Too many errors. Stopping process.")
-                        update_fetch_progress(conn, current_start, 0, 0, 'error')
+                        update_fetch_progress(conn, current_start, last_page, 0, 'error')
                         return False
                     consecutive_failures += 1
                     time.sleep(60)  # Wait before retry
         
         # All done
-        update_fetch_progress(conn, end_date, 0, 0, 'completed')
-        logger.info("Subawards data acquisition completed successfully")
+        update_fetch_progress(conn, start_date, 0, 0, 'completed')
+        logger.info("Historical data acquisition completed successfully")
         return True
         
     except Exception as e:
-        logger.error(f"USAspending subawards fetch failed: {str(e)}")
+        logger.error(f"USAspending historical fetch failed: {str(e)}")
         if conn:
             update_fetch_progress(conn, None, 0, 0, 'error')
         return False
@@ -799,4 +779,4 @@ def fetch_subawards_historical(start_date_str="2012-10-01", end_date_str="2025-0
             logger.info("Database connection closed")
 
 if __name__ == "__main__":
-    fetch_subawards_historical()
+    fetch_usaspending_historical()

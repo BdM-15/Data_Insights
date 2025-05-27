@@ -4,8 +4,8 @@ Agency Intelligence tab for the strategic dashboard.
 import streamlit as st
 import pandas as pd
 import numpy as np
-from src.backend.data.processors.agencies import get_top_agencies_by_award_count, get_top_agencies_by_obligation
-from src.backend.data.processors.awards import get_expiring_contracts
+from src.backend.data.app_processors.agencies import get_top_agencies_by_award_count, get_top_agencies_by_obligation
+from src.backend.data.app_processors.awards import get_expiring_contracts
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.utils import apply_plotly_theme
 from src.frontend.components.layouts.grid import section_divider, themed_aggrid, two_column_grid
@@ -54,36 +54,47 @@ def render_tab(df: pd.DataFrame):
         st.metric("Avg Award Value", f"${avg_award_value:,.0f}")
 
     # --- Spending Trends (Quarterly, dual-axis line chart) ---
-    from src.backend.data.processors.awards import get_quarterly_trends
+    from src.backend.data.app_processors.awards import get_quarterly_trends
     from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends
     section_divider("Spending Trends (Quarterly)", icon="📈")
-    quarterly_data = get_quarterly_trends(agency_df)
+    # Use SQL-backed, filter-aware quarterly trends
+    quarterly_data = get_quarterly_trends(
+        agency=selected_agency,
+        naics_code=selected_naics
+        # Optionally add start_date/end_date if available in the UI context
+    )
     if quarterly_data:
         qtr_df = pd.DataFrame([q.dict() for q in quarterly_data])
         fig = plot_quarterly_trends(qtr_df, THEME, config={"title": f"{selected_agency} Obligations & Award Actions by Quarter"})
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Insufficient data for quarterly trends visualization.")
-
-    # --- Top NAICS/PSC Codes (always show tables if columns exist) ---
+        st.info("Insufficient data for quarterly trends visualization.")    # --- Top NAICS/PSC Codes (always show tables if columns exist) ---
     section_divider("Top NAICS & PSC Codes", icon="🔢")
-    naics_cols = [c for c in ['naics_code', 'naics_description'] if c in agency_df.columns]
-    if len(naics_cols) == 2:
-        top_naics = agency_df.groupby(naics_cols)['federal_action_obligation'].sum().reset_index().sort_values('federal_action_obligation', ascending=False).head(10)
+    
+    # Use optimized SQL function for better performance
+    from src.backend.data.app_processors.awards import get_agency_top_data
+    
+    agency_top_data = get_agency_top_data(
+        agency=selected_agency,
+        naics_code=selected_naics
+    )
+    
+    if agency_top_data.get('naics'):
+        top_naics = pd.DataFrame(agency_top_data['naics'])
         themed_aggrid(top_naics, columns=['naics_code', 'naics_description', 'federal_action_obligation'], height=220, update_mode=GridUpdateMode.NO_UPDATE)
     else:
-        st.warning("NAICS description columns not found in data.")
-    psc_cols = [c for c in ['product_or_service_code', 'product_or_service_code_description'] if c in agency_df.columns]
-    if len(psc_cols) == 2:
-        top_psc = agency_df.groupby(psc_cols)['federal_action_obligation'].sum().reset_index().sort_values('federal_action_obligation', ascending=False).head(10)
+        st.warning("NAICS data not found for this agency.")
+        
+    if agency_top_data.get('psc'):
+        top_psc = pd.DataFrame(agency_top_data['psc'])
         themed_aggrid(top_psc, columns=['product_or_service_code', 'product_or_service_code_description', 'federal_action_obligation'], height=220, update_mode=GridUpdateMode.NO_UPDATE)
     else:
-        st.warning("PSC description columns not found in data.")
+        st.warning("PSC data not found for this agency.")
 
     # --- Top Contractors ---
     section_divider("Top Contractors", icon="🏢")
-    if 'recipient_name' in agency_df.columns:
-        top_contractors = agency_df.groupby('recipient_name')['federal_action_obligation'].sum().reset_index().sort_values('federal_action_obligation', ascending=False).head(10)
+    if agency_top_data.get('contractors'):
+        top_contractors = pd.DataFrame(agency_top_data['contractors'])
         themed_aggrid(top_contractors, columns=['recipient_name', 'federal_action_obligation'], height=220, update_mode=GridUpdateMode.NO_UPDATE)
     else:
         st.warning("Contractor data not available for this agency.")

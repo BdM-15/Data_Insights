@@ -1,5 +1,53 @@
 ### May 2025 Progress Update
 
+## USAspending ETL Pipeline, Data Model, and Semantic Search/RAG Readiness (May 2025)
+
+### Three-Stage Schema Architecture (Updated May 2025)
+
+- **s1_raw**: Ingests and stores unmodified source data (e.g., from USAspending.gov) for full provenance and reproducibility. No transformations or deduplication are performed at this stage. Table names mirror the source.
+- **s2_interim**: Receives cleansed, normalized, and type-corrected data. Deduplication is not performed here; indexes are not created at this stage to maximize write speed. Used as the staging area for further processing.
+- **s3_processed**: Contains deduplicated, performance-optimized, and analytics-ready tables. All indexes, vector/embedding columns, materialized views, and all precomputed filter/aggregation tables (filter values, dependencies, quarterly_data, etc.) are created here. This schema is the foundation for high-performance analytics, AI/LLM, and RAG workflows.
+
+#### Key Pipeline Updates (May 2025)
+
+- **Deduplication** is now fully automated and robust for both prime awards and subawards:
+  - Prime deduplication uses `contract_transaction_unique_key` as the primary key.
+  - Subaward deduplication uses a composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`).
+  - Deduplication reads from `s2_interim` and writes to `s3_processed`.
+  - All index creation and precomputed table logic is now handled in the transformation stage, and all such tables are created only in `s3_processed`.
+- **Transformation** is fully automated and idempotent:
+  - Uses only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as the source for all preprocessing and aggregations.
+  - Creates all recommended indexes and precomputes filter/aggregation tables for high-performance analytics and UI filtering, all in `s3_processed`.
+  - Computes fiscal year and quarter dynamically from `action_date`.
+  - All scripts are modular, schema-aware, and safe for repeated runs.
+- **AI/LLM/RAG Readiness**:
+  - The pipeline is now future-proofed for semantic search, web/RAG enrichment, and downstream extensibility.
+  - All tables and models are designed for easy extension as new AI, MCP, or LLM features are added.
+
+**Rationale:**
+
+- Enables robust data lineage, reproducibility, and rapid reprocessing.
+- Supports future extensibility for new data sources and schema evolution.
+- Aligns with best practices for high-volume, AI-augmented analytics pipelines.
+
+### Documentation and Cross-References (Updated)
+
+- **ETL Scripts:**
+  - Deduplication: [`src/backend/data/data_processing/deduplication.py`](../src/backend/data/data_processing/deduplication.py)
+  - Transformation: [`src/backend/data/data_processing/transformation.py`](../src/backend/data/data_processing/transformation.py)
+- **Data Models:** [`src/backend/data/models/data_models.py`](../src/backend/data/models/data_models.py)
+- **Database Schema:** See [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md) for table and field definitions, including vector/embedding columns and document storage.
+- **Planning:** This section and related updates document the rationale, implementation, and future-proofing for AI/LLM and RAG readiness.
+
+### Status
+
+- ✅ ETL pipeline refactor, deduplication, and transformation automation complete (May 2025)
+- ✅ Pipeline is modular, schema-aware, and ready for AI/LLM/RAG use cases
+
+---
+
+---
+
 - **WSL2 Ubuntu 22.04 LTS with NVIDIA Container Toolkit**: Complete. Confirmed GPU access in Docker containers for RTX 4060.
 - **Ollama and FastAPI Chat API Docker Compose Integration**: Complete. Both services run as containers, with Ollama using GPU.
 - **Langfuse and Pydantic AI Tracing**: Complete. Centralized tracing module implemented, all config in `.env`/`.env.example`.
@@ -173,14 +221,22 @@ Data_Insights/
   - Applied to NATO NSPA data source with immediate reliability improvements
   - Prepared foundation for seamless integration of future data sources
 - **PostgreSQL Tables**:
-  - `usaprime_cleaned`: Main table with contract data
-  - `filter_values_*`: Precomputed filter values for each column
-  - `filter_dependencies`: Precomputed dependencies between filters (e.g., agency to sub-agency)
-  - `quarterly_data`: Pre-aggregated data for visualizations
+  - `s3_processed.usaspending_prime_awards`: Main deduplicated, analytics-ready contract data table (all analytics, reporting, and precomputed tables now use this as the source)
+  - `s3_processed.usaspending_subawards`: Deduplicated subaward data
+  - `filter_values_*`: Precomputed filter values for each column (in `s3_processed`)
+  - `filter_dependencies`: Precomputed dependencies between filters (in `s3_processed`)
+  - `quarterly_data`: Pre-aggregated data for visualizations (in `s3_processed`)
+  - All new analytics, reporting, and dashboard tables are created in `s3_processed` only
 - **Indexes**:
-  - Columns: `action_date`, `period_of_performance_current_end_date`, `modification_number`, `parent_award_agency_name`, `funding_sub_agency_name`, `funding_office_name`, `recipient_name`, `naics_code`, `product_or_service_code`, `type_of_contract_pricing`, `extent_competed`, `type_of_set_aside`
-  - Composite index: `idx_filter_composite` on frequently filtered columns
-  - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+  - All recommended indexes are now created in `s3_processed` during the transformation stage, including:
+    - `recipient_parent_name, recipient_name, funding_sub_agency_name` (for competitive landscape/treemap)
+    - `federal_action_obligation`, `modification_number`, `funding_sub_agency_name`, and all major filter columns
+    - Composite indexes for high-frequency filter and grouping columns
+    - PostgreSQL-specific index optimizations (B-tree, GIN) for improved query performance
+- **Materialized Views** (Recommended for Top Competitors by Market Share):
+  - For the "Top Competitors by Market Share" dashboard section, consider creating a materialized view in `s3_processed` for the most common filter combinations (e.g., by fiscal year, by NAICS, by agency) to provide instant load times for default or high-traffic queries.
+  - Materialized views are most beneficial when the same aggregations are queried frequently or for default dashboard views. For highly dynamic, ad-hoc filters, the current index-optimized approach is sufficient.
+  - Refresh materialized views after each ETL/transform run to keep analytics up to date.
 
 ## User Interface & UX Enhancements
 
@@ -660,7 +716,7 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
   - **Interactive Sankey Diagram (Agency → Office → Contract)**: Add an interactive Sankey diagram as the last visual, tracing the flow from parent agency to office level and further into contract levels.
     - _Reason/Benefit_: This provides a clear, intuitive visualization of how obligations and actions flow through the federal hierarchy, helping users identify bottlenecks, key offices, and contract concentrations for more effective targeting.
   - Implement dynamic filtering with real-time visualization updates
-  - Add market share analysis for contractors within selected NAICS codes
+  - Add market share analysis for contractors within selected NAICS codes (now fully SQL-backed, filter-aware, and optimized for performance)
   - Include opportunity timeline showing contract expirations and projected solicitations
 
 - **Generate Capture Profile**:
@@ -752,7 +808,7 @@ SELECT * FROM company_capabilities WHERE profile->'naics_codes' ? '561210';
 - Add pagination or lazy loading to the DataFrame to handle large datasets more efficiently.
 - Enhance visualizations with interactive features (e.g., tooltips, drill-downs).
 - Implement additional filters or search capabilities (e.g., keyword search in contract descriptions).
-- Optimize database queries further if performance issues arise with larger datasets.
+  - Optimize database queries further if performance issues arise with larger datasets. All dashboard metrics and visualizations now use direct SQL with filter-aware, index-optimized queries, and all analytics/reporting tables are created in `s3_processed` only.
 
 ## Implementation Status & Roadmap
 
@@ -902,3 +958,65 @@ The following columns are required for analytics, reporting, and AI/LLM agent wo
 - Materialized views or denormalized tables may be created for specific reporting needs if required.
 
 See `DATABASE_SCHEMA.md` for schema details and join guidance.
+
+### SAM.gov Solicitation Ingestion & Enrichment Pipeline (Foundation)
+
+#### Overview
+
+This pipeline ingests current and historical SAM.gov solicitations, enriches them as `Document` objects, and stores them for semantic search, RAG, and advanced capability/gap analysis. It enables:
+
+- Full-text storage of solicitations (active/inactive)
+- Embedding generation for semantic search (via local LLM)
+- Metadata and provenance tracking
+- Linking to contracts/opportunities for downstream analysis
+
+#### Pipeline Steps
+
+1. **Ingest Data from SAM.gov**: Use `src/backend/data_acquisition/sam_gov.py` to fetch opportunities (API, robust rate limiting, deduplication).
+2. **Transform to Document Model**: For each opportunity, create a `Document` instance (see code sample in `/src/backend/data_acquisition/sam_gov_enrichment_example.py`).
+3. **Generate Embeddings**: Use local LLM (Ollama) to generate embeddings for the `text` field.
+4. **Store in Database**: Store as JSONB + vector (pgvector) for semantic search and RAG.
+5. **Enable Semantic Search & RAG**: Use embeddings for fast retrieval and AI-augmented workflows.
+6. **Link to Capability/Gap Analysis**: Use full solicitation text for richer requirement extraction and gap analysis.
+
+#### Sample Enrichment Code
+
+See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` for a reference implementation.
+
+#### Documentation
+
+- This pipeline is referenced in `/docs/CAPTUREINTEL.md` (see "Opportunity Insights" and "Data Elements for Business Intelligence").
+- Update `.copilot-codeGeneration-instructions.md` to require referencing this plan for all data/AI pipeline code.
+
+---
+
+### SAM.gov Solicitation Ingestion & Enrichment Pipeline (Foundation)
+
+#### Overview
+
+This pipeline ingests current and historical SAM.gov solicitations, enriches them as `Document` objects, and stores them for semantic search, RAG, and advanced capability/gap analysis. It enables:
+
+- Full-text storage of solicitations (active/inactive)
+- Embedding generation for semantic search (via local LLM)
+- Metadata and provenance tracking
+- Linking to contracts/opportunities for downstream analysis
+
+#### Pipeline Steps
+
+1. **Ingest Data from SAM.gov**: Use `src/backend/data_acquisition/sam_gov.py` to fetch opportunities (API, robust rate limiting, deduplication).
+2. **Transform to Document Model**: For each opportunity, create a `Document` instance (see code sample in `/src/backend/data_acquisition/sam_gov_enrichment_example.py`).
+3. **Generate Embeddings**: Use local LLM (Ollama) to generate embeddings for the `text` field.
+4. **Store in Database**: Store as JSONB + vector (pgvector) for semantic search and RAG.
+5. **Enable Semantic Search & RAG**: Use embeddings for fast retrieval and AI-augmented workflows.
+6. **Link to Capability/Gap Analysis**: Use full solicitation text for richer requirement extraction and gap analysis.
+
+#### Sample Enrichment Code
+
+See `/src/backend/data_acquisition/sam_gov_enrichment_example.py` for a reference implementation.
+
+#### Documentation
+
+- This pipeline is referenced in `/docs/CAPTUREINTEL.md` (see "Opportunity Insights" and "Data Elements for Business Intelligence").
+- Update `.copilot-codeGeneration-instructions.md` to require referencing this plan for all data/AI pipeline code.
+
+---

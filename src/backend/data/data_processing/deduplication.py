@@ -205,150 +205,129 @@ def analyze_duplicates(save_report=True):
     logger.info(f"\nAnalysis completed in {elapsed:.2f} seconds")
     return duplicate_analysis
 
+
 def deduplicate_data(create_new_table=True, report=True):
     """
-    Deduplicate data from usaprime_cleaned table using contract_transaction_unique_key
-    as the primary key. Creates a new table with deduplicated data.
-    
-    Parameters:
-    -----------
-    create_new_table : bool, default=True
-        If True, creates a new table for deduplicated data.
-        If False, only analyzes potential duplicates without creating a new table.
-    report : bool, default=True
-        If True, generates and saves a detailed report.
-        
+    Deduplicate both prime awards and subawards tables.
+    - Prime awards: usaprime_cleaned → usaprime_deduplicated (key: contract_transaction_unique_key)
+    - Subawards: usasubawards_cleaned → usasubawards_deduplicated (key: (prime_award_unique_key, subaward_number, subaward_action_date))
+
+    Args:
+        create_new_table (bool): If True, create new deduplicated tables. If False, only analyze.
+        report (bool): If True, generate and save a report.
     Returns:
-    --------
-    dict
-        A dictionary containing deduplication results.
+        dict: Results for both prime and subawards deduplication.
     """
     start_time = time.time()
-    
-    # Table names
-    source_table = "usaprime_cleaned"
-    target_table = "usaprime_deduplicated"
-    
-    # Key for deduplication
-    primary_key = "contract_transaction_unique_key"
-    
-    # Check if source table exists
+    results = {}
+
+    # --- Prime Awards Deduplication ---
+    prime_source = "s2_interim.usaspending_prime_awards"  # Source table (cleaned, schema-qualified)
+    prime_target = "s3_processed.usaspending_prime_awards"  # Deduplicated output table (schema-qualified)
+    prime_key = "contract_transaction_unique_key"
+
     with engine.connect() as connection:
+        # Check if source exists (schema-aware)
         source_exists = connection.execute(text(
-            f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{source_table}')"
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 's2_interim' AND table_name = 'usaspending_prime_awards'
+            )
+            """
         )).scalar()
-        
         if not source_exists:
-            logger.error(f"Error: Source table {source_table} does not exist.")
-            return {"error": f"Source table {source_table} not found"}
-    
-    # Count original rows
-    with engine.connect() as connection:
-        original_count = connection.execute(text(f"SELECT COUNT(*) FROM {source_table}")).scalar()
-        logger.info(f"Starting deduplication of {original_count:,} rows...")
-    
-    if create_new_table:
-        # Create the deduplicated table using SQL DISTINCT ON
-        with engine.connect() as connection:
-            # Check if target table already exists and drop if needed
-            target_exists = connection.execute(text(
-                f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{target_table}')"
-            )).scalar()
-            
-            if target_exists:
-                logger.info(f"Dropping existing {target_table} table...")
-                connection.execute(text(f"DROP TABLE IF EXISTS {target_table}"))
-                connection.commit()
-            
-            # Create new table with distinct rows based on primary key
-            logger.info(f"Creating {target_table} table with distinct {primary_key} values...")
-            
-            # Use CREATE TABLE AS with DISTINCT ON for better performance
+            logger.error(f"Error: Source table {prime_source} does not exist.")
+            results["prime_awards"] = {"error": f"Source table {prime_source} not found"}
+        else:
+            original_count = connection.execute(text(f"SELECT COUNT(*) FROM {prime_source}")).scalar()
+            # Always drop and recreate the deduplicated table for automation/flexibility
+            connection.execute(text(f"DROP TABLE IF EXISTS {prime_target}"))
+            connection.commit()
+            logger.info(f"Creating {prime_target} table with distinct {prime_key} values...")
             create_query = text(f"""
-                CREATE TABLE {target_table} AS 
-                SELECT DISTINCT ON ({primary_key}) * 
-                FROM {source_table}
-                ORDER BY {primary_key}, action_date DESC
+                CREATE TABLE {prime_target} AS 
+                SELECT DISTINCT ON ({prime_key}) * 
+                FROM {prime_source}
+                ORDER BY {prime_key}, action_date DESC
             """)
-            
             connection.execute(create_query)
             connection.commit()
-            
-            # Count deduplicated rows
-            deduplicated_count = connection.execute(text(f"SELECT COUNT(*) FROM {target_table}")).scalar()
-            
-            # Calculate how many duplicates were removed
-            removed_count = original_count - deduplicated_count
-            removed_percent = (removed_count / original_count) * 100 if original_count > 0 else 0
-            
-            logger.info(f"Removed {removed_count:,} duplicate rows ({removed_percent:.2f}%).")
-            
-            # Create indexes on the deduplicated table for better performance
-            logger.info("Creating indexes on deduplicated table for better performance...")
-            
-            indexes = [
-                {"name": "idx_dedupe_award_id_piid", "columns": "award_id_piid"},
-                {"name": "idx_dedupe_action_date", "columns": "action_date"},
-                {"name": "idx_dedupe_recipient_name", "columns": "recipient_name"},
-                {"name": "idx_dedupe_naics_code", "columns": "naics_code"},
-                {"name": "idx_dedupe_agency_fiscal_year", "columns": "parent_award_agency_name, action_date_fiscal_year"}
-            ]
-            
-            for index in indexes:
-                index_name = index["name"]
-                columns = index["columns"]
-                
-                connection.execute(text(f"DROP INDEX IF EXISTS {index_name}"))
-                connection.execute(text(f"CREATE INDEX {index_name} ON {target_table} ({columns})"))
-                connection.commit()
-                
-                logger.info(f"  [OK] Created index {index_name} on {columns}")
-    
-    else:
-        # Just get counts for the report without creating a new table
-        deduplicated_count = original_count  # Placeholder
-        removed_count = 0
-        removed_percent = 0
-    
-    # Calculate processing time
+            deduped_count = connection.execute(text(f"SELECT COUNT(*) FROM {prime_target}")).scalar()
+            removed = original_count - deduped_count
+            removed_pct = (removed / original_count) * 100 if original_count > 0 else 0
+            logger.info(f"Prime awards deduplication: {removed:,} duplicates removed ({removed_pct:.2f}%).")
+            results["prime_awards"] = {
+                "source_table": prime_source,
+                "target_table": prime_target,
+                "deduplication_key": prime_key,
+                "original_count": original_count,
+                "deduplicated_count": deduped_count,
+                "removed_count": removed,
+                "removed_percent": round(removed_pct, 2)
+            }
+
+    # --- Subawards Deduplication ---
+    sub_source = "s2_interim.usaspending_subawards"  # Source table (cleaned, schema-qualified)
+    sub_target = "s3_processed.usaspending_subawards"  # Deduplicated output table (schema-qualified)
+    sub_keys = ["prime_award_unique_key", "subaward_number", "subaward_action_date", "subaward_amount"]
+    sub_key_expr = ", ".join(sub_keys)
+
+    with engine.connect() as connection:
+        # Check if source exists (schema-aware)
+        source_exists = connection.execute(text(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 's2_interim' AND table_name = 'usaspending_subawards'
+            )
+            """
+        )).scalar()
+        if not source_exists:
+            logger.error(f"Error: Source table {sub_source} does not exist.")
+            results["subawards"] = {"error": f"Source table {sub_source} not found"}
+        else:
+            original_count = connection.execute(text(f"SELECT COUNT(*) FROM {sub_source}")).scalar()
+            # Always drop and recreate the deduplicated table for automation/flexibility
+            connection.execute(text(f"DROP TABLE IF EXISTS {sub_target}"))
+            connection.commit()
+            logger.info(f"Creating {sub_target} table with distinct ({sub_key_expr}) values...")
+            create_query = text(f"""
+                CREATE TABLE {sub_target} AS 
+                SELECT DISTINCT ON ({sub_key_expr}) * 
+                FROM {sub_source}
+                ORDER BY {sub_key_expr}
+            """)
+            connection.execute(create_query)
+            connection.commit()
+            deduped_count = connection.execute(text(f"SELECT COUNT(*) FROM {sub_target}")).scalar()
+            removed = original_count - deduped_count
+            removed_pct = (removed / original_count) * 100 if original_count > 0 else 0
+            logger.info(f"Subawards deduplication: {removed:,} duplicates removed ({removed_pct:.2f}%).")
+            results["subawards"] = {
+                "source_table": sub_source,
+                "target_table": sub_target,
+                "deduplication_key": sub_keys,
+                "original_count": original_count,
+                "deduplicated_count": deduped_count,
+                "removed_count": removed,
+                "removed_percent": round(removed_pct, 2)
+            }
+
+    # --- Reporting ---
     elapsed_time = time.time() - start_time
-    minutes = int(elapsed_time // 60)
-    seconds = int(elapsed_time % 60)
-    
-    logger.info("\nDeduplication complete!")
-    logger.info(f"Method: Using {primary_key} as PRIMARY KEY")
-    logger.info(f"Original row count: {original_count:,}")
-    logger.info(f"Deduplicated row count: {deduplicated_count:,}")
-    logger.info(f"Removed {removed_count:,} duplicate rows ({removed_percent:.2f}%)")
-    logger.info(f"Target table: {target_table}")
-    logger.info(f"Processing time: {minutes}m {seconds}s")
-    
-    # Generate report
-    results = {
-        "source_table": source_table,
-        "target_table": target_table,
-        "deduplication_key": primary_key,
-        "original_count": original_count,
-        "deduplicated_count": deduplicated_count,
-        "removed_count": removed_count,
-        "removed_percent": round(removed_percent, 2),
-        "processing_time_seconds": round(elapsed_time, 2),
-        "timestamp": datetime.now().isoformat()
-    }
-    
+    results["processing_time_seconds"] = round(elapsed_time, 2)
+    results["timestamp"] = datetime.now().isoformat()
+
     if report:
-        # Save report to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_filename = f"deduplication_report_{timestamp}.json"
         report_path = os.path.join("logs", report_filename)
-        
         os.makedirs("logs", exist_ok=True)
-        
         with open(report_path, 'w') as f:
             json.dump(results, f, indent=4, cls=CustomJSONEncoder)
-        
         logger.info(f"\nDeduplication report saved to: {os.path.abspath(report_path)}")
-    
+
     return results
 
 if __name__ == "__main__":
@@ -371,19 +350,12 @@ if __name__ == "__main__":
         elif command == "deduplicate":
             # Check if we should create a new table
             create_new_table = True
-            
             if len(sys.argv) > 2 and sys.argv[2].lower() == "inplace":
                 create_new_table = False
-            
             deduplicate_data(create_new_table=create_new_table)
         else:
             logger.info("Unknown command. Use 'analyze' or 'deduplicate'.")
     else:
-        logger.info("Data Deduplication Tool for USASpending Contract Data")
-        logger.info("\nUsage:")
-        logger.info("  python -m src.backend.data_processing.deduplication analyze")
-        logger.info("  python -m src.backend.data_processing.deduplication deduplicate [inplace]")
-        logger.info("\nExamples:")
-        logger.info("  python -m src.backend.data_processing.deduplication analyze")
-        logger.info("  python -m src.backend.data_processing.deduplication deduplicate")
-        logger.info("  python -m src.backend.data_processing.deduplication deduplicate inplace")
+        # Default: run deduplication if no arguments are provided
+        logger.info("No command-line arguments provided. Running deduplication by default...")
+        deduplicate_data(create_new_table=True)

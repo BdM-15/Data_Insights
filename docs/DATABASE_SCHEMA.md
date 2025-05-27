@@ -1,15 +1,60 @@
-# USAspending Slim Table Architecture (May 2025)
+# USAspending Data Architecture & Schema (May 2025)
 
-## usaspending_prime_awards_slim & usaspending_subawards_slim
+## Schema & Table Naming Conventions
+
+## Schema & Table Naming Conventions (May 2025 Update)
+
+The Data_Insights project uses a strict three-stage schema approach for all USAspending data, but **all analytics, reporting, indexes, and precomputed tables are now created exclusively in the `s3_processed` schema** for maximum performance and clarity:
+
+- **s1_raw**: As-ingested, unmodified data from USAspending.gov. Immutable, for audit and reprocessing only. No analytics or reporting is performed on these tables.
+- **s2_interim**: Cleaned and standardized data, but not deduplicated or indexed for analytics. Used only for ETL processing. No analytics or reporting is performed on these tables.
+- **s3_processed**: Deduplicated, analytics-ready data with all performance indexes, precomputed filter/aggregation tables, and (optionally) materialized views. **All dashboards, APIs, analytics, and AI agents use only this schema.**
+
+**Key Practices (May 2025):**
+
+- **All analytics, reporting, indexes, and precomputed tables (filter values, dependencies, quarterly_data, etc.) are created in the `s3_processed` schema only.**
+- **Never run analytics or reporting on `s1_raw` or `s2_interim` tables.**
+- **Only create performance indexes and materialized views in the `s3_processed` schema.**
+- **All deduplication and business rules are applied in the move from `s2_interim` to `s3_processed`.**
+- **Table names are always `usaspending_prime_awards` or `usaspending_subawards` (no suffixes for stage).**
+- **All dashboard metrics, aggregations, and calculations are now performed via direct, filter-aware SQL queries (no Pandas-based aggregation in the backend).**
+- **Materialized views in `s3_processed` are recommended for the most common, high-traffic queries (e.g., Top Competitors by Market Share) to provide instant dashboard performance. These should be refreshed after each ETL/transform run.**
+
+**Deduplication Keys:**
+
+- Prime awards: `contract_transaction_unique_key` (unique transaction key)
+- Subawards: Composite key (`prime_award_unique_key`, `subaward_number`, `subaward_action_date`)
+
+**Transformation & Indexing:**
+
+- All index creation and filter/aggregation table generation is performed in the transformation stage, using only `s3_processed.usaspending_prime_awards` and `s3_processed.usaspending_subawards` as sources.
+- All precomputed filter tables, dependencies, and quarterly aggregations are created in `s3_processed` (e.g., `s3_processed.filter_values_*`, `s3_processed.filter_dependencies`, `s3_processed.quarterly_data`).
+- Composite and single-column indexes are created for all major filter/grouping columns (e.g., `recipient_parent_name, recipient_name, funding_sub_agency_name`, `federal_action_obligation`, `modification_number`, etc.)
+- PostgreSQL-specific index optimizations (B-tree, GIN) are used for improved query performance.
+- Filter value tables and dependent filter relationships are precomputed for fast UI filtering and analytics.
+- Quarterly aggregation tables are created for timeline visualizations, with fiscal year/quarter computed dynamically.
+
+**Summary:**
+All analytics, reporting, and dashboard queries are now filter-aware, SQL-backed, and index-optimized, using only the `s3_processed` schema as the source. Materialized views are recommended for the most common, high-traffic queries to ensure instant dashboard performance.
+
+**See also:** `src/backend/data/data_processing/transformation.py` for index/materialized view creation logic.
+
+---
+
+# USAspending Slim Table Architecture (May 2025, Updated)
+
+## usaspending_prime_awards & usaspending_subawards (Table Structure)
 
 ### Overview
 
-To support maintainable, normalized, and AI/LLM-friendly analytics, the Data_Insights project uses two slimmed tables:
+To support maintainable, normalized, and AI/LLM-friendly analytics, the Data_Insights project uses two slimmed tables at each stage:
 
-- `usaspending_prime_awards_slim`: Contains only the required columns for prime awards analytics and AI workflows.
-- `usaspending_subawards_slim`: Contains only the required columns for subawards analytics and AI workflows, including the join key (`prime_award_unique_key`).
+- `usaspending_prime_awards`: Contains only the required columns for prime awards analytics and AI workflows.
+- `usaspending_subawards`: Contains only the required columns for subawards analytics and AI workflows, including the join key (`prime_award_unique_key`).
 
 These tables are designed for dynamic joins and smart querying by analytics code and AI/LLM agents. They are not denormalized; all joins are performed as needed for reporting or analysis. This approach supports future integration with Model Context Protocol (MCP) agents and local LLMs (Ollama, etc.).
+
+**See the top of this document for schema and naming conventions.**
 
 ---
 
@@ -131,9 +176,9 @@ The following columns are included in `usaspending_subawards_slim` (as of May 20
 
 Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date`) are included for auditing and ETL tracking.
 
-#### Join Guidance
+#### Join Guidance (May 2025)
 
-- Use `prime_award_unique_key` to join `usaspending_subawards_slim` to `usaspending_prime_awards_slim` for analytics and reporting.
+- Use `prime_award_unique_key` to join `s3_processed.usaspending_subawards` to `s3_processed.usaspending_prime_awards` for analytics and reporting.
 - All joins should be performed dynamically in queries or by AI/LLM agents, not by denormalizing the tables.
 - Materialized views or denormalized tables may be created for specific reporting needs if required, but are not the default.
 
@@ -141,6 +186,13 @@ Additional metadata columns (e.g., `id`, `created_at`, `updated_at`, `fetch_date
 
 - This architecture supports maintainability, scalability, and future AI/LLM-driven analytics.
 - Enables integration with Model Context Protocol (MCP) agents and local LLMs for advanced analytics, reasoning, and document generation.
+- Robust deduplication and schema-aware transformation ensure high data quality for downstream AI, analytics, and RAG workflows.
+
+# Filter/Aggregation Tables for Analytics & AI
+
+The transformation pipeline precomputes filter value tables (e.g., `filter_values_parent_award_agency_name`, `filter_values_naics_code`) and dependent filter relationships (`filter_dependencies`) for fast UI filtering and analytics. Quarterly aggregation tables (e.g., `quarterly_data`) are also created for timeline visualizations. All are generated in `s3_processed` and are safe for repeated runs.
+
+---
 
 ---
 
