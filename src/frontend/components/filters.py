@@ -100,8 +100,70 @@ def get_unique_values(
         add_all: Whether to add 'All' as the first option
     Returns:
         List of unique values for the column    """
-    # Use cached version for better performance
-    return _get_unique_values_cached(column, table, condition, dependencies, add_all)
+    # Use optimized filter tables/materialized views for NAICS and Agency
+    if column == "naics_code":
+        try:
+            engine = get_db_engine()
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                # Try filter values table first
+                result = conn.execute(text("""
+                    SELECT DISTINCT value 
+                    FROM s3_processed.filter_values_naics_code 
+                    WHERE value IS NOT NULL 
+                    ORDER BY value
+                """)).fetchall()
+                if result:
+                    values = [row[0] for row in result]
+                    if add_all:
+                        values = ["All"] + values
+                    return values
+        except Exception:
+            pass
+        # Fallback to cached version
+        return _get_unique_values_cached(column, table, condition, dependencies, add_all)
+    elif column == "parent_award_agency_name":
+        try:
+            engine = get_db_engine()
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                # Try materialized view first
+                result = conn.execute(text("""
+                    SELECT parent_award_agency_name 
+                    FROM s3_processed.mv_top_agencies 
+                    ORDER BY rank_by_obligation 
+                    LIMIT 100
+                """)).fetchall()
+                if result:
+                    values = [row[0] for row in result]
+                    if add_all:
+                        values = ["All"] + values
+                    return values
+        except Exception:
+            pass
+        # Fallback to filter values table
+        try:
+            engine = get_db_engine()
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                result = conn.execute(text("""
+                    SELECT DISTINCT value 
+                    FROM s3_processed.filter_values_parent_award_agency_name 
+                    WHERE value IS NOT NULL 
+                    ORDER BY value 
+                    LIMIT 100
+                """)).fetchall()
+                if result:
+                    values = [row[0] for row in result]
+                    if add_all:
+                        values = ["All"] + values
+                    return values
+        except Exception:
+            pass
+        # Final fallback to cached version
+        return _get_unique_values_cached(column, table, condition, dependencies, add_all)
+    else:
+        return _get_unique_values_cached(column, table, condition, dependencies, add_all)
 
 # --- Sidebar Filter Block (for use in sidebar_layout) ---
 def sidebar_filters(

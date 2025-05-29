@@ -113,6 +113,7 @@ def create_performance_indexes():
     Create recommended indexes on s3_processed.usaspending_prime_awards and s3_processed.usaspending_subawards
     to optimize analytics, AI, and RAG workloads. Index creation is idempotent and safe to rerun.
     """
+    logger.info("[PERF] Ensuring performance indexes exist on s3_processed.usaspending_prime_awards...")
     with engine.connect() as connection:
         # Helper to drop index if it exists on the table in s3_processed
         def drop_index_if_exists(index_name: str):
@@ -128,6 +129,15 @@ def create_performance_indexes():
                 END$$;
             """
             connection.execute(text(sql))
+
+        # --- Enterprise filter performance: ensure B-tree indexes for filter tables ---
+        with connection.begin():
+            connection.execute(text(
+                "CREATE INDEX IF NOT EXISTS s3p_idx_prime_naics_code ON s3_processed.usaspending_prime_awards (naics_code)"))
+            logger.info("  [OK] Index on naics_code")
+            connection.execute(text(
+                "CREATE INDEX IF NOT EXISTS s3p_idx_prime_parent_agency ON s3_processed.usaspending_prime_awards (parent_award_agency_name)"))
+            logger.info("  [OK] Index on parent_award_agency_name")
 
         prime_table = 's3_processed.usaspending_prime_awards'
         prime_indexes = [
