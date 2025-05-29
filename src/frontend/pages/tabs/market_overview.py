@@ -2,8 +2,10 @@
 Market Overview tab for the strategic dashboard.
 """
 
+
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -115,10 +117,10 @@ def render_tab(df: pd.DataFrame):
             )
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Obligations and Award Actions Trend
-        col1, col2 = st.columns(2)
+        # Obligations and Award Actions Trend (Row 1)
+        col1, col2 = st.columns([2, 2])
         with col1:
-            st.subheader("Obligations and Award Actions Trend")            
+            st.subheader("Obligations and Award Actions Trend")
             quarterly_data = get_quarterly_trends_optimized(
                 naics_code=naics,
                 start_date=start_date,
@@ -132,6 +134,13 @@ def render_tab(df: pd.DataFrame):
             else:
                 st.warning("Insufficient data for quarterly trends visualization.")
         with col2:
+            st.subheader("5-Year Projection (Placeholder)")
+            st.info("Projection chart coming soon: 5-year contract obligation projection with escalation and suitability overlay.")
+
+        # Capture Intensity Row (New Row)
+        st.markdown("<hr style='margin: 1.5rem 0;'>", unsafe_allow_html=True)
+        col1, col2 = st.columns([2, 2])
+        with col1:
             st.subheader("Capture Intensity")
             agency_ratio: List[AgencyRatioMetrics] = get_agency_obligation_ratio(
                 naics_code=naics,
@@ -139,12 +148,60 @@ def render_tab(df: pd.DataFrame):
                 end_date=end_date,
                 agency=agency
             )
+            agency_df = None
             if agency_ratio and len(agency_ratio) > 1:
                 agency_df = pd.DataFrame([a.dict() for a in agency_ratio])
                 fig = plot_capture_intensity_scatter(agency_df, THEME)
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("Insufficient data for agency ratio analysis.")
+        with col2:
+            st.subheader("Agencies Above the Line")
+            if agency_ratio and len(agency_ratio) > 1:
+                if agency_df is None:
+                    agency_df = pd.DataFrame([a.dict() for a in agency_ratio])
+                # Calculate medians
+                median_count = agency_df["award_count_normalized"].median()
+                median_obligation = agency_df["obligation_normalized"].median()
+                # Percentile-based Intensity Score: average of percentiles for award count and obligation
+                agency_df["ac_pct"] = agency_df["award_count_normalized"].rank(pct=True)
+                agency_df["ob_pct"] = agency_df["obligation_normalized"].rank(pct=True)
+                # Clean up any non-finite values in percentiles
+                agency_df["ac_pct"] = agency_df["ac_pct"].replace([np.inf, -np.inf], 0).fillna(0)
+                agency_df["ob_pct"] = agency_df["ob_pct"].replace([np.inf, -np.inf], 0).fillna(0)
+                agency_df["Intensity"] = ((agency_df["ac_pct"] + agency_df["ob_pct"]) / 2 * 100)
+                agency_df["Intensity"] = agency_df["Intensity"].replace([np.inf, -np.inf], 0).fillna(0).round(0).astype(int)
+                # Above the line mask
+                above_mask = (agency_df["award_count_normalized"] > median_count) & (agency_df["obligation_normalized"] > median_obligation)
+                # Agencies above both medians
+                above_df = agency_df[above_mask]
+                if not above_df.empty:
+                    # Sort by intensity, descending
+                    above_df = above_df.sort_values("Intensity", ascending=False)
+                    # Format obligations and avg award value as currency, no decimals
+                    def fmt_currency(val):
+                        return f"${val:,.0f}" if pd.notnull(val) else "-"
+                    table_df = above_df[["Intensity", "parent_award_agency_name", "award_count", "federal_action_obligation", "avg_award_value"]].rename(columns={
+                        "parent_award_agency_name": "Agency",
+                        "award_count": "Award Actions",
+                        "federal_action_obligation": "Obligations",
+                        "avg_award_value": "Avg Award Value"
+                    })
+                    table_df["Obligations"] = table_df["Obligations"].apply(fmt_currency)
+                    table_df["Avg Award Value"] = table_df["Avg Award Value"].apply(fmt_currency)
+                    st.dataframe(
+                        table_df,
+                        use_container_width=True,
+                        height=450,
+                        hide_index=True
+                    )
+                    # Intensity Score explanation:
+                    # The Intensity Score is a percentile-based metric (0–100) that reflects how active an agency is in both award actions and total obligations, relative to its peers.
+                    # A higher score means the agency is above more of its peers in both contract volume and spending. Agencies with high Intensity Scores are strong candidates for focused capture efforts.
+                else:
+                    st.info("No agencies above the median for both award actions and obligations.")
+            else:
+                st.info("Agency data not available for table.")
 
         # Contract Vehicle Distribution and Competitive Landscape
         col1, col2 = st.columns(2)
