@@ -104,13 +104,13 @@ def render_tab(df: pd.DataFrame):
         with col6:
             metric_card(
                 label="Suitability",
-                value="35%",
+                value="9%",
                 help_text="The percentage of expiring contracts suitable for R&S based on comparing company capabilities to expiring contract descriptions"
             )
         with col7:
             metric_card(
                 label="Synergy",
-                value="55%",
+                value="14%",
                 help_text="The percentage of expiring contracts suitable across MTS based on comparing company capabilities to expiring contract descriptions"
             )
         st.markdown("</div>", unsafe_allow_html=True)
