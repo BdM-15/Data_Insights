@@ -13,11 +13,76 @@ import os
 import sys
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
+
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Robust logging setup for transformation.log
+def setup_transformation_logging():
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "transformation.log")
+    logger = logging.getLogger("transformation")
+    logger.setLevel(logging.INFO)
+    # Remove existing handlers
+    logger.handlers.clear()
+    # File handler
+    fh = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    # Console handler
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+    logger.propagate = False
+    return logger
+
+logger = setup_transformation_logging()
+# Function to create indexes for deduplicated tables in s3_processed
+def clean_s3_processed_schema():
+    """
+    Drop all tables, indexes, and materialized views in s3_processed except usaspending_* tables.
+    """
+    with engine.connect() as connection:
+        logger.info("Starting schema cleanup for s3_processed (preserving usaspending_* tables)...")
+        # Drop materialized views
+        mviews = connection.execute(text("""
+            SELECT matviewname FROM pg_matviews WHERE schemaname = 's3_processed'
+        """)).fetchall()
+        for (mv,) in mviews:
+            if not mv.startswith("usaspending_"):
+                try:
+                    connection.execute(text(f'DROP MATERIALIZED VIEW IF EXISTS s3_processed.{mv} CASCADE'))
+                    logger.info(f"Dropped materialized view: {mv}")
+                except Exception as e:
+                    logger.error(f"Failed to drop materialized view {mv}: {e}")
+
+        # Drop tables
+        tables = connection.execute(text("""
+            SELECT tablename FROM pg_tables WHERE schemaname = 's3_processed'
+        """)).fetchall()
+        for (tbl,) in tables:
+            if not tbl.startswith("usaspending_"):
+                try:
+                    connection.execute(text(f'DROP TABLE IF EXISTS s3_processed.{tbl} CASCADE'))
+                    logger.info(f"Dropped table: {tbl}")
+                except Exception as e:
+                    logger.error(f"Failed to drop table {tbl}: {e}")
+
+        # Drop indexes (indexes on usaspending_* will be recreated by transformation)
+        indexes = connection.execute(text("""
+            SELECT indexname FROM pg_indexes WHERE schemaname = 's3_processed'
+        """)).fetchall()
+        for (idx,) in indexes:
+            if not (idx.startswith("usaspending_") or idx.startswith("s3p_idx_")):
+                try:
+                    connection.execute(text(f'DROP INDEX IF EXISTS s3_processed.{idx} CASCADE'))
+                    logger.info(f"Dropped index: {idx}")
+                except Exception as e:
+                    logger.error(f"Failed to drop index {idx}: {e}")
+
+        logger.info("Schema cleanup complete. Only usaspending_* tables remain.")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1262,12 +1327,64 @@ def preprocess_data_optimized():
     return results
 
 # If run as a script, run preprocessing (and thus indexing) automatically
+def clean_s3_processed_schema():
+    """
+    Remove all tables, materialized views, and indexes in s3_processed except for usaspending_* tables.
+    For usaspending_* tables, drop all indexes except PK/unique constraints.
+    Logs all actions to transformation.log.
+    """
+    from sqlalchemy import inspect
+    import re
+    logger.info("[CLEANUP] Starting cleanup of s3_processed schema...")
+    with engine.connect() as connection:
+        # Use an explicit transaction block to ensure DDL is committed
+        with connection.begin():
+            # 1. Drop all materialized views except usaspending_*
+            mv_query = text("""
+                SELECT matviewname FROM pg_matviews
+                WHERE schemaname = 's3_processed' AND matviewname NOT LIKE 'usaspending_%'
+            """)
+            mvs = [row[0] for row in connection.execute(mv_query).fetchall()]
+            for mv in mvs:
+                logger.info(f"[CLEANUP] Dropping materialized view: {mv}")
+                connection.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS s3_processed.{mv} CASCADE"))
+            # 2. Drop all tables except usaspending_*
+            table_query = text("""
+                SELECT tablename FROM pg_tables
+                WHERE schemaname = 's3_processed' AND tablename NOT LIKE 'usaspending_%'
+            """)
+            tables = [row[0] for row in connection.execute(table_query).fetchall()]
+            for table in tables:
+                logger.info(f"[CLEANUP] Dropping table: {table}")
+                connection.execute(text(f"DROP TABLE IF EXISTS s3_processed.{table} CASCADE"))
+            # 3. For each usaspending_* table, drop all non-PK/unique indexes
+            usaspending_table_query = text("""
+                SELECT tablename FROM pg_tables
+                WHERE schemaname = 's3_processed' AND tablename LIKE 'usaspending_%'
+            """)
+            usaspending_tables = [row[0] for row in connection.execute(usaspending_table_query).fetchall()]
+            for table in usaspending_tables:
+                # Get all indexes for this table
+                idx_query = text(f"""
+                    SELECT i.relname as index_name, ix.indisprimary, ix.indisunique
+                    FROM pg_class t
+                    JOIN pg_index ix ON t.oid = ix.indrelid
+                    JOIN pg_class i ON i.oid = ix.indexrelid
+                    JOIN pg_namespace n ON n.oid = t.relnamespace
+                    WHERE n.nspname = 's3_processed' AND t.relname = :table
+                """)
+                indexes = connection.execute(idx_query, {"table": table}).fetchall()
+                for index_name, is_pk, is_unique in indexes:
+                    # Only keep PK or unique indexes
+                    if not is_pk and not is_unique:
+                        logger.info(f"[CLEANUP] Dropping index {index_name} on {table}")
+                        connection.execute(text(f"DROP INDEX IF EXISTS s3_processed.{index_name} CASCADE"))
+            logger.info("[CLEANUP] s3_processed schema cleanup complete.")
+
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)]
-    )
-    logger.info("Starting full transformation pipeline (indexing + materialized views + preprocessing)...")
+    logger.info("=== Data_Insights Transformation Pipeline Started ===")
+    logger.info("Step 1: Cleaning s3_processed schema (preserving usaspending_* tables and only PK/unique indexes)...")
+    clean_s3_processed_schema()
+    logger.info("Step 2: Running full transformation pipeline (indexing + materialized views + preprocessing)...")
     preprocess_data_optimized()
-    logger.info("Transformation pipeline complete.")
+    logger.info("=== Transformation pipeline complete. See logs/transformation.log for details. ===")
