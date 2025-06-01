@@ -21,7 +21,6 @@ from src.backend.data.app_processors.awards import (
     get_top_agencies,
     get_quarterly_trends,
     get_agency_obligation_ratio,
-    get_contract_vehicles,
     get_expiring_contracts,
     get_unique_naics_codes,
     # Import optimized functions for better performance
@@ -38,8 +37,8 @@ from src.backend.data.models.data_models import (
 )
 from src.frontend.styles.theme import THEME
 from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends, plot_five_year_projection
-from src.frontend.visualizations.charts.distribution_charts import plot_capture_intensity_scatter, plot_treemap_competitive_landscape
-from src.frontend.visualizations.charts.comparison_charts import plot_contract_vehicle_pie, plot_top_agencies_bar, plot_top_agencies_obligation_bar
+from src.frontend.visualizations.charts.distribution_charts import plot_capture_intensity_scatter, plot_sankey_competitive_landscape
+from src.frontend.visualizations.charts.comparison_charts import plot_top_agencies_bar, plot_top_agencies_obligation_bar
 from src.frontend.visualizations.components.metric_cards import display_summary_metrics
 
 def render_tab(df: pd.DataFrame):
@@ -214,35 +213,25 @@ def render_tab(df: pd.DataFrame):
                 else:
                     st.info("No agencies above the median for both award actions and obligations.")
             else:
-                st.info("Agency data not available for table.")
-
-        # Contract Vehicle Distribution and Competitive Landscape
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Contract Vehicle Distribution")
-            vehicle_data: List[ContractVehicleSummary] = get_contract_vehicles(df)
-            if vehicle_data:
-                vehicle_df = pd.DataFrame([v.dict() for v in vehicle_data])
-                fig = plot_contract_vehicle_pie(vehicle_df, THEME)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Insufficient data for contract vehicle analysis.")
-        with col2:
-            st.subheader("Competitive Landscape")
-            # Use SQL-backed, filter-aware treemap data function
-            treemap_data: List[TreemapPathElement] = get_treemap_data(
-                naics_code=naics,
-                start_date=start_date,
-                end_date=end_date,
-                agency=agency,
-                limit=10
-            )
-            if treemap_data:
-                treemap_df = pd.DataFrame([t.dict() for t in treemap_data])
-                fig = plot_treemap_competitive_landscape(treemap_df, THEME)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Insufficient data for competitive landscape analysis.")
+                st.info("Agency data not available for table.")        # Follow the Action Analysis (Full Width Row)
+        st.markdown("<hr style='margin: 1.5rem 0;'>", unsafe_allow_html=True)
+        st.subheader("Follow the Action")
+        
+        # Get treemap data for the sankey visualization
+        treemap_data: List[TreemapPathElement] = get_treemap_data(
+            naics_code=naics,
+            start_date=start_date,
+            end_date=end_date,
+            agency=agency,
+            limit=10
+        )
+        
+        if treemap_data:
+            treemap_df = pd.DataFrame([t.dict() for t in treemap_data])
+            fig = plot_sankey_competitive_landscape(treemap_df, THEME, config={"title": "Follow the Action: Companies → Agencies → Contracts"})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Insufficient data for contract flow analysis.")
 
         # Top Agencies Analysis
         st.subheader("Top Agencies Analysis")

@@ -91,6 +91,34 @@ class TreemapPathElement(BaseModel):
     market_share: Optional[float] = None
     win_rate: Optional[float] = None
 
+class SunburstPathElement(BaseModel):
+    """
+    Data model for sunburst chart showing hierarchical competitive landscape.
+    Path: Parent Company → Subsidiary → Agency → Contract
+    """
+    recipient_parent_name: Optional[str] = None
+    recipient_name: str
+    funding_sub_agency_name: Optional[str] = None
+    transaction_description: str
+    federal_action_obligation: float
+    award_count: Optional[int] = None
+    market_share: Optional[float] = None
+    win_rate: Optional[float] = None
+
+class SankeyFlowElement(BaseModel):
+    """
+    Data model for sankey diagram showing flow from companies to agencies to contracts.
+    Represents the source-target-value relationship for Sankey nodes and links.
+    """
+    recipient_parent_name: Optional[str] = None
+    recipient_name: str
+    funding_sub_agency_name: Optional[str] = None
+    transaction_description: str
+    federal_action_obligation: float
+    award_count: Optional[int] = None
+    market_share: Optional[float] = None
+    win_rate: Optional[float] = None
+
 # Model for data related to competitor performance analysis in 'competition.py'
 class CompetitorPerformance(BaseModel):
     recipient_name: str

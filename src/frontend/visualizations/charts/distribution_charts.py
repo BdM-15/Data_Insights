@@ -306,3 +306,176 @@ def plot_competitor_agency_heatmap(
     )
     apply_plotly_theme(fig, theme)
     return fig
+
+
+def plot_sunburst_competitive_landscape(
+    treemap_df: pd.DataFrame,
+    theme: Dict[str, Any],
+    config: Dict[str, Any] = None
+) -> go.Figure:
+    """
+    Create a sunburst chart for competitive landscape hierarchy.
+
+    Args:
+        treemap_df: DataFrame with treemap data.
+        theme: Theme dictionary for colors and styles.
+        config: Optional chart configuration (e.g., title).
+
+    Returns:
+        Plotly Figure object.
+    """
+    import plotly.express as px
+    
+    fig = px.sunburst(
+        treemap_df,
+        path=["recipient_parent_name", "recipient_name", "funding_sub_agency_name", "transaction_description"],
+        values="federal_action_obligation",
+        color="win_rate",
+        color_continuous_scale="Viridis",
+        title=config.get('title', 'Competitive Landscape Hierarchy') if config else 'Competitive Landscape Hierarchy',
+        hover_data=["award_count", "market_share"]
+    )
+    
+    fig.update_traces(
+        hovertemplate="<b>%{label}</b><br>Obligations: $%{value:,.2f}<br>Market Share: %{customdata[1]:.1f}%<br>Award Count: %{customdata[0]}<extra></extra>",
+        textfont=dict(size=10)
+    )
+    
+    fig.update_layout(
+        margin=dict(l=40, r=40, t=40, b=40),
+        plot_bgcolor=theme.get('plot_bgcolor', '#051B30'),
+        paper_bgcolor=theme.get('paper_bgcolor', '#051B30'),
+        font=dict(color=theme.get('font_color', '#FFFFFF'))
+    )
+    
+    apply_plotly_theme(fig, theme)
+    return fig
+
+
+def plot_sankey_competitive_landscape(
+    treemap_df: pd.DataFrame,
+    theme: Dict[str, Any],
+    config: Dict[str, Any] = None
+) -> go.Figure:
+    """
+    Create a sankey diagram for competitive landscape flow.
+
+    Args:
+        treemap_df: DataFrame with treemap data.
+        theme: Theme dictionary for colors and styles.
+        config: Optional chart configuration (e.g., title).
+
+    Returns:
+        Plotly Figure object.
+    """
+    import plotly.graph_objects as go
+    
+    # Create unique node list for the sankey diagram
+    nodes = []
+    links = []
+    
+    # Build node mapping
+    node_map = {}
+    node_counter = 0
+    
+    # Add all unique nodes
+    for level in ["recipient_parent_name", "recipient_name", "funding_sub_agency_name", "transaction_description"]:
+        unique_values = treemap_df[level].unique()
+        for value in unique_values:
+            if value not in node_map:
+                node_map[value] = node_counter
+                nodes.append(value)
+                node_counter += 1
+      # Create links between levels
+    for _, row in treemap_df.iterrows():
+        # Parent to subsidiary
+        if row["recipient_parent_name"] != row["recipient_name"]:
+            links.append({
+                "source": node_map[row["recipient_parent_name"]],
+                "target": node_map[row["recipient_name"]],
+                "value": row["federal_action_obligation"]
+            })
+        
+        # Subsidiary to agency
+        links.append({
+            "source": node_map[row["recipient_name"]],
+            "target": node_map[row["funding_sub_agency_name"]],
+            "value": row["federal_action_obligation"]
+        })
+        
+        # Agency to contract
+        links.append({
+            "source": node_map[row["funding_sub_agency_name"]],
+            "target": node_map[row["transaction_description"]],
+            "value": row["federal_action_obligation"]
+        })
+      # Create vibrant color scheme with distinct colors for each level
+    node_colors = []
+    link_colors = []
+    
+    # Define color mapping for each hierarchy level
+    level_colors = {
+        'parent_company': theme.get('accent1_color', '#5271FF'),      # Electric indigo for parent companies
+        'subsidiary': theme.get('primary_color', '#00C3FF'),          # Electric blue for subsidiaries
+        'agency': theme.get('accent2_color', '#FF2EDF'),              # Electric pink for agencies
+        'contract': theme.get('projection_obligations', '#FFD700')    # Bright yellow for contracts
+    }
+    
+    # Assign colors to nodes based on their level in the hierarchy
+    for node in nodes:
+        # Determine node level by checking which level it appears in the data
+        if any(row["recipient_parent_name"] == node for _, row in treemap_df.iterrows()):
+            node_colors.append(level_colors['parent_company'])
+        elif any(row["recipient_name"] == node for _, row in treemap_df.iterrows()):
+            node_colors.append(level_colors['subsidiary'])
+        elif any(row["funding_sub_agency_name"] == node for _, row in treemap_df.iterrows()):
+            node_colors.append(level_colors['agency'])
+        elif any(row["transaction_description"] == node for _, row in treemap_df.iterrows()):
+            node_colors.append(level_colors['contract'])
+        else:
+            node_colors.append(theme.get('highlight_color', '#38ECFF'))  # Fallback color
+    
+    # Create colorful links with gradients based on source and target colors
+    for link in links:
+        source_color = node_colors[link["source"]]
+        target_color = node_colors[link["target"]]
+        
+        # Create a gradient-like effect by using the source color with transparency
+        # Convert hex to rgba for transparency
+        if source_color.startswith('#'):
+            r = int(source_color[1:3], 16)
+            g = int(source_color[3:5], 16)
+            b = int(source_color[5:7], 16)
+            link_colors.append(f"rgba({r}, {g}, {b}, 0.6)")
+        else:
+            link_colors.append(f"rgba(0, 195, 255, 0.6)")  # Fallback
+
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=15,
+            thickness=20,
+            line=dict(color="rgba(255, 255, 255, 0.2)", width=1),  # Subtle white border for definition
+            label=nodes,
+            color=node_colors,
+            hovertemplate="<b>%{label}</b><br>Total Flow: $%{value:,.0f}<extra></extra>"
+        ),
+        link=dict(
+            source=[link["source"] for link in links],
+            target=[link["target"] for link in links],
+            value=[link["value"] for link in links],
+            color=link_colors,
+            hovertemplate="<b>%{source.label}</b> → <b>%{target.label}</b><br>Flow: $%{value:,.0f}<extra></extra>"
+        )
+    )])
+    
+    fig.update_layout(
+        title_text=config.get('title', 'Contract Flow: Companies → Agencies → Contracts') if config else 'Contract Flow: Companies → Agencies → Contracts',
+        font_size=10,
+        margin=dict(l=40, r=40, t=40, b=40),
+        plot_bgcolor=theme.get('plot_bgcolor', '#051B30'),
+        paper_bgcolor=theme.get('paper_bgcolor', '#051B30'),
+        font=dict(color=theme.get('font_color', '#FFFFFF'))
+    )
+    
+    apply_plotly_theme(fig, theme)
+    return fig
