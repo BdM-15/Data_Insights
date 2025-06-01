@@ -12,7 +12,7 @@ import logging # Added for logger
 logger = logging.getLogger(__name__) # Module-level logger
 
 from src.backend.data.models.data_models import (
-    TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, AwardSummaryItem, QuarterlyTrend, ContractVehicleSummary, RecipientAwardCount, RecipientObligation, ExpiringContract
+    TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, AwardSummaryItem, QuarterlyTrend, ContractVehicleSummary, RecipientAwardCount, RecipientObligation, ExpiringContract, ProjectionTrend
 )
 
 from src.backend.core.database import get_db_engine
@@ -1485,3 +1485,195 @@ def get_competitor_agency_relationships(
         logger = logging.getLogger(__name__)
         logger.error(f"Error in get_competitor_agency_relationships: {str(e)}")
         return []
+
+def get_five_year_projection(
+    naics_code: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    agency: str = None,
+    contractor: str = None,
+    psc: str = None,
+    suitability_percentage: float = 9.0  # Default from market overview metric card
+) -> list:
+    """
+    Calculate 5-year projection based on expiring contracts with 2% annual escalation.
+    Projects contracts to be reawarded one day after their end date with:
+    - Same total obligation amount (including all modifications)
+    - 2% annual escalation applied
+    - Obligations distributed evenly across performance period
+    - Award actions counted once at projected award date
+    
+    Args:
+        naics_code, start_date, end_date, agency, contractor, psc: Optional filters
+        suitability_percentage: Percentage for potential market share calculation
+    
+    Returns:
+        List of ProjectionTrend Pydantic models
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    import pandas as pd
+    
+    engine = get_db_engine()
+    
+    # Build filters for contract query
+    filters = []
+    params = {}
+    if naics_code:
+        filters.append("naics_code = :naics_code")
+        params["naics_code"] = naics_code
+    if start_date:
+        filters.append("action_date >= :start_date")
+        params["start_date"] = start_date
+    if end_date:
+        filters.append("action_date <= :end_date")
+        params["end_date"] = end_date
+    if agency:
+        filters.append("parent_award_agency_name = :agency")
+        params["agency"] = agency
+    if contractor:
+        filters.append("recipient_name = :contractor")
+        params["contractor"] = contractor
+    if psc:
+        filters.append("product_or_service_code = :psc")
+        params["psc"] = psc
+    
+    where_clause = ""
+    if filters:
+        where_clause = "AND " + " AND ".join(filters)
+      # Get current date to determine unrealized quarters
+    current_date = datetime.now()
+    current_fy = current_date.year + 1 if current_date.month >= 10 else current_date.year
+    current_fq = ((current_date.month + 2) % 12) // 3 + 1  # Convert to fiscal quarter
+    
+    # Debug: Log current fiscal year and quarter to verify calculation
+    # For May 31, 2025: current_fy should be 2025, current_fq should be 3
+    
+    # Query contracts with their end dates and total obligations
+    query = f"""        WITH contract_totals AS (
+            SELECT 
+                contract_award_unique_key,
+                COALESCE(period_of_performance_current_end_date, 
+                        ordering_period_end_date,
+                        action_date + INTERVAL '1 year') AS contract_end_date,
+                SUM(federal_action_obligation) AS total_contract_obligation,
+                -- Calculate performance period in years (minimum 1 year)
+                GREATEST(
+                    EXTRACT(EPOCH FROM 
+                        COALESCE(period_of_performance_current_end_date, 
+                                ordering_period_end_date,
+                                action_date + INTERVAL '1 year') - 
+                        COALESCE(period_of_performance_start_date, action_date)
+                    ) / (365.25 * 24 * 3600),
+                    1.0
+                ) AS performance_period_years
+            FROM s3_processed.usaspending_prime_awards
+            WHERE 1=1 {where_clause}
+                AND COALESCE(period_of_performance_current_end_date, 
+                           ordering_period_end_date,
+                           action_date + INTERVAL '1 year') >= CURRENT_DATE
+                AND COALESCE(period_of_performance_current_end_date, 
+                           ordering_period_end_date,
+                           action_date + INTERVAL '1 year') <= CURRENT_DATE + INTERVAL '5 years'
+            GROUP BY contract_award_unique_key, contract_end_date, 
+                     period_of_performance_start_date, action_date
+        )
+        SELECT contract_end_date, total_contract_obligation, performance_period_years
+        FROM contract_totals
+        WHERE total_contract_obligation > 0
+        ORDER BY contract_end_date
+    """
+    
+    with engine.connect() as connection:
+        result = connection.execute(text(query), params).fetchall()
+        
+        # Group projections by fiscal quarter
+        quarter_obligations = defaultdict(float)
+        quarter_awards = defaultdict(int)
+        quarter_suitability = defaultdict(float)
+        
+        for row in result:
+            end_date = row[0]
+            total_obligation = float(row[1] or 0)
+            performance_years = float(row[2] or 1)
+            
+            if not end_date or total_obligation <= 0:
+                continue
+                
+            # Project recompete date as one day after end date
+            recompete_date = end_date + timedelta(days=1)
+            
+            # Calculate fiscal year and quarter for recompete
+            recompete_fy = recompete_date.year + 1 if recompete_date.month >= 10 else recompete_date.year
+            recompete_fq = ((recompete_date.month + 2) % 12) // 3 + 1
+              # Only project unrealized quarters (future from current date)
+            # A quarter is "future" if:
+            # 1. It's in a future fiscal year, OR
+            # 2. It's in the current fiscal year but a future quarter
+            is_future_quarter = (recompete_fy > current_fy) or (recompete_fy == current_fy and recompete_fq > current_fq)
+            
+            if not is_future_quarter:
+                continue
+                
+            # Calculate years from current year for escalation
+            years_from_now = recompete_fy - current_fy
+            escalation_factor = (1.02 ** years_from_now)  # 2% annual escalation
+            escalated_obligation = total_obligation * escalation_factor
+            
+            # Distribute obligation across performance period by fiscal quarter
+            quarterly_obligation = escalated_obligation / (performance_years * 4) # 4 quarters per year
+            
+            # Count award action once at recompete quarter
+            quarter_key = f"{recompete_fy}-Q{recompete_fq}"
+            quarter_awards[quarter_key] += 1
+              # Distribute obligations across performance period
+            for year_offset in range(int(performance_years) + 1):
+                for quarter in range(1, 5):
+                    obligation_fy = recompete_fy + year_offset
+                    obligation_fq = quarter
+                    obligation_quarter = f"{obligation_fy}-Q{quarter}"
+                    
+                    # Only include future quarters and within 5-year projection window
+                    is_future_obligation_quarter = (obligation_fy > current_fy) or (obligation_fy == current_fy and obligation_fq > current_fq)
+                    
+                    if obligation_fy <= current_fy + 5 and is_future_obligation_quarter:
+                        quarter_obligations[obligation_quarter] += quarterly_obligation
+                        quarter_suitability[obligation_quarter] += quarterly_obligation * (suitability_percentage / 100.0)
+        
+        # Convert to cumulative within fiscal year and create ProjectionTrend models
+        trends = []
+        fiscal_year_cumulative_obligations = defaultdict(float)
+        fiscal_year_cumulative_awards = defaultdict(int)
+        fiscal_year_cumulative_suitability = defaultdict(float)
+        
+        # Sort quarters for proper cumulative calculation
+        all_quarters = sorted(set(list(quarter_obligations.keys()) + list(quarter_awards.keys())))
+        
+        for quarter_key in all_quarters:
+            try:
+                year, quarter_str = quarter_key.split('-Q')
+                fiscal_year = int(year)
+                quarter_num = int(quarter_str)
+                
+                # Reset cumulative at start of each fiscal year
+                if quarter_num == 1:
+                    fiscal_year_cumulative_obligations[fiscal_year] = 0
+                    fiscal_year_cumulative_awards[fiscal_year] = 0
+                    fiscal_year_cumulative_suitability[fiscal_year] = 0
+                
+                # Add current quarter to cumulative
+                fiscal_year_cumulative_obligations[fiscal_year] += quarter_obligations[quarter_key]
+                fiscal_year_cumulative_awards[fiscal_year] += quarter_awards[quarter_key]
+                fiscal_year_cumulative_suitability[fiscal_year] += quarter_suitability[quarter_key]
+                trends.append(ProjectionTrend(
+                    quarter=quarter_key,
+                    year=fiscal_year,
+                    total_obligation=fiscal_year_cumulative_obligations[fiscal_year],
+                    award_count=fiscal_year_cumulative_awards[fiscal_year],
+                    is_projection=True,
+                    suitability_obligation=quarter_suitability[quarter_key]  # Use quarterly value, not cumulative
+                ))
+            except (ValueError, IndexError):
+                continue
+        
+        return trends

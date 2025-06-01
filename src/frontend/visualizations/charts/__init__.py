@@ -2,7 +2,7 @@
 Init file for charts subpackage. Enables direct imports from charts modules.
 Exposes all main chart functions for direct import.
 """
-from .trend_charts import plot_quarterly_trends, plot_trend_chart
+from .trend_charts import plot_quarterly_trends, plot_trend_chart, plot_five_year_projection
 from .distribution_charts import (
     plot_capture_intensity_scatter,
     plot_treemap_competitive_landscape,

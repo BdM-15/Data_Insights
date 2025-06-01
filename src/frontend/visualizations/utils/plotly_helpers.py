@@ -23,3 +23,19 @@ def apply_plotly_theme(fig: go.Figure, theme: Dict) -> None:
         plot_bgcolor=theme.get('plot_bgcolor', '#051B30'),
         paper_bgcolor=theme.get('paper_bgcolor', '#051B30')
     )
+
+
+def format_currency_legend_label(base_label: str, value: float = None) -> str:
+    """
+    Format legend labels with currency values using comma separators.
+    
+    Args:
+        base_label: Base legend label text
+        value: Optional currency value to append with formatting
+        
+    Returns:
+        Formatted legend label string
+    """
+    if value is not None:
+        return f"{base_label} (${value:,.0f})"
+    return base_label

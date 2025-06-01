@@ -1,4 +1,3 @@
-
 """
 Pydantic models for data validation in Data Insights.
 Define all data schemas used in data processing modules here.
@@ -42,6 +41,14 @@ class QuarterlyTrend(BaseModel):
     year: int
     total_obligation: float
     award_count: int
+
+class ProjectionTrend(BaseModel):
+    quarter: str # e.g., "2026-Q1"
+    year: int
+    total_obligation: float
+    award_count: int
+    is_projection: bool = True  # Distinguishes from historical data
+    suitability_obligation: Optional[float] = None  # Potential market share based on suitability percentage
 
 class ContractVehicleSummary(BaseModel):
     # Example: 'contract_award_type_name' or similar for contract_vehicle

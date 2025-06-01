@@ -29,14 +29,15 @@ from src.backend.data.app_processors.awards import (
     get_top_agencies_optimized, 
     get_quarterly_trends_optimized,
     get_agency_obligation_ratio_optimized,
-    get_expiring_contracts_optimized
+    get_expiring_contracts_optimized,
+    get_five_year_projection
 )
 from src.backend.data.app_processors.competition import get_treemap_data
 from src.backend.data.models.data_models import (
-    AwardSummaryItem, TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, ContractVehicleSummary, TreemapPathElement
+    AwardSummaryItem, TopAgencyByCount, TopAgencyByObligation, AgencyRatioMetrics, ContractVehicleSummary, TreemapPathElement, ProjectionTrend
 )
 from src.frontend.styles.theme import THEME
-from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends
+from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trends, plot_five_year_projection
 from src.frontend.visualizations.charts.distribution_charts import plot_capture_intensity_scatter, plot_treemap_competitive_landscape
 from src.frontend.visualizations.charts.comparison_charts import plot_contract_vehicle_pie, plot_top_agencies_bar, plot_top_agencies_obligation_bar
 from src.frontend.visualizations.components.metric_cards import display_summary_metrics
@@ -134,8 +135,20 @@ def render_tab(df: pd.DataFrame):
             else:
                 st.warning("Insufficient data for quarterly trends visualization.")
         with col2:
-            st.subheader("5-Year Projection (Placeholder)")
-            st.info("Projection chart coming soon: 5-year contract obligation projection with escalation and suitability overlay.")
+            st.subheader("5-Year Projection")
+            projection_data = get_five_year_projection(
+                naics_code=naics,
+                start_date=start_date,
+                end_date=end_date,
+                agency=agency,
+                suitability_percentage=9.0  # From metric card
+            )
+            if projection_data:
+                projection_df = pd.DataFrame([p.dict() for p in projection_data])
+                fig = plot_five_year_projection(projection_df, THEME)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No projection data available. This could be due to insufficient expiring contracts in the next 5 years.")
 
         # Capture Intensity Row (New Row)
         st.markdown("<hr style='margin: 1.5rem 0;'>", unsafe_allow_html=True)
