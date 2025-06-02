@@ -233,39 +233,21 @@ def render_tab(df: pd.DataFrame):
         else:
             st.warning("Insufficient data for contract flow analysis.")
 
-        # Top Agencies Analysis
-        st.subheader("Top Agencies Analysis")
-        col1, col2 = st.columns(2)
-        with col1:
-            top_agencies_count: List[TopAgencyByCount] = get_top_agencies(
-                naics_code=naics,
-                start_date=start_date,
-                end_date=end_date,
-                agency=agency,
-                metric="count",
-                n=15
-            )
-            if top_agencies_count:
-                count_df = pd.DataFrame([a.dict() for a in top_agencies_count])
-                fig = plot_top_agencies_bar(count_df, value_col="award_count", label_col="parent_award_agency_name", theme=THEME, config={"title": "Top Agencies by Award Actions", "x_label": "Award Actions", "y_label": "Agency"})
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Insufficient data for top agencies by award actions.")
-        with col2:
-            top_agencies_dollars: List[TopAgencyByObligation] = get_top_agencies(
-                naics_code=naics,
-                start_date=start_date,
-                end_date=end_date,
-                agency=agency,
-                metric="obligation",
-                n=15
-            )
-            if top_agencies_dollars:
-                dollars_df = pd.DataFrame([a.dict() for a in top_agencies_dollars])
-                fig = plot_top_agencies_obligation_bar(dollars_df, THEME)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Insufficient data for top agencies by obligation amount.")
+        # --- AI Chatbot Placeholder ---
+        st.subheader("AI Chatbot (Coming Soon)")
+        st.info(
+            """
+            **Capture Insights AI Chatbot**
+            
+            This section will provide an interactive AI assistant for capture managers to ask questions about the data in the `s3_processed` schema. The chatbot will leverage a local LLM (e.g., Mistral via Ollama) and use the mcp-alchemy tool for secure, read-only SQL access to the capture insights database. All processing will remain local for privacy and compliance.
+            
+            _Planned features:_
+            - Natural language Q&A about contracts, agencies, competitors, and trends
+            - Context-aware responses using the latest dashboard filters
+            - Secure, local inference (no external API calls)
+            - Future support for document generation and strategic recommendations
+            """
+        )
     else:
         st.warning("No data available. Please check the database connection details in the sidebar.")
         st.info("Possible issues:")
