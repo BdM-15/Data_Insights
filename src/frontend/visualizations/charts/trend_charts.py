@@ -61,10 +61,10 @@ def plot_quarterly_trends(
 
     Returns:
         Plotly Figure object.
-    """
-    # Reason: Dual-axis for obligations and award actions trend.
+    """    # Reason: Dual-axis for obligations and award actions trend.
     from plotly.subplots import make_subplots
     fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
     fig.add_trace(
         go.Scatter(
             x=qtr_df["quarter"],
@@ -101,5 +101,123 @@ def plot_quarterly_trends(
     fig.update_xaxes(title_text="Fiscal Period", showgrid=True, gridcolor=theme["grid_color"], tickangle=45)
     fig.update_yaxes(title_text="Obligations ($)", secondary_y=False, showgrid=True, gridcolor=theme["grid_color"], tickprefix="$", tickformat=",.")
     fig.update_yaxes(title_text="Award Actions", secondary_y=True, showgrid=False)
+    apply_plotly_theme(fig, theme)
+    return fig
+
+
+def plot_five_year_projection(
+    projection_df: pd.DataFrame,
+    theme: Dict[str, Any],
+    config: Dict[str, Any] = None
+) -> go.Figure:
+    """
+    Create a dual-axis time-series chart for 5-year obligation and award action projections.
+    Uses the same structure and styling as quarterly trends chart.
+
+    Args:
+        projection_df: DataFrame with 'quarter', 'total_obligation', 'award_count', 'suitability_obligation' columns.
+        theme: Theme dictionary for colors and styles.
+        config: Optional chart configuration (e.g., title).
+
+    Returns:
+        Plotly Figure object.
+    """
+    # Reason: Dual-axis for projected obligations and award actions, plus suitability overlay.
+    from plotly.subplots import make_subplots
+    from datetime import datetime
+    
+    # Filter out historical quarters - only show future projections
+    current_date = datetime.now()
+    current_fy = current_date.year if current_date.month >= 10 else current_date.year - 1
+    current_quarter = ((current_date.month - 1) // 3) + 1
+    if current_date.month >= 10:  # FY starts in October
+        current_quarter = current_quarter - 3 if current_quarter > 3 else current_quarter + 1
+    
+    # Create current quarter string for comparison
+    current_quarter_str = f"{current_fy}-Q{current_quarter}"
+    
+    # Filter DataFrame to only include future quarters
+    def is_future_quarter(quarter_str):
+        try:
+            year, q = quarter_str.split('-Q')
+            year = int(year)
+            quarter = int(q)
+            
+            if year > current_fy:
+                return True
+            elif year == current_fy:
+                return quarter > current_quarter
+            else:
+                return False
+        except:
+            return True  # Include if parsing fails
+    
+    projection_df = projection_df[projection_df["quarter"].apply(is_future_quarter)].copy()
+      # If no future quarters, return empty chart
+    if projection_df.empty:
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.update_layout(
+            title="No Future Projections Available",
+            plot_bgcolor=theme["bg_color"],
+            paper_bgcolor=theme["bg_color"],
+            font=dict(color=theme["text_color"]),
+        )
+        return fig
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    # Main projection obligations line
+    fig.add_trace(
+        go.Scatter(
+            x=projection_df["quarter"],
+            y=projection_df["total_obligation"],
+            name="Projected Obligations",
+            line=dict(color=theme["projection_obligations"], width=3, dash="dot"),
+            mode="lines+markers",
+            marker=dict(size=8, color=theme["projection_obligations"]),
+            hovertemplate="<b>%{x}</b><br>Projected Obligations: $%{y:,.0f}<extra></extra>"
+        ),
+        secondary_y=False
+    )
+    
+    # Projected award actions line (add second to control legend order)
+    fig.add_trace(
+        go.Scatter(
+            x=projection_df["quarter"],
+            y=projection_df["award_count"],
+            name="Projected Award Actions",
+            line=dict(color=theme["projection_awards"], width=3, dash="dot"),
+            mode="lines+markers",
+            marker=dict(size=8, color=theme["projection_awards"]),
+            hovertemplate="<b>%{x}</b><br>Projected Award Actions: %{y:,.0f}<extra></extra>"
+        ),
+        secondary_y=True
+    )
+    
+    # Suitability market share bar (add last to appear last in legend)
+    if "suitability_obligation" in projection_df.columns:
+        fig.add_trace(
+            go.Bar(
+                x=projection_df["quarter"],
+                y=projection_df["suitability_obligation"],
+                name="Potential Market Share",
+                marker=dict(color=theme["projection_market"], opacity=0.3),
+                hovertemplate="<b>%{x}</b><br>Potential Market Share: $%{y:,.0f}<extra></extra>",
+                yaxis="y"
+            ),
+            secondary_y=False
+        )
+    
+    fig.update_layout(
+        title=config.get("title", "5-Year Obligation & Award Action Projection") if config else "5-Year Obligation & Award Action Projection",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        margin=dict(l=40, r=40, t=40, b=40),
+        plot_bgcolor=theme["bg_color"],
+        paper_bgcolor=theme["bg_color"],
+        font=dict(color=theme["text_color"]),
+    )
+    fig.update_xaxes(title_text="Fiscal Period", showgrid=True, gridcolor=theme["grid_color"], tickangle=45)
+    fig.update_yaxes(title_text="Projected Obligations ($)", secondary_y=False, showgrid=True, gridcolor=theme["grid_color"], tickprefix="$", tickformat=",.")
+    fig.update_yaxes(title_text="Projected Award Actions", secondary_y=True, showgrid=False)
     apply_plotly_theme(fig, theme)
     return fig

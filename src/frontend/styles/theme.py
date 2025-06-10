@@ -14,7 +14,12 @@ THEME = {
     'text_color': '#FFFFFF',       # White text
     'grid_color': 'rgba(0,195,255,0.15)', # Subtle electric blue grid lines
     'card_bg': '#0A223A',          # Card background (matches dashboard cards)
-    'text_secondary': '#B8D8F8'    # Secondary text for card labels
+    'text_secondary': '#B8D8F8',   # Secondary text for card labels
+    
+    # Projection chart colors
+    'projection_obligations': '#FFD700',  # Bright yellow for projected obligations
+    'projection_awards': '#FF8C00',       # Bright orange for projected award actions
+    'projection_market': '#00FF7F'        # Vibrant green for potential market share
 }
 
 # Chart settings for Plotly/Streamlit

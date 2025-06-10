@@ -60,9 +60,7 @@ def get_treemap_data(
     
     where_clause = ""
     if filters:
-        where_clause = "WHERE " + " AND ".join(filters)
-    
-    # Optimized query: use MAX instead of MODE for better performance, add LIMIT
+        where_clause = "WHERE " + " AND ".join(filters)      # Optimized query: use MAX instead of MODE for better performance, add LIMIT
     query = f"""
         SELECT
             recipient_parent_name,
@@ -83,8 +81,7 @@ def get_treemap_data(
     
     with engine.connect() as connection:
         result = connection.execute(text(query), params).fetchall()
-        
-        # Calculate market share and win rate from the limited result set
+          # Calculate market share and win rate from the limited result set
         total_obligations = sum(float(row[4] or 0) for row in result)
         total_awards = sum(int(row[5] or 0) for row in result)
         
