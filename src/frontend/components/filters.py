@@ -235,14 +235,12 @@ def sidebar_filters(
         agency_options = ["All"]
         agency_idx = 0
     agency_load_duration = (datetime.now() - agency_start_time).total_seconds()
-    selected_agency = st.selectbox("Agency", agency_options, index=agency_idx, key="sidebar_agency_widget")
-    
-    # Filter buttons
+    selected_agency = st.selectbox("Agency", agency_options, index=agency_idx, key="sidebar_agency_widget")    # Filter buttons in columns with icons
     col1, col2 = st.columns(2)
     with col1:
-        apply_filters_button = st.button("Apply Filters", use_container_width=True, key="sidebar_apply_filters_button")
+        apply_filters_button = st.button("🔍 Apply Filters", use_container_width=True, key="sidebar_apply_filters_button")
     with col2:
-        clear_filters_button = st.button("Clear Filters", use_container_width=True, key="sidebar_clear_filters_button")
+        clear_filters_button = st.button("🗑️ Clear Filters", use_container_width=True, key="sidebar_clear_filters_button")
 
     if apply_filters_button:
         st.session_state.filter_params = {
