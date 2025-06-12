@@ -562,29 +562,27 @@ def main():
         
         with col2:
             clear_filters = st.button("🗑️ Clear Filters", use_container_width=True)
-        
-        # Clear filters functionality
+          # Clear filters functionality
         if clear_filters:
-            # Reset all filter values to their defaults instead of deleting
-            # Reset filter values to initial state
-            st.session_state.capture_awarding_agency = "All"
-            st.session_state.capture_funding_sub_agency = "All"
-            st.session_state.capture_funding_office = "All"
-            st.session_state.capture_naics = "All"
-            st.session_state.capture_contract_id = ""
-            st.session_state.capture_parent_contract_id = ""
-            st.session_state.capture_recipient = "All"
-            st.session_state.capture_recipient_uei = ""
-            st.session_state.capture_recipient_parent = "All"
-            st.session_state.capture_recipient_parent_uei = ""
-            
-            # Clear results and selections
+            # Clear results and selections first
             if 'search_results' in st.session_state:
                 del st.session_state.search_results
             if 'selected_contracts' in st.session_state:
                 st.session_state.selected_contracts = []
             if 'contracts_selection' in st.session_state:
                 del st.session_state.contracts_selection
+            
+            # Reset filter session state values by deleting them (they'll be recreated with defaults)
+            filter_keys_to_reset = [
+                'capture_awarding_agency', 'capture_funding_sub_agency', 'capture_funding_office',
+                'capture_naics', 'capture_contract_id', 'capture_parent_contract_id',
+                'capture_recipient', 'capture_recipient_uei', 'capture_recipient_parent',
+                'capture_recipient_parent_uei'
+            ]
+            
+            for key in filter_keys_to_reset:
+                if key in st.session_state:
+                    del st.session_state[key]
             
             st.rerun()
     
@@ -637,9 +635,9 @@ def main():
         display_df.columns = [
             'Contract ID', 'Parent Contract ID', 'Awardee', 'Awardee Parent',
             'Awarding Agency', 'Funding Agency', 'Total Obligated', 
-            'Potential Value', 'Start Date', 'End Date', 'NAICS Code', 'NAICS Description'
-        ]
-          # Use Streamlit's built-in selectable dataframe with proper multi-row selection
+            'Potential Value', 'Start Date', 'End Date', 'NAICS Code', 'NAICS Description'        ]
+        
+        # Use Streamlit's built-in selectable dataframe with proper multi-row selection
         event = st.dataframe(
             display_df, 
             use_container_width=True, 
@@ -648,7 +646,8 @@ def main():
             selection_mode=["multi-row"],
             key="contracts_selection"
         )
-          # Handle selection events
+        
+        # Handle selection events
         if event and event.selection and 'rows' in event.selection:
             selected_indices = event.selection['rows']
             
@@ -663,7 +662,8 @@ def main():
                 st.warning("⚠️ Maximum 5 contracts can be selected. Only the first 5 will be used.")
                 selected_keys = selected_keys[:5]
             
-            # Update session state            st.session_state.selected_contracts = selected_keys
+            # Update session state
+            st.session_state.selected_contracts = selected_keys
         
         # Display selection summary and generation button
         if st.session_state.selected_contracts:
