@@ -147,12 +147,18 @@ def get_naics_options():
 def build_where_clause(filters):
     """Build SQL WHERE clause from filter selections."""
     conditions = []
-    
     if filters.get('start_date'):
         conditions.append(f"period_of_performance_start_date >= '{filters['start_date']}'")
-    
     if filters.get('end_date'):
-        conditions.append(f"period_of_performance_current_end_date <= '{filters['end_date']}'")
+        # Handle IDV contracts (identified by CONT_IDV in first 8 characters of contract_award_unique_key)
+        # For IDV contracts, check if they START before the end filter date (they may extend beyond)
+        # For regular contracts, check if they END before the end filter date
+        end_date_condition = f"""(
+            (LEFT(contract_award_unique_key, 8) != 'CONT_IDV' AND period_of_performance_current_end_date <= '{filters['end_date']}')
+            OR 
+            (LEFT(contract_award_unique_key, 8) = 'CONT_IDV' AND period_of_performance_start_date <= '{filters['end_date']}')
+        )"""
+        conditions.append(end_date_condition)
     
     if filters.get('awarding_agency'):
         # Escape single quotes in agency names
@@ -191,10 +197,14 @@ def build_where_clause(filters):
     if filters.get('contract_id'):
         contract_id = filters['contract_id'].replace("'", "''")
         conditions.append(f"award_id_piid = '{contract_id}'")
+        # Debug: Log the exact contract ID being searched
+        logger.info(f"Searching for exact contract ID: '{contract_id}'")
     
     if filters.get('parent_contract_id'):
         parent_id = filters['parent_contract_id'].replace("'", "''")
         conditions.append(f"parent_award_id_piid = '{parent_id}'")
+        # Debug: Log the exact parent contract ID being searched
+        logger.info(f"Searching for exact parent contract ID: '{parent_id}'")
     
     if filters.get('min_obligated') and filters['min_obligated'] > 0:
         conditions.append(f"total_dollars_obligated >= {filters['min_obligated']}")
@@ -208,11 +218,90 @@ def build_where_clause(filters):
     if filters.get('max_potential') and filters['max_potential'] > 0:
         conditions.append(f"potential_total_value_of_award <= {filters['max_potential']}")
     
-    return " AND ".join(conditions) if conditions else "1=1"
+    where_clause = " AND ".join(conditions) if conditions else "1=1"
+    logger.info(f"Individual conditions: {conditions}")
+    return where_clause
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes  
 def search_contracts(filters):
     """Search contracts based on filter criteria."""
+    try:
+        engine = get_db_engine()
+        where_clause = build_where_clause(filters)
+          # Debug information - log the search criteria
+        logger.info(f"Search filters: {filters}")
+        logger.info(f"Generated WHERE clause: {where_clause}")
+        
+        query = text(f"""
+            SELECT DISTINCT
+                contract_award_unique_key,
+                award_id_piid as contract_id,
+                parent_award_id_piid as parent_contract_id,
+                recipient_name as awardee,
+                recipient_parent_name as awardee_parent,
+                parent_award_agency_name as awarding_agency,
+                funding_agency_name as funding_agency,
+                total_dollars_obligated as total_obligated,
+                potential_total_value_of_award as potential_value,
+                period_of_performance_start_date as start_date,
+                COALESCE(
+                    period_of_performance_current_end_date,
+                    ordering_period_end_date,
+                    period_of_performance_potential_end_date
+                ) as end_date,
+                naics_code,
+                naics_description,
+                recipient_uei,
+                recipient_parent_uei,
+                idv_type,
+                type_of_idc
+            FROM s3_processed.usaspending_prime_awards
+            WHERE {where_clause}
+            ORDER BY total_dollars_obligated DESC NULLS LAST
+            LIMIT 100
+        """)
+        
+        logger.info(f"Final SQL query: {str(query)}")
+        
+        with engine.connect() as conn:
+            df = pd.read_sql_query(query, conn)
+            
+        logger.info(f"Query returned {len(df)} results")
+        
+        # If no results and we have a contract_id filter, try a direct test query
+        if df.empty and filters.get('contract_id'):
+            test_query = text("""
+                SELECT COUNT(*) as count, 
+                       MIN(award_id_piid) as sample_award_id,
+                       MIN(period_of_performance_start_date) as min_start_date,
+                       MAX(period_of_performance_start_date) as max_start_date
+                FROM s3_processed.usaspending_prime_awards 
+                WHERE award_id_piid = :contract_id
+            """)
+            
+            with engine.connect() as conn:
+                test_df = pd.read_sql_query(test_query, conn, params={'contract_id': filters['contract_id']})
+                logger.info(f"Direct contract search for '{filters['contract_id']}': {test_df.to_dict('records')}")
+                st.info(f"🔍 Debug: Found {test_df.iloc[0]['count']} records for contract ID '{filters['contract_id']}' in database")
+                if test_df.iloc[0]['count'] > 0:
+                    st.info(f"📅 Date range for this contract: {test_df.iloc[0]['min_start_date']} to {test_df.iloc[0]['max_start_date']}")
+        
+        # Format the dataframe for display
+        if not df.empty:
+            df['total_obligated_formatted'] = df['total_obligated'].apply(lambda x: f"${x:,.0f}" if pd.notnull(x) else "N/A")
+            df['potential_value_formatted'] = df['potential_value'].apply(lambda x: f"${x:,.0f}" if pd.notnull(x) else "N/A")
+            df['start_date'] = pd.to_datetime(df['start_date'], errors='coerce').dt.strftime('%Y-%m-%d')
+            df['end_date'] = pd.to_datetime(df['end_date'], errors='coerce').dt.strftime('%Y-%m-%d')
+            
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error searching contracts: {str(e)}")
+        st.error(f"Error searching contracts: {str(e)}")
+        return pd.DataFrame()
+
+def search_contracts_debug(filters):
+    """Debug version of search_contracts without caching."""
     try:
         engine = get_db_engine()
         where_clause = build_where_clause(filters)
@@ -229,11 +318,17 @@ def search_contracts(filters):
                 total_dollars_obligated as total_obligated,
                 potential_total_value_of_award as potential_value,
                 period_of_performance_start_date as start_date,
-                period_of_performance_current_end_date as end_date,
+                COALESCE(
+                    period_of_performance_current_end_date,
+                    ordering_period_end_date,
+                    period_of_performance_potential_end_date
+                ) as end_date,
                 naics_code,
                 naics_description,
                 recipient_uei,
-                recipient_parent_uei
+                recipient_parent_uei,
+                idv_type,
+                type_of_idc
             FROM s3_processed.usaspending_prime_awards
             WHERE {where_clause}
             ORDER BY total_dollars_obligated DESC NULLS LAST
@@ -253,8 +348,8 @@ def search_contracts(filters):
         return df
         
     except Exception as e:
-        logger.error(f"Error searching contracts: {str(e)}")
-        st.error(f"Error searching contracts: {str(e)}")
+        logger.error(f"Error in debug search: {str(e)}")
+        st.error(f"Error in debug search: {str(e)}")
         return pd.DataFrame()
 
 def get_contract_details(contract_unique_key):
@@ -553,16 +648,52 @@ def main():
                 value=0,
                 step=1000,
                 help="Maximum potential value (0 = no limit)"
-            )
-          # Filter buttons in columns with icons
+            )        # Filter buttons in columns with icons
         col1, col2 = st.columns(2)
         
         with col1:
             apply_filters = st.button("🔍 Apply Filters", use_container_width=True)
         
         with col2:
-            clear_filters = st.button("🗑️ Clear Filters", use_container_width=True)
-          # Clear filters functionality
+            clear_filters = st.button("🗑️ Clear Filters", use_container_width=True)        # Debug button for troubleshooting
+        if st.button("🐛 Debug Search Query", use_container_width=True):
+            filters = {
+                'start_date': start_date,
+                'end_date': end_date,
+                'awarding_agency': selected_awarding_agency if selected_awarding_agency != "All" else None,
+                'funding_sub_agency': selected_funding_sub_agency if selected_funding_sub_agency != "All" else None,
+                'funding_office': selected_funding_office if selected_funding_office != "All" else None,
+                'naics_code': naics_code if naics_code != "All" else None,
+                'recipient': selected_recipient if selected_recipient != "All" else None,
+                'recipient_parent': selected_recipient_parent if selected_recipient_parent != "All" else None,
+                'recipient_uei': recipient_uei.strip() if recipient_uei else None,
+                'recipient_parent_uei': recipient_parent_uei.strip() if recipient_parent_uei else None,
+                'contract_id': selected_contract_id.strip() if selected_contract_id else None,
+                'parent_contract_id': selected_parent_contract_id.strip() if selected_parent_contract_id else None,
+                'min_obligated': min_obligated if min_obligated > 0 else None,
+                'max_obligated': max_obligated if max_obligated > 0 else None,
+                'min_potential': min_potential if min_potential > 0 else None,
+                'max_potential': max_potential if max_potential > 0 else None
+            }
+            where_clause = build_where_clause(filters)
+            
+            st.write("**Debug Information:**")
+            st.write(f"**Filters:** {filters}")
+            st.write(f"**Generated WHERE clause:** {where_clause}")
+            st.write(f"**Date range:** {start_date} to {end_date}")
+            
+            if filters.get('contract_id'):
+                st.write(f"**Contract ID being searched:** '{filters['contract_id']}'")
+            if filters.get('parent_contract_id'):
+                st.write(f"**Parent Contract ID being searched:** '{filters['parent_contract_id']}'")
+            
+            # Run an uncached search to see actual results
+            st.write("**Running debug search (uncached)...**")
+            debug_results = search_contracts_debug(filters)
+            st.write(f"**Debug search found:** {len(debug_results)} records")
+            if not debug_results.empty:
+                st.dataframe(debug_results.head())
+        # Clear filters functionality
         if clear_filters:
             # Clear results and selections first
             if 'search_results' in st.session_state:
