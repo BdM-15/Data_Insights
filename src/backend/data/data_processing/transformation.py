@@ -1061,16 +1061,19 @@ def preprocess_data_optimized():
             logger.error(f"Error: {source_table} table is empty. Check data cleansing process.")
             return {"error": f"{source_table} table is empty"}
         logger.info(f"Found {source_table} table with {row_count:,} rows.")
-    
     with engine.connect() as connection:
         # Create distinct filter value tables for the UI in s3_processed
         logger.info("\nPrecomputing filter values tables using direct SQL...")
 
         filter_columns = [
             "parent_award_agency_name",
-            "funding_sub_agency_name",
+            "funding_sub_agency_name", 
             "funding_office_name",
+            "funding_agency_name",           # Added missing column
             "recipient_name",
+            "recipient_parent_name",         # Added missing column
+            "award_id_piid",                 # Added missing column
+            "parent_award_id_piid",          # Added missing column
             "naics_code",
             "product_or_service_code",
             "type_of_contract_pricing",
