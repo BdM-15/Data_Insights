@@ -227,20 +227,23 @@ def search_contracts(filters):
     """Search contracts based on filter criteria."""
     try:
         engine = get_db_engine()
-        where_clause = build_where_clause(filters)
-          # Debug information - log the search criteria
+        where_clause = build_where_clause(filters)        # Debug information - log the search criteria
         logger.info(f"Search filters: {filters}")
         logger.info(f"Generated WHERE clause: {where_clause}")
         
         query = text(f"""
-            SELECT DISTINCT
+            SELECT 
                 contract_award_unique_key,
+                contract_transaction_unique_key,
                 award_id_piid as contract_id,
                 parent_award_id_piid as parent_contract_id,
+                modification_number,
+                action_date,
                 recipient_name as awardee,
                 recipient_parent_name as awardee_parent,
                 parent_award_agency_name as awarding_agency,
                 funding_agency_name as funding_agency,
+                federal_action_obligation,
                 total_dollars_obligated as total_obligated,
                 potential_total_value_of_award as potential_value,
                 period_of_performance_start_date as start_date,
@@ -250,15 +253,14 @@ def search_contracts(filters):
                     period_of_performance_potential_end_date
                 ) as end_date,
                 naics_code,
-                naics_description,
                 recipient_uei,
                 recipient_parent_uei,
                 idv_type,
                 type_of_idc
             FROM s3_processed.usaspending_prime_awards
             WHERE {where_clause}
-            ORDER BY total_dollars_obligated DESC NULLS LAST
-            LIMIT 100
+            ORDER BY award_id_piid, action_date DESC
+            LIMIT 500
         """)
         
         logger.info(f"Final SQL query: {str(query)}")
@@ -305,16 +307,19 @@ def search_contracts_debug(filters):
     try:
         engine = get_db_engine()
         where_clause = build_where_clause(filters)
-        
         query = text(f"""
-            SELECT DISTINCT
+            SELECT 
                 contract_award_unique_key,
+                contract_transaction_unique_key,
                 award_id_piid as contract_id,
                 parent_award_id_piid as parent_contract_id,
+                modification_number,
+                action_date,
                 recipient_name as awardee,
                 recipient_parent_name as awardee_parent,
                 parent_award_agency_name as awarding_agency,
                 funding_agency_name as funding_agency,
+                federal_action_obligation,
                 total_dollars_obligated as total_obligated,
                 potential_total_value_of_award as potential_value,
                 period_of_performance_start_date as start_date,
@@ -324,15 +329,14 @@ def search_contracts_debug(filters):
                     period_of_performance_potential_end_date
                 ) as end_date,
                 naics_code,
-                naics_description,
                 recipient_uei,
                 recipient_parent_uei,
                 idv_type,
                 type_of_idc
             FROM s3_processed.usaspending_prime_awards
             WHERE {where_clause}
-            ORDER BY total_dollars_obligated DESC NULLS LAST
-            LIMIT 100
+            ORDER BY award_id_piid, action_date DESC
+            LIMIT 500
         """)
         
         with engine.connect() as conn:
@@ -755,18 +759,30 @@ def main():
         # Contract selection section
         st.subheader("📋 Contract Selection")
         st.info(f"Found {len(df)} contracts. Select up to 5 contracts for capture profile generation.")
-        
-        # Create display dataframe with proper column names
+          # Create display dataframe with proper column names - include modification info, exclude NAICS description
         display_df = df[[
-            'contract_id', 'parent_contract_id', 'awardee', 'awardee_parent', 
-            'awarding_agency', 'funding_agency', 'total_obligated_formatted', 
-            'potential_value_formatted', 'start_date', 'end_date', 'naics_code', 'naics_description'
+            'contract_id', 'modification_number', 'action_date', 'awardee', 'awardee_parent', 
+            'awarding_agency', 'funding_agency', 'federal_action_obligation', 'total_obligated_formatted', 
+            'potential_value_formatted', 'start_date', 'end_date', 'naics_code'
+        ]].copy()
+        
+        # Format federal_action_obligation for display
+        display_df['federal_action_obligation_formatted'] = display_df['federal_action_obligation'].apply(
+            lambda x: f"${x:,.0f}" if pd.notnull(x) and x != 0 else "N/A"
+        )
+        
+        # Select final columns for display
+        display_df = display_df[[
+            'contract_id', 'modification_number', 'action_date', 'awardee', 'awardee_parent', 
+            'awarding_agency', 'funding_agency', 'federal_action_obligation_formatted', 'total_obligated_formatted', 
+            'potential_value_formatted', 'start_date', 'end_date', 'naics_code'
         ]].copy()
         
         display_df.columns = [
-            'Contract ID', 'Parent Contract ID', 'Awardee', 'Awardee Parent',
-            'Awarding Agency', 'Funding Agency', 'Total Obligated', 
-            'Potential Value', 'Start Date', 'End Date', 'NAICS Code', 'NAICS Description'        ]
+            'Contract ID', 'Mod #', 'Action Date', 'Awardee', 'Awardee Parent',
+            'Awarding Agency', 'Funding Agency', 'Action Obligation', 'Total Obligated', 
+            'Potential Value', 'Start Date', 'End Date', 'NAICS Code'
+        ]
         
         # Use Streamlit's built-in selectable dataframe with proper multi-row selection
         event = st.dataframe(
