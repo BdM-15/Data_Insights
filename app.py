@@ -52,7 +52,7 @@ try:
     
     # Import page functions
     from src.frontend.pages.strategic_dashboard import main as strategic_dashboard_main
-    from src.frontend.pages.capture_profiles import main as capture_profiles_main
+    from src.frontend.pages.advanced_opportunity_explorer import main as capture_profiles_main
     from src.frontend.components.sidebar_navigation import render_custom_navigation, get_page_config, render_sidebar_footer
     
     # Initialize session state for navigation
@@ -62,7 +62,7 @@ try:
     # Define pages for navigation (hidden from default streamlit navigation)
     pages = [
         st.Page(strategic_dashboard_main, title="Strategic Dashboard", icon="📊", url_path="dashboard"),
-        st.Page(capture_profiles_main, title="Capture Profiles", icon="📑", url_path="capture-profiles"),
+        st.Page(capture_profiles_main, title="Advanced Opportunity Explorer", icon="🔍", url_path="advanced-explorer"),
     ]
     
     # Create hidden navigation (we'll handle navigation manually)
@@ -93,7 +93,7 @@ try:
       # Run the appropriate page based on current selection
     if st.session_state.current_page == "dashboard":
         strategic_dashboard_main()
-    elif st.session_state.current_page == "capture-profiles":
+    elif st.session_state.current_page == "advanced-explorer":
         capture_profiles_main()
     else:
         # Fallback to dashboard

@@ -83,9 +83,9 @@ def get_page_config():
                 "function": None  # Will be set by the main app
             },
             {
-                "id": "capture-profiles", 
-                "title": "Capture Profiles",
-                "icon": "📑",
+                "id": "advanced-explorer", 
+                "title": "Advanced Opportunity Explorer",
+                "icon": "🔍",
                 "function": None  # Will be set by the main app
             }
         ],

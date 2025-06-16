@@ -1,8 +1,8 @@
 """
-Capture Profiles page for the Data_Insights application.
+Advanced Opportunity Explorer page for the Data_Insights application.
 
 This page allows users to search and filter contracts, select specific contracts,
-and generate detailed capture profiles for business development and capture management.
+and generate detailed contract overviews for business development and capture management.
 """
 
 import streamlit as st
@@ -388,7 +388,7 @@ def get_contract_details(contract_unique_key):
         return pd.DataFrame(), pd.DataFrame()
 
 def main():
-    """Main function to render the Capture Profiles page."""
+    """Main function to render the Advanced Opportunity Explorer page."""
     
     # Apply theme CSS
     st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)    # Initialize session state for selected contracts
@@ -722,9 +722,9 @@ def main():
             st.rerun()
     
     # Main page content
-    st.title("📑 Capture Profiles")
+    st.title("📑 Advanced Opportunity Explorer")
     st.markdown("""
-    Search and filter contracts to generate detailed capture profiles for business development and capture management.
+    Search and filter contracts to generate detailed contract overviews for business development and capture management.
     """)
     
     # Create filter dictionary
@@ -758,7 +758,7 @@ def main():
         
         # Contract selection section
         st.subheader("📋 Contract Selection")
-        st.info(f"Found {len(df)} contracts. Select up to 5 contracts for capture profile generation.")
+        st.info(f"Found {len(df)} contracts. Select up to 5 contracts for contract overview generation.")
           # Create display dataframe with proper column names - include modification info, exclude NAICS description
         display_df = df[[
             'contract_id', 'modification_number', 'action_date', 'awardee', 'awardee_parent', 
@@ -814,7 +814,7 @@ def main():
         
         # Display selection summary and generation button
         if st.session_state.selected_contracts:
-            st.success(f"✅ Selected {len(st.session_state.selected_contracts)} contract(s) for capture profile generation.")
+            st.success(f"✅ Selected {len(st.session_state.selected_contracts)} contract(s) for contract overview generation.")
             
             # Show selected contract IDs for confirmation
             with st.expander("View Selected Contracts", expanded=False):
@@ -825,11 +825,11 @@ def main():
                         contract_info = matching_row.iloc[0]
                         st.write(f"{i}. **{contract_info['contract_id']}** - {contract_info['awardee']} ({contract_info['total_obligated_formatted']})")
             
-            # Generate capture profiles button
-            if st.button("📊 Generate Capture Profiles", type="primary", use_container_width=True):
+            # Generate contract overview button
+            if st.button("📊 Generate Contract Overview(s)", type="primary", use_container_width=True):
                 generate_capture_profiles(st.session_state.selected_contracts)
         else:
-            st.info("💡 Select contracts from the table above to generate capture profiles. You can select up to 5 contracts.")
+            st.info("💡 Select contracts from the table above to generate contract overview(s). You can select up to 5 contracts.")
     
     elif apply_filters and ('search_results' not in st.session_state or st.session_state.search_results.empty):
         st.info("No contracts found. Please adjust your filters and try again.")
@@ -837,8 +837,8 @@ def main():
         st.info("Use the filters in the sidebar and click 'Apply Filters' to search for contracts.")
 
 def generate_capture_profiles(selected_contracts):
-    """Generate detailed capture profiles for selected contracts."""
-    st.subheader("📊 Capture Profiles")
+    """Generate detailed contract overviews for selected contracts."""
+    st.subheader("📊 Contract Overview")
     
     for i, contract_key in enumerate(selected_contracts, 1):
         with st.expander(f"Contract {i}: {contract_key}", expanded=True):
@@ -956,8 +956,8 @@ def generate_capture_profiles(selected_contracts):
                         st.dataframe(history_df, use_container_width=True)
                 
             except Exception as e:
-                st.error(f"Error generating capture profile: {str(e)}")
-                logger.error(f"Error in capture profile generation: {str(e)}")
+                st.error(f"Error generating contract overview: {str(e)}")
+                logger.error(f"Error in contract overview generation: {str(e)}")
 
 def display_contract_details(contract_key):
     """Display detailed information for a specific contract in a modal-like expander."""
