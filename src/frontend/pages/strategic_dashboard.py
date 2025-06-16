@@ -65,16 +65,7 @@ from src.frontend.pages.tabs.geographic_analysis import render_tab as render_geo
 # Remove sidebar_layout, we will use st.sidebar directly
 from src.frontend.components.filters import sidebar_filters
 
-# Set Streamlit page configuration - Must be called as the first Streamlit command
-st.set_page_config(
-    page_title="Capture Dashboard", 
-    page_icon="📊", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Inject theme CSS at the top of the app
-st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
+# Page configuration is now handled by main app.py - removed from here
 
 # Remove old get_db_connection and use backend utility
 # from src.backend.core.database import get_db_connection_with_status # Already handled by filters.py if needed there
@@ -138,41 +129,17 @@ def main():
     # --- Data Loading ---
     # This now happens before sidebar rendering, using st.session_state.filter_params
     # The called function (get_naics_data_optimized) updates session_state for diagnostics
-    df = load_filtered_data()
-
-    # --- Sidebar Rendering ---
+    df = load_filtered_data()    # --- Sidebar Rendering ---
     with st.sidebar:
-        st.image("c:/GitHub/Data_Insights/assets/logo.png")
-        st.markdown("## Navigation")
-        st.markdown("""
-        <style>
-        .nav-item { display: flex; align-items: center; padding: 10px 15px; margin-bottom: 8px; background-color: rgba(5, 27, 48, 0.6); border-radius: 8px; transition: all 0.2s ease; cursor: pointer; border-left: 3px solid transparent; }
-        .nav-item:hover { background-color: rgba(0, 195, 255, 0.1); border-left: 3px solid rgba(0, 195, 255, 0.5); transform: translateX(3px); }
-        .nav-item.active { background-color: rgba(0, 195, 255, 0.2); border-left: 3px solid rgba(0, 195, 255, 1); }
-        .nav-icon { margin-right: 10px; color: #00C3FF; width: 20px; text-align: center; }
-        .nav-text { color: white; font-weight: 500; }
-        </style>
-        <div class="nav-item active"><div class="nav-icon">📊</div><div class="nav-text">Capture Dashboard</div></div>
-        <div class="nav-item"><div class="nav-icon">🔍</div><div class="nav-text">Advanced Data Explorer</div></div>
-        <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-text">Visualizations</div></div>
-        <div class="nav-item"><div class="nav-icon">📑</div><div class="nav-text">Capture Profiles</div></div>
-        <div class="nav-item"><div class="nav-icon">🤖</div><div class="nav-text">AI Tools</div></div>
-        """, unsafe_allow_html=True)
-        
-        # sidebar_filters will read from st.session_state.filter_params for initial values
+        # Logo and navigation are now handled by the main app
+        # Only render filters here
+          # sidebar_filters will read from st.session_state.filter_params for initial values
         # and its buttons will update st.session_state.filter_params and rerun.
         # It also reads st.session_state.data_row_count etc. for diagnostics.
         sidebar_filters(
             default_start=st.session_state.filter_params["start_date"], 
             today=st.session_state.filter_params["end_date"]
         )
-        
-        st.markdown("""
-        <div class="user-section">
-            <h4>About</h4>
-            <p style="font-size: 0.8rem;">Data Insights v1.0<br>Last updated: April 2025</p>
-        </div>
-        """, unsafe_allow_html=True)
 
     # --- Main Content Rendering ---
     st.title("Capture Dashboard")

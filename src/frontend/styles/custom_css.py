@@ -103,11 +103,52 @@ def generate_theme_css(theme: dict) -> str:
         .sidebar-nav-item.active {{
             background-color: {theme['primary_color']};
             color: {theme['bg_color']};
-        }}
-        .user-section {{
+        }}        .user-section {{
             border-top: 1px solid rgba(0, 195, 255, 0.1);
             padding-top: 1rem;
             margin-top: 1rem;
+        }}
+          /* Button styling to match theme with subtle colors */
+        .stButton > button[kind="secondary"] {{
+            background-color: rgba(10, 34, 58, 0.8) !important;
+            color: #B8D8F8 !important;
+            border: 1px solid rgba(0, 195, 255, 0.2) !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }}
+        .stButton > button[kind="secondary"]:hover {{
+            background-color: rgba(10, 34, 58, 1) !important;
+            border-color: rgba(0, 195, 255, 0.4) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-1px) !important;
+        }}
+        .stButton > button[kind="primary"] {{
+            background-color: rgba(10, 34, 58, 0.8) !important;
+            color: #B8D8F8 !important;
+            border: 1px solid rgba(0, 195, 255, 0.2) !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }}
+        .stButton > button[kind="primary"]:hover {{
+            background-color: rgba(10, 34, 58, 1) !important;
+            border-color: rgba(0, 195, 255, 0.4) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-1px) !important;
+        }}
+        
+        /* Default button styling for buttons without explicit type */
+        .stButton > button {{
+            background-color: rgba(10, 34, 58, 0.8) !important;
+            color: #B8D8F8 !important;
+            border: 1px solid rgba(0, 195, 255, 0.2) !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }}
+        .stButton > button:hover {{
+            background-color: rgba(10, 34, 58, 1) !important;
+            border-color: rgba(0, 195, 255, 0.4) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-1px) !important;
         }}
     </style>
     """
