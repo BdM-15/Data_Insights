@@ -147,79 +147,58 @@ def get_naics_options():
 def build_where_clause(filters):
     """Build SQL WHERE clause from filter selections."""
     conditions = []
-    if filters.get('start_date'):
-        conditions.append(f"period_of_performance_start_date >= '{filters['start_date']}'")
-    if filters.get('end_date'):
-        # Handle IDV contracts (identified by CONT_IDV in first 8 characters of contract_award_unique_key)
-        # For IDV contracts, check if they START before the end filter date (they may extend beyond)
-        # For regular contracts, check if they END before the end filter date
-        end_date_condition = f"""(
-            (LEFT(contract_award_unique_key, 8) != 'CONT_IDV' AND period_of_performance_current_end_date <= '{filters['end_date']}')
-            OR 
-            (LEFT(contract_award_unique_key, 8) = 'CONT_IDV' AND period_of_performance_start_date <= '{filters['end_date']}')
-        )"""
-        conditions.append(end_date_condition)
-    
+    # Always apply overlap logic for date range (active contracts in range)
+    if filters.get('start_date') and filters.get('end_date'):
+        # Contract is active if its period overlaps the selected range
+        conditions.append(
+            f"period_of_performance_start_date <= '{filters['end_date']}'"
+        )
+        conditions.append(
+            f"COALESCE(period_of_performance_current_end_date, ordering_period_end_date, period_of_performance_potential_end_date) >= '{filters['start_date']}'"
+        )
+    # If searching by contract/order ID or parent contract ID, skip date filters
+    if filters.get('contract_id') or filters.get('parent_contract_id'):
+        if filters.get('contract_id'):
+            contract_id = filters['contract_id'].replace("'", "''")
+            conditions.append(f"award_id_piid = '{contract_id}'")
+            logger.info(f"Searching for exact contract ID: '{contract_id}'")
+        if filters.get('parent_contract_id'):
+            parent_id = filters['parent_contract_id'].replace("'", "''")
+            conditions.append(f"parent_award_id_piid = '{parent_id}'")
+            logger.info(f"Searching for exact parent contract ID: '{parent_id}'")
     if filters.get('awarding_agency'):
-        # Escape single quotes in agency names
         agency_name = filters['awarding_agency'].replace("'", "''")
         conditions.append(f"parent_award_agency_name = '{agency_name}'")
-    
     if filters.get('funding_agency'):
         agency_name = filters['funding_agency'].replace("'", "''")
         conditions.append(f"funding_agency_name = '{agency_name}'")
-    
     if filters.get('funding_sub_agency'):
         agency_name = filters['funding_sub_agency'].replace("'", "''")
         conditions.append(f"funding_sub_agency_name = '{agency_name}'")
-    
     if filters.get('funding_office'):
         office_name = filters['funding_office'].replace("'", "''")
         conditions.append(f"funding_office_name = '{office_name}'")
-    
     if filters.get('naics_code'):
         conditions.append(f"naics_code = '{filters['naics_code']}'")
-    
     if filters.get('recipient'):
         recipient_name = filters['recipient'].replace("'", "''")
         conditions.append(f"recipient_name = '{recipient_name}'")
-    
     if filters.get('recipient_parent'):
         parent_name = filters['recipient_parent'].replace("'", "''")
         conditions.append(f"recipient_parent_name = '{parent_name}'")
-    
     if filters.get('recipient_uei'):
         conditions.append(f"recipient_uei ILIKE '%{filters['recipient_uei']}%'")
-    
     if filters.get('recipient_parent_uei'):
         conditions.append(f"recipient_parent_uei ILIKE '%{filters['recipient_parent_uei']}%'")
-    
-    if filters.get('contract_id'):
-        contract_id = filters['contract_id'].replace("'", "''")
-        conditions.append(f"award_id_piid = '{contract_id}'")
-        # Debug: Log the exact contract ID being searched
-        logger.info(f"Searching for exact contract ID: '{contract_id}'")
-    
-    if filters.get('parent_contract_id'):
-        parent_id = filters['parent_contract_id'].replace("'", "''")
-        conditions.append(f"parent_award_id_piid = '{parent_id}'")
-        # Debug: Log the exact parent contract ID being searched
-        logger.info(f"Searching for exact parent contract ID: '{parent_id}'")
-    
     if filters.get('min_obligated') and filters['min_obligated'] > 0:
         conditions.append(f"total_dollars_obligated >= {filters['min_obligated']}")
-    
     if filters.get('max_obligated') and filters['max_obligated'] > 0:
         conditions.append(f"total_dollars_obligated <= {filters['max_obligated']}")
-    
     if filters.get('min_potential') and filters['min_potential'] > 0:
         conditions.append(f"potential_total_value_of_award >= {filters['min_potential']}")
-    
     if filters.get('max_potential') and filters['max_potential'] > 0:
         conditions.append(f"potential_total_value_of_award <= {filters['max_potential']}")
-    
     where_clause = " AND ".join(conditions) if conditions else "1=1"
-    logger.info(f"Individual conditions: {conditions}")
     return where_clause
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes  
@@ -260,7 +239,6 @@ def search_contracts(filters):
             FROM s3_processed.usaspending_prime_awards
             WHERE {where_clause}
             ORDER BY award_id_piid, action_date DESC
-            LIMIT 500
         """)
         
         logger.info(f"Final SQL query: {str(query)}")
@@ -336,7 +314,6 @@ def search_contracts_debug(filters):
             FROM s3_processed.usaspending_prime_awards
             WHERE {where_clause}
             ORDER BY award_id_piid, action_date DESC
-            LIMIT 500
         """)
         
         with engine.connect() as conn:
