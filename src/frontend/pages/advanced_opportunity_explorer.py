@@ -835,7 +835,7 @@ def generate_capture_profiles(selected_contracts):
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.metric("Contract Value", f"${latest_record.get('federal_action_obligation', 0):,.0f}")
+                        st.metric("Contract Value", f"${latest_record.get('potential_total_value_of_award', 0):,.0f}")
                         st.write(f"**Contract ID:** {latest_record.get('award_id_piid', 'N/A')}")
                         st.write(f"**Awardee:** {latest_record.get('recipient_name', 'N/A')}")
                     
