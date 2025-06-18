@@ -87,6 +87,12 @@ def get_page_config():
                 "title": "Advanced Opportunity Explorer",
                 "icon": "🔍",
                 "function": None  # Will be set by the main app
+            },
+            {
+                "id": "capability-stance",
+                "title": "Capability Stance",
+                "icon": "🏆",
+                "function": None  # Will be set by the main app
             }
         ],
         "Tools": [

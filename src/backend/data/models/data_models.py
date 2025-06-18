@@ -3,7 +3,7 @@ Pydantic models for data validation in Data Insights.
 Define all data schemas used in data processing modules here.
 """
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import date
 
 # Models for data related to 'agencies.py'
@@ -317,3 +317,30 @@ class Document(BaseModel):
     subaward_primary_place_of_performance_city_name: Optional[str]
     subaward_primary_place_of_performance_state_code: Optional[str]
     subaward_description: Optional[str]
+
+# ---------------- Company Performance Metrics for Capability Stance ----------------
+
+class TopEntitySummary(BaseModel):
+    name: str
+    count: int
+    value: float
+
+class CompanyPerformanceMetrics(BaseModel):
+    total_prime_awards: int
+    total_prime_obligation: float
+    total_subawards_received: int
+    total_subawards_received_value: float
+    total_subawards_issued: int
+    total_subawards_issued_value: float
+    unique_naics_prime: int
+    unique_naics_sub: int
+    unique_naics_issued: int
+    unique_psc_prime: int
+    unique_psc_sub: int
+    unique_psc_issued: int
+    top_agencies_prime: Optional[List[TopEntitySummary]]
+    top_agencies_sub: Optional[List[TopEntitySummary]]
+    top_agencies_issued: Optional[List[TopEntitySummary]]
+    top_teaming_partners_prime: Optional[List[TopEntitySummary]]
+    top_teaming_partners_sub: Optional[List[TopEntitySummary]]
+    recent_activity_months: int = 60
