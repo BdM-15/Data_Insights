@@ -138,7 +138,45 @@ def main():
         st.metric("Unique NAICS (Issued)", format_value(metrics.unique_naics_issued))
     with cap_col4:
         st.metric("Unique PSC (Issued)", format_value(metrics.unique_psc_issued))
-    # TODO: Add visuals and tables step by step
+
+    # --- Prime NAICS/PSC Table ---
+    naics_prime_query = (
+        f"""
+        SELECT naics_code AS "NAICS", naics_description AS "NAICS Description",
+               product_or_service_code AS "PSC", product_or_service_code_description AS "PSC Description"
+        FROM s3_processed.usaspending_prime_awards_kbr
+        WHERE {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
+          AND naics_code IS NOT NULL AND naics_code != ''
+          AND product_or_service_code IS NOT NULL AND product_or_service_code != ''
+        GROUP BY naics_code, naics_description, product_or_service_code, product_or_service_code_description
+        ORDER BY naics_code ASC, product_or_service_code ASC
+        """
+    )
+    naics_prime_df = execute_query(naics_prime_query)
+
+    # --- Issued NAICS/PSC Table ---
+    naics_issued_query = (
+        f"""
+        SELECT naics_code AS "NAICS", naics_description AS "NAICS Description",
+               product_or_service_code AS "PSC", product_or_service_code_description AS "PSC Description"
+        FROM s3_processed.usaspending_subawards_kbr_issued
+        WHERE {('subaward_action_date IS NULL OR subaward_action_date::date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
+          AND naics_code IS NOT NULL AND naics_code != ''
+          AND product_or_service_code IS NOT NULL AND product_or_service_code != ''
+        GROUP BY naics_code, naics_description, product_or_service_code, product_or_service_code_description
+        ORDER BY naics_code ASC, product_or_service_code ASC
+        """
+    )
+    naics_issued_df = execute_query(naics_issued_query)
+
+    # --- Prime and Issued NAICS/PSC Tables Side by Side ---
+    table_col1, table_col2 = st.columns(2)
+    with table_col1:
+        st.markdown("#### Unique NAICS/PSC Combinations (Prime)")
+        st.dataframe(naics_prime_df, use_container_width=True)
+    with table_col2:
+        st.markdown("#### Unique NAICS/PSC Combinations (Issued)")
+        st.dataframe(naics_issued_df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
