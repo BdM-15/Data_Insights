@@ -142,6 +142,7 @@ def main():
     # --- Visuals: Top NAICS, PSC, Agencies, Teaming Partners (Prime & Issued) ---
     import plotly.express as px
     from src.backend.data.models.data_models import NAICSData, TopEntitySummary
+    from src.frontend.styles.plotly_theme import get_vibrant_bar_colors
 
     st.markdown("### Top Codes and Partners")
     vis_col1, vis_col2, vis_col3 = st.columns(3)
@@ -172,9 +173,17 @@ def main():
                 title=None,  # Remove native plotly title
                 labels={'naics_code': 'NAICS Code', 'award_count': 'Number of Awards'},
                 color='naics_code',
-                color_discrete_sequence=px.colors.qualitative.Plotly
+                color_discrete_sequence=get_vibrant_bar_colors(num_naics_awards)
             )
-            fig_naics_awards.update_layout(xaxis_tickangle=45, xaxis_type='category', showlegend=False, height=400)
+            fig_naics_awards.update_layout(
+                xaxis_tickangle=45,
+                xaxis_type='category',
+                showlegend=False,
+                height=400,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig_naics_awards, use_container_width=True)
         else:
             st.info("No data available.")
@@ -205,9 +214,17 @@ def main():
                 title=None,  # Remove native plotly title
                 labels={'naics_code': 'NAICS Code', 'total_obligation': 'Total Obligations ($)'},
                 color='naics_code',
-                color_discrete_sequence=px.colors.qualitative.Plotly
+                color_discrete_sequence=get_vibrant_bar_colors(num_naics_oblig)
             )
-            fig_naics_oblig.update_layout(xaxis_tickangle=45, xaxis_type='category', showlegend=False, height=400)
+            fig_naics_oblig.update_layout(
+                xaxis_tickangle=45,
+                xaxis_type='category',
+                showlegend=False,
+                height=400,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig_naics_oblig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -265,8 +282,26 @@ def main():
     with agency_col1:
         st.markdown("**Top Agencies (Prime)**")
         if not top_agency_prime_df.empty:
-            fig = px.bar(top_agency_prime_df, x="count", y="name", orientation="h", title=None, height=400)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Count", yaxis_title="Agency")
+            num_agencies = len(top_agency_prime_df)
+            fig = px.bar(
+                top_agency_prime_df,
+                x="count",
+                y="name",
+                orientation="h",
+                title=None,
+                color="name",
+                color_discrete_sequence=get_vibrant_bar_colors(num_agencies),
+                height=400
+            )
+            fig.update_layout(
+                yaxis={'categoryorder':'total ascending'},
+                xaxis_title="Count",
+                yaxis_title="Agency",
+                showlegend=False,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -275,8 +310,26 @@ def main():
     with agency_col2:
         st.markdown("**Top Prime Companies Used**")
         if not top_prime_kbr_df.empty:
-            fig = px.bar(top_prime_kbr_df, x="count", y="Prime Company", orientation="h", hover_data=["recipient_uei"], title=None, height=400)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(t=20))
+            num_primes = len(top_prime_kbr_df)
+            fig = px.bar(
+                top_prime_kbr_df,
+                x="count",
+                y="Prime Company",
+                orientation="h",
+                hover_data=["recipient_uei"],
+                title=None,
+                color="Prime Company",
+                color_discrete_sequence=get_vibrant_bar_colors(num_primes),
+                height=400
+            )
+            fig.update_layout(
+                yaxis={'categoryorder':'total ascending'},
+                margin=dict(t=20),
+                showlegend=False,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -332,8 +385,26 @@ def main():
     with sub_col1:
         st.markdown("**Top Sub Companies Used**")
         if not top_sub_companies_df.empty:
-            fig = px.bar(top_sub_companies_df, x="count", y="Subawardee Company", orientation="h", hover_data=["Subawardee UEI"], title=None, height=400)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(t=20))
+            num_subs = len(top_sub_companies_df)
+            fig = px.bar(
+                top_sub_companies_df,
+                x="count",
+                y="Subawardee Company",
+                orientation="h",
+                hover_data=["Subawardee UEI"],
+                title=None,
+                color="Subawardee Company",
+                color_discrete_sequence=get_vibrant_bar_colors(num_subs),
+                height=400
+            )
+            fig.update_layout(
+                yaxis={'categoryorder':'total ascending'},
+                margin=dict(t=20),
+                showlegend=False,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -380,8 +451,25 @@ def main():
     with primesub_col1:
         st.markdown("**Top Prime Companies Used (KBR as Sub)**")
         if not top_prime_sub_df.empty:
-            fig = px.bar(top_prime_sub_df, x="count", y="Prime Company", orientation="h", hover_data=["UEI", "Parent Name"], title=None, height=400)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
+            num_prime_subs = len(top_prime_sub_df)
+            fig = px.bar(
+                top_prime_sub_df,
+                x="count",
+                y="Prime Company",
+                orientation="h",
+                hover_data=["UEI", "Parent Name"],
+                title=None,
+                color="Prime Company",
+                color_discrete_sequence=get_vibrant_bar_colors(num_prime_subs),
+                height=400
+            )
+            fig.update_layout(
+                yaxis={'categoryorder':'total ascending'},
+                showlegend=False,
+                plot_bgcolor=THEME['bg_color'],
+                paper_bgcolor=THEME['bg_color'],
+                font_color=THEME['text_color']
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
