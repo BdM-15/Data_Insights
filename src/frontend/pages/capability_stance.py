@@ -144,138 +144,75 @@ def main():
     from src.backend.data.models.data_models import NAICSData, TopEntitySummary
 
     st.markdown("### Top Codes and Partners")
-    vis_col1, vis_col2 = st.columns(2)
+    vis_col1, vis_col2, vis_col3 = st.columns(3)
 
-    # Top NAICS (Prime) - limit 25, validate with Pydantic
-    top_naics_prime_query = (
-        f"""
-        SELECT naics_code AS "naics_code", naics_description AS "naics_description", COUNT(*) AS count
+    # Top NAICS (Prime) by Award Actions (base awards only, mod_number = '0'), top 20, x-axis as categorical
+    top_naics_awards_query = (
+        f'''
+        SELECT naics_code, naics_description, COUNT(*) AS award_count
         FROM s3_processed.usaspending_prime_awards_kbr
-        WHERE {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
+        WHERE modification_number = '0'
           AND naics_code IS NOT NULL AND naics_code != ''
+          AND {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
         GROUP BY naics_code, naics_description
-        ORDER BY count DESC
-        LIMIT 25
-        """
+        ORDER BY award_count DESC, naics_code ASC
+        LIMIT 20
+        '''
     )
-    top_naics_prime_df = execute_query(top_naics_prime_query)
-    if not top_naics_prime_df.empty:
-        top_naics_prime_df = top_naics_prime_df.astype({'naics_code': str})
-        # Validate with Pydantic
-        naics_records = [NAICSData(**row) for row in top_naics_prime_df.to_dict(orient='records')]
+    top_naics_awards_df = execute_query(top_naics_awards_query)
     with vis_col1:
-        #st.markdown("**Top NAICS (Prime)**")
-        if not top_naics_prime_df.empty:
-            fig = px.bar(top_naics_prime_df, x="count", y="naics_code", orientation="h",
-                         hover_data=["naics_description"], title="Top NAICS (Prime)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
+        st.markdown("**Top NAICS by Award Actions**")
+        if not top_naics_awards_df.empty:
+            top_naics_awards_df["naics_code"] = top_naics_awards_df["naics_code"].astype(str)
+            num_naics_awards = len(top_naics_awards_df)
+            fig_naics_awards = px.bar(
+                top_naics_awards_df,
+                x='naics_code',
+                y='award_count',
+                title=None,  # Remove native plotly title
+                labels={'naics_code': 'NAICS Code', 'award_count': 'Number of Awards'},
+                color='naics_code',
+                color_discrete_sequence=px.colors.qualitative.Plotly
+            )
+            fig_naics_awards.update_layout(xaxis_tickangle=45, xaxis_type='category', showlegend=False, height=400)
+            st.plotly_chart(fig_naics_awards, use_container_width=True)
         else:
             st.info("No data available.")
 
-    # Top NAICS (Issued) - limit 25, validate with Pydantic
-    top_naics_issued_query = (
-        f"""
-        SELECT naics_code AS "naics_code", naics_description AS "naics_description", COUNT(*) AS count
-        FROM s3_processed.usaspending_subawards_kbr_issued
-        WHERE {('subaward_action_date IS NULL OR subaward_action_date::date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
-          AND naics_code IS NOT NULL AND naics_code != ''
-        GROUP BY naics_code, naics_description
-        ORDER BY count DESC
-        LIMIT 25
-        """
-    )
-    top_naics_issued_df = execute_query(top_naics_issued_query)
-    if not top_naics_issued_df.empty:
-        top_naics_issued_df = top_naics_issued_df.astype({'naics_code': str})
-        naics_issued_records = [NAICSData(**row) for row in top_naics_issued_df.to_dict(orient='records')]
-    with vis_col2:
-        #st.markdown("**Top NAICS (Issued)**")
-        if not top_naics_issued_df.empty:
-            fig = px.bar(top_naics_issued_df, x="count", y="naics_code", orientation="h", hover_data=["naics_description"],
-                         title="Top NAICS (Issued)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No data available.")
-
-    # Top Agencies (Prime) - use parent_award_agency_name
-    top_agency_prime_query = (
-        f"""
-        SELECT parent_award_agency_name AS name, COUNT(*) AS count, 0.0 AS value
+    # Top 20 NAICS by Obligations (Prime, base awards only, mod_number = '0'), x-axis as categorical
+    top_naics_obligations_query = (
+        f'''
+        SELECT naics_code, naics_description, SUM(federal_action_obligation) AS total_obligation
         FROM s3_processed.usaspending_prime_awards_kbr
-        WHERE {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
-          AND parent_award_agency_name IS NOT NULL AND parent_award_agency_name != ''
-        GROUP BY parent_award_agency_name
-        ORDER BY count DESC
-        LIMIT 10
-        """
+        WHERE modification_number = '0'
+          AND naics_code IS NOT NULL AND naics_code != ''
+          AND {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
+        GROUP BY naics_code, naics_description
+        ORDER BY total_obligation DESC, naics_code ASC
+        LIMIT 20
+        '''
     )
-    top_agency_prime_df = execute_query(top_agency_prime_query)
-    if not top_agency_prime_df.empty:
-        agency_prime_records = [TopEntitySummary(**row) for row in top_agency_prime_df.to_dict(orient='records')]
-    with vis_col1:
-        st.markdown("### Top Agencies (Prime)")
-        if not top_agency_prime_df.empty:
-            fig = px.bar(top_agency_prime_df, x="count", y="name", orientation="h", title="Top Agencies (Prime)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Count", yaxis_title="Agency")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No data available.")
-
-    # Top Agencies (as Sub) - optimized join using filtered subquery
-    top_agency_sub_query = (
-        f"""
-        SELECT p.parent_award_agency_name AS name, COUNT(*) AS count, 0.0 AS value
-        FROM s3_processed.usaspending_subawards_kbr s
-        JOIN (
-            SELECT contract_award_unique_key, parent_award_agency_name
-            FROM s3_processed.usaspending_prime_awards
-            WHERE modification_number = '0'
-              AND parent_award_agency_name IS NOT NULL AND parent_award_agency_name != ''
-        ) p
-          ON s.prime_award_unique_key = p.contract_award_unique_key
-        WHERE {('s.subaward_action_date IS NULL OR s.subaward_action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
-        GROUP BY p.parent_award_agency_name
-        ORDER BY count DESC
-        LIMIT 10
-        """
-    )
-    top_agency_sub_df = execute_query(top_agency_sub_query)
-    if not top_agency_sub_df.empty:
-        agency_sub_records = [TopEntitySummary(**row) for row in top_agency_sub_df.to_dict(orient='records')]
+    top_naics_obligations_df = execute_query(top_naics_obligations_query)
     with vis_col2:
-        st.markdown("### Top Agencies (as Sub)")
-        if not top_agency_sub_df.empty:
-            fig = px.bar(top_agency_sub_df, x="count", y="name", orientation="h", title="Top Agencies (as Sub)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Count", yaxis_title="Agency")
-            st.plotly_chart(fig, use_container_width=True)
+        st.markdown("**Top NAICS by Obligations**")
+        if not top_naics_obligations_df.empty:
+            top_naics_obligations_df["naics_code"] = top_naics_obligations_df["naics_code"].astype(str)
+            num_naics_oblig = len(top_naics_obligations_df)
+            fig_naics_oblig = px.bar(
+                top_naics_obligations_df,
+                x='naics_code',
+                y='total_obligation',
+                title=None,  # Remove native plotly title
+                labels={'naics_code': 'NAICS Code', 'total_obligation': 'Total Obligations ($)'},
+                color='naics_code',
+                color_discrete_sequence=px.colors.qualitative.Plotly
+            )
+            fig_naics_oblig.update_layout(xaxis_tickangle=45, xaxis_type='category', showlegend=False, height=400)
+            st.plotly_chart(fig_naics_oblig, use_container_width=True)
         else:
             st.info("No data available.")
 
-    # Top Teaming Partners (Prime)
-    top_partner_prime_query = (
-        f"""
-        SELECT recipient_name AS "Teaming Partner", COUNT(*) AS count
-        FROM s3_processed.usaspending_subawards_kbr_issued
-        WHERE {('subaward_action_date IS NULL OR subaward_action_date::date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
-          AND recipient_name IS NOT NULL AND recipient_name != ''
-        GROUP BY recipient_name
-        ORDER BY count DESC
-        LIMIT 10
-        """
-    )
-    top_partner_prime_df = execute_query(top_partner_prime_query)
-    with vis_col1:
-        st.markdown("**Top Teaming Partners (Prime)**")
-        if not top_partner_prime_df.empty:
-            fig = px.bar(top_partner_prime_df, x="count", y="Teaming Partner", orientation="h", title="Top Teaming Partners (Prime)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No data available.")
-
-    # --- Prime NAICS/PSC Table ---
+    # Unique NAICS/PSC Combinations (Prime) table in third column
     naics_prime_query = (
         f"""
         SELECT naics_code AS "NAICS", naics_description AS "NAICS Description",
@@ -289,8 +226,90 @@ def main():
         """
     )
     naics_prime_df = execute_query(naics_prime_query)
+    with vis_col3:
+        st.markdown("**Unique NAICS/PSC Combinations (Prime)**")
+        st.dataframe(naics_prime_df, use_container_width=True)
 
-    # --- Issued NAICS/PSC Table ---
+    # --- Restore all visuals and tables previously present, below the Top Codes and Partners section ---
+    # --- Three column layout for Top Agencies and Prime Companies ---
+    # Prepare data for three-column layout (move queries here so variables are in scope)
+    top_agency_prime_query = (
+        f"""
+        SELECT parent_award_agency_name AS name, COUNT(*) AS count, 0.0 AS value
+        FROM s3_processed.usaspending_prime_awards_kbr
+        WHERE {('action_date IS NULL OR action_date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
+          AND parent_award_agency_name IS NOT NULL AND parent_award_agency_name != ''
+        GROUP BY parent_award_agency_name
+        ORDER BY count DESC
+        LIMIT 10
+        """
+    )
+    top_agency_prime_df = execute_query(top_agency_prime_query)
+
+    top_prime_kbr_query = (
+        f"""
+        SELECT recipient_name AS "Prime Company", recipient_uei, COUNT(*) AS count
+        FROM s3_processed.usaspending_prime_awards_kbr
+        WHERE recipient_uei IS NOT NULL AND recipient_uei != ''
+        GROUP BY recipient_uei, recipient_name
+        ORDER BY "Prime Company" ASC
+        """
+    )
+    top_prime_kbr_df = execute_query(top_prime_kbr_query)
+    all_prime_kbr_df = top_prime_kbr_df.drop_duplicates(subset=["recipient_uei"]).sort_values(by=["Prime Company"])
+
+    st.markdown("### Top Agencies and Prime Companies")
+    agency_col1, agency_col2, agency_col3 = st.columns(3)
+
+    # First Column: Top Agencies (Prime) bar chart
+    with agency_col1:
+        st.markdown("**Top Agencies (Prime)**")
+        if not top_agency_prime_df.empty:
+            fig = px.bar(top_agency_prime_df, x="count", y="name", orientation="h", title=None, height=400)
+            fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Count", yaxis_title="Agency")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data available.")
+
+    # Second Column: Top Prime Companies Used bar chart
+    with agency_col2:
+        st.markdown("**Top Prime Companies Used**")
+        if not top_prime_kbr_df.empty:
+            fig = px.bar(top_prime_kbr_df, x="count", y="Prime Company", orientation="h", hover_data=["recipient_uei"], title=None, height=400)
+            fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(t=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data available.")
+
+    # Third Column: All Prime KBR Companies Used table
+    with agency_col3:
+        st.markdown("**All Prime KBR Companies**")
+        sorted_prime_df = all_prime_kbr_df.sort_values(by=["Prime Company"]).reset_index(drop=True)
+        st.dataframe(sorted_prime_df[["Prime Company", "recipient_uei"]], use_container_width=True)
+
+    # --- Prepare data for Top Subcontracted Companies section ---
+    top_sub_companies_query = (
+        f'''
+        SELECT subawardee_name AS "Subawardee Company", subawardee_uei AS "Subawardee UEI", COUNT(*) AS count
+        FROM s3_processed.usaspending_subawards_kbr_issued
+        WHERE subawardee_uei IS NOT NULL AND subawardee_uei != ''
+        GROUP BY subawardee_name, subawardee_uei
+        ORDER BY count DESC, "Subawardee Company" ASC
+        LIMIT 25
+        '''
+    )
+    top_sub_companies_df = execute_query(top_sub_companies_query)
+    all_subaward_issued_simple_query = (
+        f'''
+        SELECT DISTINCT ON (subawardee_uei)
+            subawardee_name AS "Subawardee Company",
+            subawardee_uei AS "Subawardee UEI"
+        FROM s3_processed.usaspending_subawards_kbr_issued
+        WHERE subawardee_uei IS NOT NULL AND subawardee_uei != ''
+        ORDER BY subawardee_uei, subawardee_name ASC
+        '''
+    )
+    all_subaward_issued_simple_df = execute_query(all_subaward_issued_simple_query)
     naics_issued_query = (
         f"""
         SELECT naics_code AS "NAICS", naics_description AS "NAICS Description",
@@ -305,16 +324,32 @@ def main():
     )
     naics_issued_df = execute_query(naics_issued_query)
 
-    # --- Prime and Issued NAICS/PSC Tables Side by Side ---
-    table_col1, table_col2 = st.columns(2)
-    with table_col1:
-        st.markdown("#### Unique NAICS/PSC Combinations (Prime)")
-        st.dataframe(naics_prime_df, use_container_width=True)
-    with table_col2:
-        st.markdown("#### Unique NAICS/PSC Combinations (Issued)")
+    # --- Three column layout for Top Subcontracted Companies ---
+    st.markdown("### Top Subcontracted Companies")
+    sub_col1, sub_col2, sub_col3 = st.columns(3)
+
+    # 1st column: Top Sub Companies Used bar chart
+    with sub_col1:
+        st.markdown("**Top Sub Companies Used**")
+        if not top_sub_companies_df.empty:
+            fig = px.bar(top_sub_companies_df, x="count", y="Subawardee Company", orientation="h", hover_data=["Subawardee UEI"], title=None, height=400)
+            fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(t=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data available.")
+
+    # 2nd column: All Subcontracted Companies table
+    with sub_col2:
+        st.markdown("**All Subcontracted Companies**")
+        sorted_sub_df = all_subaward_issued_simple_df.sort_values(by=["Subawardee Company"]).reset_index(drop=True)
+        st.dataframe(sorted_sub_df[["Subawardee Company", "Subawardee UEI"]], use_container_width=True)
+
+    # 3rd column: Unique NAICS/PSC Combinations (Issued) table
+    with sub_col3:
+        st.markdown("**Unique NAICS/PSC Combinations (Issued)**")
         st.dataframe(naics_issued_df, use_container_width=True)
 
-    # --- Top Prime Companies Used (KBR as Sub) ---
+    # --- Prepare data for Top Primes Used (KBR as sub) section ---
     top_prime_sub_query = (
         f"""
         SELECT subawardee_name AS "Prime Company", subawardee_uei AS "UEI", subawardee_parent_name AS "Parent Name", COUNT(*) AS count
@@ -327,30 +362,6 @@ def main():
         """
     )
     top_prime_sub_df = execute_query(top_prime_sub_query)
-    with vis_col2:
-        st.markdown("**Top Prime Companies Used (KBR as Sub)**")
-        if not top_prime_sub_df.empty:
-            fig = px.bar(top_prime_sub_df, x="count", y="Prime Company", orientation="h", hover_data=["UEI", "Parent Name"],
-                         title="Top Prime Companies Used (KBR as Sub)", height=350)
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No data available.")
-    
-    # --- All Prime KBR Companies Table ---
-    all_prime_kbr_query = (
-        f"""
-        SELECT DISTINCT recipient_name AS "Prime Company", recipient_uei, recipient_parent_name AS "Parent Name", recipient_parent_uei
-        FROM s3_processed.usaspending_prime_awards_kbr
-        WHERE recipient_uei IS NOT NULL AND recipient_uei != ''
-        ORDER BY "Prime Company"
-        """
-    )
-    all_prime_kbr_df = execute_query(all_prime_kbr_query)
-    st.markdown("#### All Prime KBR Companies")
-    st.dataframe(all_prime_kbr_df, use_container_width=True)
-
-    # --- All Prime Companies Used Table (KBR as Sub) ---
     all_prime_sub_query = (
         f"""
         SELECT DISTINCT subawardee_name AS "Prime Company", subawardee_uei AS "UEI", subawardee_parent_name AS "Parent Name"
@@ -360,48 +371,25 @@ def main():
         """
     )
     all_prime_sub_df = execute_query(all_prime_sub_query)
-    st.markdown("#### All Prime Companies Used (KBR as Sub)")
-    st.dataframe(all_prime_sub_df, use_container_width=True)
-    
-    # --- All Subaward Recipients Table (KBR as Prime Issuer) ---
-    all_subaward_issued_query = (
-        f'''
-        SELECT DISTINCT ON (subawardee_uei)
-            subawardee_name AS "Subawardee Company",
-            subawardee_uei AS "Subawardee UEI",
-            subawardee_parent_name AS "Parent Name",
-            subawardee_parent_uei AS "Parent UEI"
-        FROM s3_processed.usaspending_subawards_kbr_issued
-        WHERE subawardee_uei IS NOT NULL AND subawardee_uei != ''
-        ORDER BY subawardee_uei, subawardee_name
-        '''
-    )
-    all_subaward_issued_df = execute_query(all_subaward_issued_query)
-    st.markdown("#### All Subaward Recipients (KBR as Prime Issuer)")
-    st.dataframe(all_subaward_issued_df, use_container_width=True)
-    
-    # --- Top Subaward Recipients (KBR as Prime Issuer) ---
-    top_subaward_issued_query = (
-        f"""
-        SELECT recipient_name AS "Subawardee Company", recipient_parent_name AS "Parent Name", COUNT(*) AS count
-        FROM s3_processed.usaspending_subawards_kbr_issued
-        WHERE {('subaward_action_date IS NULL OR subaward_action_date::date >= (CURRENT_DATE - INTERVAL \'60 months\')') if filters['recent_activity_months'] == 60 else '1=1'}
-          AND recipient_name IS NOT NULL AND recipient_name != ''
-        GROUP BY recipient_name, recipient_parent_name
-        ORDER BY count DESC
-        LIMIT 10
-        """
-    )
-    top_subaward_issued_df = execute_query(top_subaward_issued_query)
-    with vis_col1:
-        st.markdown("**Top Subaward Recipients (KBR as Prime Issuer)**")
-        if not top_subaward_issued_df.empty:
-            fig = px.bar(top_subaward_issued_df, x="count", y="Subawardee Company", orientation="h", hover_data=["Parent Name"],
-                         title="Top Subaward Recipients (KBR as Prime Issuer)", height=350)
+
+    # --- Two column layout for Top Primes Used (KBR as sub) ---
+    st.markdown("### Top Primes Used (KBR as sub)")
+    primesub_col1, primesub_col2 = st.columns(2)
+
+    # 1st column: Top Prime Companies Used (KBR as Sub) bar chart
+    with primesub_col1:
+        st.markdown("**Top Prime Companies Used (KBR as Sub)**")
+        if not top_prime_sub_df.empty:
+            fig = px.bar(top_prime_sub_df, x="count", y="Prime Company", orientation="h", hover_data=["UEI", "Parent Name"], title=None, height=400)
             fig.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
+
+    # 2nd column: All Prime Companies Used (KBR as Sub) table
+    with primesub_col2:
+        st.markdown("**All Prime Companies Used (KBR as Sub)**")
+        st.dataframe(all_prime_sub_df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
