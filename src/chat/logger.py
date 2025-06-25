@@ -30,7 +30,8 @@ def log_chat_interaction(
     page: str,
     tab: str,
     prompt_structure: Optional[Dict[str, Any]],
-    session_id: Optional[str]
+    session_id: Optional[str],
+    user_id: Optional[str] = None
 ) -> None:
     """
     Log a chat interaction to the app_logs.chat_logs table.
@@ -44,14 +45,15 @@ def log_chat_interaction(
         tab: Tab where chat occurred.
         prompt_structure: Structured prompt context (as dict), if used.
         session_id: User/session identifier, if available.
+        user_id: User identifier, if available.
     """
     insert_sql = text('''
         INSERT INTO app_logs.chat_logs (
             user_query, llm_response, llm_generated_code, response_type,
-            page, tab, prompt_structure, session_id, created_at
+            page, tab, prompt_structure, session_id, user_id, created_at
         ) VALUES (
             :user_prompt, :llm_response, :llm_generated_code, :response_type,
-            :page, :tab, :prompt_structure, :session_id, :created_at
+            :page, :tab, :prompt_structure, :session_id, :user_id, :created_at
         )
     ''')
     try:
@@ -65,10 +67,43 @@ def log_chat_interaction(
                 "tab": tab,
                 "prompt_structure": prompt_structure,
                 "session_id": session_id,
+                "user_id": user_id,
                 "created_at": datetime.utcnow()
             })
     except SQLAlchemyError as e:
         # Reason: Log errors to console for now; production apps may log to file or monitoring system
         print(f"[Logger] Failed to log chat interaction: {e}")
+
+def get_chat_history(page: str, tab: str, session_id: Optional[str] = None, user_id: Optional[str] = None) -> list:
+    """
+    Retrieve chat history for a given page/tab (optionally filtered by session/user).
+    Returns a list of chat log dicts.
+    """
+    select_sql = text('''
+        SELECT id, user_query, llm_response, llm_generated_code, response_type, page, tab, prompt_structure, session_id, user_id, created_at
+        FROM app_logs.chat_logs
+        WHERE page = :page AND tab = :tab
+        {session_filter}
+        {user_filter}
+        ORDER BY created_at DESC
+    ''')
+    session_filter = ""
+    user_filter = ""
+    params = {"page": page, "tab": tab}
+    if session_id:
+        session_filter = "AND session_id = :session_id"
+        params["session_id"] = session_id
+    if user_id:
+        user_filter = "AND user_id = :user_id"
+        params["user_id"] = user_id
+    # Format SQL with filters
+    sql = select_sql.text.format(session_filter=session_filter, user_filter=user_filter)
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text(sql), params)
+            return [dict(row) for row in result.mappings()]
+    except SQLAlchemyError as e:
+        print(f"[Logger] Failed to fetch chat history: {e}")
+        return []
 
 # Reason: This logger is modular, uses config for DB connection, and is ready for future extension.

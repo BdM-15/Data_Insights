@@ -64,4 +64,36 @@ def get_notes(page: str, tab: str, user_id: Optional[str] = None, session_id: Op
         print(f"[Notes] Failed to fetch notes: {e}")
         return []
 
+def delete_note(note_id: int) -> bool:
+    """
+    Delete a user note by its ID.
+    Returns True if deleted, False otherwise.
+    """
+    delete_sql = text('''
+        DELETE FROM app_logs.user_notes WHERE id = :id
+    ''')
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(delete_sql, {"id": note_id})
+            return result.rowcount > 0
+    except SQLAlchemyError as e:
+        print(f"[Notes] Failed to delete note: {e}")
+        return False
+
+def update_note(note_id: int, note_text: str) -> bool:
+    """
+    Update the text of a user note by its ID.
+    Returns True if updated, False otherwise.
+    """
+    update_sql = text('''
+        UPDATE app_logs.user_notes SET note_text = :note_text WHERE id = :id
+    ''')
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(update_sql, {"id": note_id, "note_text": note_text})
+            return result.rowcount > 0
+    except SQLAlchemyError as e:
+        print(f"[Notes] Failed to update note: {e}")
+        return False
+
 # Reason: This module provides modular note storage/retrieval for UI and chat context enrichment.

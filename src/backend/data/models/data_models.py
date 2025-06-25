@@ -307,6 +307,7 @@ class ChatRequest(BaseModel):
     tab: str
     session_id: Optional[str] = None
     prompt_structure: Optional[Dict[str, Any]] = None
+    user_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     """Response model for chat endpoint (chat with the data). Used in MCP chat server and frontend chat UI."""
@@ -323,3 +324,58 @@ class NoteRequest(BaseModel):
     tab: str
     user_id: Optional[str] = None
     session_id: Optional[str] = None
+
+class NoteDeleteRequest(BaseModel):
+    """Request model for deleting a user note by ID via the /notes/delete endpoint."""
+    id: int
+
+class NoteUpdateRequest(BaseModel):
+    """Request model for updating a user note by ID via the /notes/update endpoint."""
+    id: int
+    note_text: str
+
+class ChatHistoryRequest(BaseModel):
+    """Request model for retrieving chat history via the /chat/history endpoint."""
+    page: str
+    tab: str
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+
+class VisualizationRequest(BaseModel):
+    """Request model for generating a custom visualization via the /visualization endpoint."""
+    user_prompt: str  # Description of the chart/plot the user wants
+    page: Optional[str] = None  # Optional: page context
+    tab: Optional[str] = None   # Optional: tab context
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    data_filters: Optional[Dict[str, Any]] = None  # Optional: filters to apply to the data
+    chart_type: Optional[str] = None  # Optional: e.g., 'bar', 'line', 'pie', etc.
+    # Reason: Allows flexible, extensible chart requests
+
+class VisualizationResponse(BaseModel):
+    """Response model for returning a generated visualization (e.g., Plotly JSON) to the frontend."""
+    answer: str  # LLM or system-generated explanation/caption
+    plotly_json: Optional[Dict[str, Any]] = None  # Plotly figure as JSON
+    llm_generated_code: Optional[str] = None  # Python code used to generate the chart (if any)
+    response_type: str = "visualization"  # Always 'visualization' for this endpoint
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class ProfileGenerateRequest(BaseModel):
+    """Request model for AI-assisted capture profile document creation via /profile/generate endpoint."""
+    opportunity_id: Optional[str] = None  # Link to a specific opportunity/contract
+    user_prompt: Optional[str] = None  # Custom instructions or focus areas
+    page: Optional[str] = None
+    tab: Optional[str] = None
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    milestone: Optional[str] = None  # e.g., 'ms0', 'ms1', etc. for Shipley reviews
+    # Reason: Allows both general and milestone-specific profile generation
+
+class ProfileGenerateResponse(BaseModel):
+    """Response model for returning a generated capture profile document or milestone review."""
+    summary: str  # Executive summary or main narrative
+    document_text: str  # Full document (Word/Markdown/plaintext)
+    ai_analysis: Optional[str] = None  # Optional: AI-generated analysis or recommendations
+    milestone: Optional[str] = None  # If this is a milestone review
+    response_type: str = "profile"  # Always 'profile' for this endpoint
+    timestamp: datetime = Field(default_factory=datetime.utcnow)

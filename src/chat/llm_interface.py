@@ -12,6 +12,8 @@ Author: Data_Insights Team
 """
 
 from typing import Optional, Dict, Any
+import plotly.io as pio
+import traceback
 
 # If you use an Ollama Python client, import it here (e.g., ollama or open-interpreter)
 # import ollama
@@ -47,8 +49,41 @@ def query_llm(
 
     # --- Step 2: Call the LLM via Ollama ---
     # TODO: Replace with actual Ollama API call
-    # Example: response = ollama.generate(model=model, prompt=prompt)
     # For now, return a dummy response
+    if model == "codellama":
+        # --- Step 1: Generate code using LLM (placeholder for Ollama call) ---
+        # TODO: Replace with real Ollama call, e.g.:
+        # response = ollama.generate(model="codellama", prompt=prompt)
+        # llm_code = response['code']
+        # For now, use a static code example:
+        llm_code = (
+            "import plotly.graph_objects as go\n"
+            "fig = go.Figure([go.Bar(x=['A','B','C'], y=[10,20,15])])"
+        )
+        answer = f"[LLM-codellama] Here is a generated bar chart for: {user_prompt}"
+        # --- Step 2: Safely execute the code to get a Plotly figure ---
+        fig = None
+        plotly_json = None
+        exec_error = None
+        local_vars = {}
+        try:
+            # Only allow plotly.graph_objects as go
+            exec_globals = {"__builtins__": {}, "go": __import__("plotly.graph_objects", fromlist=["go"]).__dict__["go"]}
+            exec(llm_code, exec_globals, local_vars)
+            fig = local_vars.get("fig")
+            if fig is not None:
+                plotly_json = pio.to_json(fig, validate=False)
+                plotly_json = pio.from_json(plotly_json)  # Return as dict
+        except Exception as e:
+            exec_error = traceback.format_exc()
+            answer += f"\n[Error executing generated code: {e}]"
+        return {
+            "answer": answer,
+            "plotly_json": plotly_json,
+            "llm_generated_code": llm_code,
+            "response_type": "visualization",
+            "exec_error": exec_error
+        }
     return {
         "answer": f"[LLM-{model}] This is a placeholder answer to: {user_prompt}",
         "plotly_json": None,

@@ -1,0 +1,6 @@
+{
+  "opportunity_id": "OPP-123",
+  "user_prompt": "Generate a milestone 0 review for this opportunity.",
+  "milestone": "ms0",
+  "user_id": "user-abc"
+}
