@@ -1,12 +1,13 @@
 """
 Pydantic models for data validation in Data Insights.
 Define all data schemas used in data processing modules here.
+Each model includes a comment describing its purpose and where it is used in the application.
 """
-from pydantic import BaseModel
-from typing import Optional, List, Dict
-from datetime import date
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import date, datetime
 
-# Models for data related to 'agencies.py'
+# Models for data related to 'agencies.py' (used for agency summary and charting in dashboard)
 class TopAgencyByCount(BaseModel):
     parent_award_agency_name: str
     award_count: int
@@ -16,6 +17,7 @@ class TopAgencyByObligation(BaseModel):
     federal_action_obligation: float
 
 class AgencyRatioMetrics(BaseModel):
+    """Used for agency ratio metrics visualizations in dashboard (bubble/scatter charts)."""
     parent_award_agency_name: str  # Display/label
     award_count: int  # Data (Award Actions)
     federal_action_obligation: float  # Data (Obligations)
@@ -25,24 +27,26 @@ class AgencyRatioMetrics(BaseModel):
     award_count_normalized: float  # X axis (log scale)
     obligation_normalized: float  # Y axis (log scale)
 
-# Model for data related to 'queries.py' (e.g., output of get_naics_data)
+# Model for data related to 'queries.py' (e.g., output of get_naics_data, used in NAICS summary tables)
 class NAICSData(BaseModel):
     naics_code: str
     naics_description: Optional[str] = None # Description might be optional or not always present
 
-# Models for data related to 'awards.py'
+# Models for data related to 'awards.py' (used for award summary and trends in dashboard)
 class AwardSummaryItem(BaseModel):
     category: str
     value: float
     count: Optional[int] = None
 
 class QuarterlyTrend(BaseModel):
+    """Used for quarterly obligation/award trend charts in dashboard."""
     quarter: str # e.g., "Q1"
     year: int
     total_obligation: float
     award_count: int
 
 class ProjectionTrend(BaseModel):
+    """Used for projected trends and market forecasting visualizations."""
     quarter: str # e.g., "2026-Q1"
     year: int
     total_obligation: float
@@ -51,37 +55,39 @@ class ProjectionTrend(BaseModel):
     suitability_obligation: Optional[float] = None  # Potential market share based on suitability percentage
 
 class ContractVehicleSummary(BaseModel):
-    # Example: 'contract_award_type_name' or similar for contract_vehicle
+    """Used for contract vehicle breakdowns in dashboard visualizations."""
     contract_vehicle: str 
     award_count: int
     percentage: float # Added to reflect original script's functionality
 
 class RecipientAwardCount(BaseModel):
-    # Assumes 'recipient_duns', 'recipient_name', or similar is used for grouping
+    """Used for recipient award count summaries in dashboard tables/charts."""
     recipient_identifier: str 
     award_count: int
 
 class RecipientObligation(BaseModel):
+    """Used for recipient obligation summaries in dashboard tables/charts."""
     recipient_identifier: str
     total_obligation: float
 
 class ExpiringContract(BaseModel):
-    # Using common unique key for contracts
+    """Used for expiring contract tables and alerts in dashboard."""
     contract_award_unique_key: str 
     recipient_name: Optional[str] = None
     period_of_performance_current_end_date: date
-    # Using potential total value, could also be obligated amount
     potential_total_value_of_award: Optional[float] = None 
     days_to_expiration: int
 
-# Models for data related to 'competition.py'
+# Models for data related to 'competition.py' (used for competitive landscape visualizations)
 class TreemapNode(BaseModel):
+    """Used for treemap visualizations of competition in dashboard."""
     id: str
     parent: Optional[str] = None # Root nodes might not have a parent
     value: float
     name: str
 
 class TreemapPathElement(BaseModel):
+    """Used for treemap path details in competition visualizations."""
     recipient_parent_name: Optional[str] = None
     recipient_name: str
     funding_sub_agency_name: Optional[str] = None
@@ -92,10 +98,7 @@ class TreemapPathElement(BaseModel):
     win_rate: Optional[float] = None
 
 class SunburstPathElement(BaseModel):
-    """
-    Data model for sunburst chart showing hierarchical competitive landscape.
-    Path: Parent Company → Subsidiary → Agency → Contract
-    """
+    """Data model for sunburst chart showing hierarchical competitive landscape."""
     recipient_parent_name: Optional[str] = None
     recipient_name: str
     funding_sub_agency_name: Optional[str] = None
@@ -106,10 +109,7 @@ class SunburstPathElement(BaseModel):
     win_rate: Optional[float] = None
 
 class SankeyFlowElement(BaseModel):
-    """
-    Data model for sankey diagram showing flow from companies to agencies to contracts.
-    Represents the source-target-value relationship for Sankey nodes and links.
-    """
+    """Data model for sankey diagram showing flow from companies to agencies to contracts."""
     recipient_parent_name: Optional[str] = None
     recipient_name: str
     funding_sub_agency_name: Optional[str] = None
@@ -119,15 +119,16 @@ class SankeyFlowElement(BaseModel):
     market_share: Optional[float] = None
     win_rate: Optional[float] = None
 
-# Model for data related to competitor performance analysis in 'competition.py'
+# Model for data related to competitor performance analysis in 'competition.py' (used for competitor tables)
 class CompetitorPerformance(BaseModel):
+    """Used for competitor performance tables in dashboard."""
     recipient_name: str
     market_share: float # Percentage
     win_rate: float # Percentage
     federal_action_obligation: float # Total obligations for this recipient
 
 class FutureOpportunity(BaseModel):
-    """Represents a future government contracting opportunity (e.g., from SAM.gov, NATO NSPA)."""
+    """Represents a future government contracting opportunity (e.g., from SAM.gov, NATO NSPA). Used in opportunity pipeline and enrichment."""
     opportunity_id: str
     title: str
     agency: str
@@ -151,23 +152,18 @@ class FutureOpportunity(BaseModel):
 # ---------------- Prime Award Data Models for Capability Gap Analysis ----------------
 
 class PrimeCompetitorDetails(BaseModel):
-    """
-    Competitor details for a prime award record.
-    """
+    """Competitor details for a prime award record. Used in capability gap analysis and reporting."""
     recipient_name: Optional[str]
     recipient_uei: Optional[str]
     recipient_parent_name: Optional[str]
     recipient_parent_uei: Optional[str]
 
-
 class PrimeContractAwardDetails(BaseModel):
+    """Core award details for a prime contract record. Used in prime contract data processing and reporting."""
     embedding: Optional[List[float]] = None  # For semantic search/vector storage
     created_at: Optional[date] = None
     updated_at: Optional[date] = None
     source: Optional[str] = None  # Provenance tracking
-    """
-    Core award details for a prime contract record.
-    """
     contract_transaction_unique_key: str  # Unique transaction key (primary key)
     contract_award_unique_key: Optional[str]  # Unique award key
     action_date_fiscal_year: Optional[str]
@@ -195,11 +191,8 @@ class PrimeContractAwardDetails(BaseModel):
     usaspending_permalink: Optional[str]
     type_of_contract_pricing: Optional[str]
 
-
 class PrimeContractRequirementDetails(BaseModel):
-    """
-    Requirement and classification details for a prime contract record.
-    """
+    """Requirement and classification details for a prime contract record. Used in requirement analysis and reporting."""
     prime_award_base_transaction_description: Optional[str]
     transaction_description: Optional[str]
     naics_code: Optional[str]
@@ -209,11 +202,8 @@ class PrimeContractRequirementDetails(BaseModel):
     dod_acquisition_program_description: Optional[str]
     sam_gov_link: Optional[str]
 
-
 class PrimeCustomerDetails(BaseModel):
-    """
-    Customer and agency details for a prime contract record.
-    """
+    """Customer and agency details for a prime contract record. Used in customer/agency analysis."""
     parent_award_agency_name: Optional[str]
     awarding_sub_agency_name: Optional[str]
     awarding_office_name: Optional[str]
@@ -221,11 +211,8 @@ class PrimeCustomerDetails(BaseModel):
     funding_sub_agency_name: Optional[str]
     funding_office_name: Optional[str]
 
-
 class PrimeSolicitationDetails(BaseModel):
-    """
-    Solicitation and competition details for a prime contract record.
-    """
+    """Solicitation and competition details for a prime contract record. Used in competition analysis."""
     solicitation_date: Optional[date]
     solicitation_procedures: Optional[str]
     extent_competed: Optional[str]
@@ -239,21 +226,11 @@ class PrimeSolicitationDetails(BaseModel):
 # ---------------- Subaward Data Models for Capability Gap Analysis ----------------
 
 class SubcontractAwardDetails(BaseModel):
+    """Core award details for a subaward (subcontract) record. Used in subaward data processing and reporting."""
     embedding: Optional[List[float]] = None  # For semantic search/vector storage
     created_at: Optional[date] = None
     updated_at: Optional[date] = None
     source: Optional[str] = None  # Provenance tracking
-    """
-    Core award details for a subaward (subcontract) record.
-
-    Attributes:
-        prime_award_unique_key: Unique key for joining to the prime award
-        subaward_type: Type of subaward (e.g., procurement, grant)
-        subaward_number: Subaward identifier/number
-        subaward_amount: Dollar value of the subaward
-        subaward_action_date: Date the subaward was made
-        subaward_action_date_fiscal_year: Fiscal year of the subaward action
-    """
     prime_award_unique_key: Optional[str]  # Join key to prime awards
     subaward_type: Optional[str]
     subaward_number: Optional[str]
@@ -261,23 +238,8 @@ class SubcontractAwardDetails(BaseModel):
     subaward_action_date: Optional[date]
     subaward_action_date_fiscal_year: Optional[str]
 
-
 class SubcontractCompetitorDetails(BaseModel):
-    """
-    Competitor (subawardee) information for a subaward record.
-
-    Attributes:
-        subawardee_uei: Unique Entity Identifier for the subawardee
-        subawardee_name: Name of the subawardee
-        subawardee_dba_name: Doing Business As name for the subawardee
-        subawardee_parent_uei: Parent UEI for the subawardee
-        subawardee_parent_name: Parent company name for the subawardee
-        subawardee_country_code: Country code of the subawardee
-        subawardee_country_name: Country name of the subawardee
-        subawardee_city_name: City of the subawardee
-        subawardee_state_code: State code of the subawardee
-        subawardee_business_types: Business types/socioeconomic categories
-    """
+    """Competitor (subawardee) information for a subaward record. Used in subaward competition analysis."""
     subawardee_uei: Optional[str]
     subawardee_name: Optional[str]
     subawardee_dba_name: Optional[str]
@@ -289,14 +251,13 @@ class SubcontractCompetitorDetails(BaseModel):
     subawardee_state_code: Optional[str]
     subawardee_business_types: Optional[str]
 
-
 class SubcontractRequirementsDetails(BaseModel):
+    """Requirement and place of performance details for a subaward record. Used in subaward requirement analysis."""
     metadata: Optional[dict] = None  # For unstructured or enriched data
+
 # ---------------- Document Model for RAG/Web Enrichment ----------------
 class Document(BaseModel):
-    """
-    Generic document/attachment model for RAG, web enrichment, and semantic search.
-    """
+    """Generic document/attachment model for RAG, web enrichment, and semantic search. Used in document enrichment and retrieval."""
     document_id: str
     related_contract_id: Optional[str] = None
     text: Optional[str] = None
@@ -306,14 +267,6 @@ class Document(BaseModel):
     created_at: Optional[date] = None
     updated_at: Optional[date] = None
     metadata: Optional[dict] = None
-    """
-    Requirement and place of performance details for a subaward record.
-
-    Attributes:
-        subaward_primary_place_of_performance_city_name: City where work is performed
-        subaward_primary_place_of_performance_state_code: State where work is performed
-        subaward_description: Description of the subcontracted work
-    """
     subaward_primary_place_of_performance_city_name: Optional[str]
     subaward_primary_place_of_performance_state_code: Optional[str]
     subaward_description: Optional[str]
@@ -321,11 +274,13 @@ class Document(BaseModel):
 # ---------------- Company Performance Metrics for Capability Stance ----------------
 
 class TopEntitySummary(BaseModel):
+    """Used for top entity summaries in company performance metrics and dashboard tables."""
     name: str
     count: int
     value: float
 
 class CompanyPerformanceMetrics(BaseModel):
+    """Used for company performance metrics and capability stance analysis in dashboard."""
     total_prime_awards: int
     total_prime_obligation: float
     total_subawards_received: int
@@ -344,3 +299,19 @@ class CompanyPerformanceMetrics(BaseModel):
     top_teaming_partners_prime: Optional[List[TopEntitySummary]]
     top_teaming_partners_sub: Optional[List[TopEntitySummary]]
     recent_activity_months: int = 60
+
+class ChatRequest(BaseModel):
+    """Request model for chat endpoint (chat with the data). Used in MCP chat server and frontend chat UI."""
+    user_prompt: str
+    page: str
+    tab: str
+    session_id: Optional[str] = None
+    prompt_structure: Optional[Dict[str, Any]] = None
+
+class ChatResponse(BaseModel):
+    """Response model for chat endpoint (chat with the data). Used in MCP chat server and frontend chat UI."""
+    answer: str
+    plotly_json: Optional[Dict[str, Any]] = None
+    llm_generated_code: Optional[str] = None
+    response_type: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)

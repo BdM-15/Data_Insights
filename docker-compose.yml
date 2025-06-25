@@ -19,6 +19,21 @@ services:
     depends_on:
       - ollama
 
+  chat-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat-mcp
+    command: uvicorn src.chat.mcp_server:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - ollama
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
