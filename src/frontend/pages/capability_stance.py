@@ -391,5 +391,42 @@ def main():
         st.markdown("**All Prime Companies Used (KBR as Sub)**")
         st.dataframe(all_prime_sub_df, use_container_width=True)
 
+    # --- PLACEHOLDER: AI Summary of Capabilities ---
+    st.markdown("### AI Summary of Capabilities (Coming Soon)")
+    st.info(
+        """
+        This section will provide an AI-generated summary of KBR's capabilities based on award history, subcontracts issued, and advanced semantic analysis.
+        
+        **Planned Features:**
+        - Uses a local LLM (via Ollama/MCP) to analyze vectorized contract and subaward data, including:
+            - `prime_award_base_transaction_description`, `transaction_description`, `naics_code`, `naics_description` (with webscraped definitions),
+            - `product_or_service_code`, `product_or_service_code_description` (with webscraped definitions),
+            - `subaward_description`,
+            - Webscraped KBR social media and public websites (via MCP tool),
+            - Parsed requirements/objectives from inactive solicitation docs (RFP, PWS, SOWs) from sam.gov.
+        - The LLM will use semantic embeddings to expand beyond keywords, generating rich, human-like summaries of KBR's solution areas, technical strengths, and market positioning.
+        - All processing will remain local for privacy and security.
+        
+        _See `CAPTUREINTEL.md`, `MCP_SERVER_INTEGRATION_GUIDE.md`, and `LANGFLOW_CAPTURE_PROFILE_ROADMAP.md` in `/docs` for implementation details and vision._
+        """
+    )
+
+    # --- PLACEHOLDER: AI Capabilities Chat ---
+    st.markdown("### AI Capabilities Chat (Coming Soon)")
+    st.info(
+        """
+        This section will enable users to chat with the AI about all available capabilities data, including contract awards, subawards, NAICS/PSC codes, and more.
+        
+        **Planned Features:**
+        - Uses a local LLM (Ollama/MCP) to answer questions about KBR's capabilities, teaming, and contract history.
+        - Integrates with a multi-agent chat utility (see [Advanced Multi-Agent Workout App](https://github.com/techwithtim/Advanced-Multi-Agent-Workout-App)) for advanced, context-aware Q&A.
+        - Will support document retrieval, semantic search, and context-aware responses using vectorized data from the capture_insights database.
+        - Designed for reuse across multiple pages in the Data_Insights app.
+        - All data and inference will remain local for security.
+        
+        _See `MCP_SERVER_INTEGRATION_GUIDE.md`, `MODULARIZATION_AND_AI_PLAN.md`, and `LANGFLOW_CAPTURE_PROFILE_ROADMAP.md` in `/docs` for planned architecture and integration._
+        """
+    )
+
 if __name__ == "__main__":
     main()
