@@ -8,17 +8,13 @@ Author: Data_Insights Team
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from src.backend.data.models.data_models import ChatRequest, ChatResponse
+from src.backend.data.models.data_models import ChatRequest, ChatResponse, NoteRequest
 from src.chat.llm_interface import query_llm
 from src.chat.notes import add_note, get_notes
-from src.chat.notes import get_notes as fetch_notes_by_ids
 from src.chat.logger import log_chat_interaction
 from sqlalchemy import text as sa_text
 from typing import List
 from datetime import datetime
-
-# Placeholder imports for modular components
-# from .db_access import fetch_data_for_context
 
 app = FastAPI(title="MCP Chat Server", description="Backend for chat with the data feature.")
 
@@ -68,18 +64,12 @@ def chat_with_data(request: ChatRequest):
     )
 
 @app.post("/note")
-def add_user_note(
-    note_text: str,
-    page: str,
-    tab: str,
-    user_id: str = None,
-    session_id: str = None
-):
+def add_user_note(request: NoteRequest):
     """
     Add a new user note for the given page/tab/user/session.
     Returns the new note's ID or error message.
     """
-    note_id = add_note(note_text, page, tab, user_id, session_id)
+    note_id = add_note(request.note_text, request.page, request.tab, request.user_id, request.session_id)
     if note_id == -1:
         return JSONResponse(status_code=500, content={"error": "Failed to add note."})
     return {"note_id": note_id}
@@ -97,5 +87,3 @@ def fetch_notes(
     """
     notes = get_notes(page, tab, user_id, session_id)
     return {"notes": notes}
-
-# Reason: Imports ChatRequest and ChatResponse from centralized data_models.py for modularity and uniformity.

@@ -15,7 +15,7 @@ from datetime import datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-from config import config  # Centralized config access
+import config  # Centralized config access
 
 DATABASE_URL = config.DATABASE_URL
 engine = create_engine(DATABASE_URL)
@@ -59,7 +59,7 @@ def get_notes(page: str, tab: str, user_id: Optional[str] = None, session_id: Op
     try:
         with engine.begin() as conn:
             result = conn.execute(select_sql, {"page": page, "tab": tab})
-            return [dict(row) for row in result]
+            return [dict(row) for row in result.mappings()]
     except SQLAlchemyError as e:
         print(f"[Notes] Failed to fetch notes: {e}")
         return []

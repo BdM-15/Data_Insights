@@ -315,3 +315,11 @@ class ChatResponse(BaseModel):
     llm_generated_code: Optional[str] = None
     response_type: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class NoteRequest(BaseModel):
+    """Request model for adding a user note via the /note endpoint. Used in MCP chat server and frontend chat UI."""
+    note_text: str
+    page: str
+    tab: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None

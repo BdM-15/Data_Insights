@@ -14,7 +14,7 @@ from datetime import datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-from config import config  # Centralized config access
+import config  # Centralized config access
 
 # Utility: Get database URL from config
 DATABASE_URL = config.DATABASE_URL  # Should be set in .env and config.py
