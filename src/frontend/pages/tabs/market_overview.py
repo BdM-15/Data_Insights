@@ -40,6 +40,7 @@ from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trend
 from src.frontend.visualizations.charts.distribution_charts import plot_capture_intensity_scatter, plot_sankey_competitive_landscape
 from src.frontend.visualizations.charts.comparison_charts import plot_top_agencies_bar, plot_top_agencies_obligation_bar
 from src.frontend.visualizations.components.metric_cards import display_summary_metrics
+from src.frontend.components.chat_with_data import render_chat_with_data
 
 def render_tab(df: pd.DataFrame):
     """
@@ -233,21 +234,9 @@ def render_tab(df: pd.DataFrame):
         else:
             st.warning("Insufficient data for contract flow analysis.")
 
-        # --- AI Chatbot Placeholder ---
-        st.subheader("AI Chatbot (Coming Soon)")
-        st.info(
-            """
-            **Capture Insights AI Chatbot**
-            
-            This section will provide an interactive AI assistant for capture managers to ask questions about the data in the `s3_processed` schema. The chatbot will leverage a local LLM (e.g., Mistral via Ollama) and use the mcp-alchemy tool for secure, read-only SQL access to the capture insights database. All processing will remain local for privacy and compliance.
-            
-            _Planned features:_
-            - Natural language Q&A about contracts, agencies, competitors, and trends
-            - Context-aware responses using the latest dashboard filters
-            - Secure, local inference (no external API calls)
-            - Future support for document generation and strategic recommendations
-            """
-        )
+        # --- AI Chatbot Integration ---
+        st.subheader("AI Chatbot - Chat with the historical data.")
+        render_chat_with_data(page="market_overview", tab="main")
     else:
         st.warning("No data available. Please check the database connection details in the sidebar.")
         st.info("Possible issues:")
