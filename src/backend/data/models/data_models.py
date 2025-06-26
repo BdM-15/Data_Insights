@@ -379,3 +379,13 @@ class ProfileGenerateResponse(BaseModel):
     milestone: Optional[str] = None  # If this is a milestone review
     response_type: str = "profile"  # Always 'profile' for this endpoint
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class DataSummaryResponse(BaseModel):
+    """Response model for quick dashboard stats/summaries via /data/summary endpoint."""
+    total_contracts: int
+    total_obligation: float
+    top_agency: Optional[str] = None
+    top_contractor: Optional[str] = None
+    expiring_contracts: int
+    last_updated: datetime
+    # Reason: Can be extended with more summary fields as needed

@@ -8,10 +8,10 @@ Author: Data_Insights Team
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from src.backend.data.models.data_models import ChatRequest, ChatResponse, NoteRequest, NoteDeleteRequest, NoteUpdateRequest, ChatHistoryRequest, VisualizationRequest, VisualizationResponse, ProfileGenerateRequest, ProfileGenerateResponse
+from src.backend.data.models.data_models import ChatRequest, ChatResponse, NoteRequest, NoteDeleteRequest, NoteUpdateRequest, ChatHistoryRequest, VisualizationRequest, VisualizationResponse, ProfileGenerateRequest, ProfileGenerateResponse, DataSummaryResponse
 from src.chat.llm_interface import query_llm
 from src.chat.notes import add_note, get_notes, delete_note, update_note
-from src.chat.logger import log_chat_interaction, get_chat_history
+from src.chat.logger import log_chat_interaction, get_chat_history, engine
 from sqlalchemy import text as sa_text
 from typing import List
 from datetime import datetime
@@ -194,3 +194,82 @@ def generate_profile(request: ProfileGenerateRequest):
         milestone=request.milestone,
         # response_type and timestamp set by default
     )
+
+@app.get("/data/summary", response_model=DataSummaryResponse)
+def get_data_summary():
+    """
+    Provide quick stats or summaries for the dashboard (e.g., total contracts, total obligation, top agency, etc.).
+    Queries the database for live values.
+    """
+    # Query from usaspending_prime_awards in capture_insights
+    with engine.begin() as conn:
+        total_contracts = conn.execute(sa_text("SELECT COUNT(*) FROM capture_insights.usaspending_prime_awards")).scalar() or 0
+        total_obligation = conn.execute(sa_text("SELECT COALESCE(SUM(federal_action_obligation),0) FROM capture_insights.usaspending_prime_awards")).scalar() or 0.0
+        top_agency = conn.execute(sa_text("SELECT parent_award_agency_name FROM capture_insights.usaspending_prime_awards GROUP BY parent_award_agency_name ORDER BY SUM(federal_action_obligation) DESC LIMIT 1")).scalar()
+        top_contractor = conn.execute(sa_text("SELECT recipient_name FROM capture_insights.usaspending_prime_awards GROUP BY recipient_name ORDER BY SUM(federal_action_obligation) DESC LIMIT 1")).scalar()
+        expiring_contracts = conn.execute(sa_text("SELECT COUNT(*) FROM capture_insights.usaspending_prime_awards WHERE period_of_performance_current_end_date >= CURRENT_DATE AND period_of_performance_current_end_date < CURRENT_DATE + INTERVAL '90 days' ")).scalar() or 0
+    return DataSummaryResponse(
+        total_contracts=total_contracts,
+        total_obligation=total_obligation,
+        top_agency=top_agency,
+        top_contractor=top_contractor,
+        expiring_contracts=expiring_contracts,
+        last_updated=datetime.utcnow()
+    )
+
+@app.post("/search")
+def search_data(request: dict):
+    """
+    Advanced semantic/keyword search across contracts, notes, or documents.
+    Accepts a JSON payload with 'query', 'type' (contracts, notes, documents), and optional filters.
+    Returns a list of matching results with relevant fields.
+    """
+    # Reason: This endpoint is extensible for future AI/semantic search integration.
+    query = request.get("query", "")
+    search_type = request.get("type", "contracts")
+    filters = request.get("filters", {})
+    results = []
+
+    with engine.begin() as conn:
+        if search_type == "contracts":
+            # Simple keyword search on usaspending_prime_awards (can be extended for semantic search)
+            sql = sa_text("""
+                SELECT contract_award_unique_key, recipient_name, parent_award_agency_name, naics_code, transaction_description, federal_action_obligation, period_of_performance_current_end_date
+                FROM capture_insights.usaspending_prime_awards
+                WHERE (
+                    recipient_name ILIKE :q OR
+                    parent_award_agency_name ILIKE :q OR
+                    naics_code ILIKE :q OR
+                    transaction_description ILIKE :q
+                )
+                LIMIT 50
+            """)
+            db_results = conn.execute(sql, {"q": f"%{query}%"}).fetchall()
+            for row in db_results:
+                results.append(dict(row))
+        elif search_type == "notes":
+            # Search user notes (assuming notes table exists)
+            sql = sa_text("""
+                SELECT id, note_text, page, tab, user_id, session_id, created_at
+                FROM capture_insights.user_notes
+                WHERE note_text ILIKE :q
+                LIMIT 50
+            """)
+            db_results = conn.execute(sql, {"q": f"%{query}%"}).fetchall()
+            for row in db_results:
+                results.append(dict(row))
+        elif search_type == "documents":
+            # Search documents (assuming documents table exists)
+            sql = sa_text("""
+                SELECT document_id, related_contract_id, text, document_type, created_at
+                FROM capture_insights.documents
+                WHERE text ILIKE :q
+                LIMIT 50
+            """)
+            db_results = conn.execute(sql, {"q": f"%{query}%"}).fetchall()
+            for row in db_results:
+                results.append(dict(row))
+        else:
+            return JSONResponse(status_code=400, content={"error": "Invalid search type."})
+
+    return {"results": results, "count": len(results)}
