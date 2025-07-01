@@ -234,9 +234,7 @@ def render_tab(df: pd.DataFrame):
         else:
             st.warning("Insufficient data for contract flow analysis.")
 
-        # --- AI Chatbot Integration ---
-        st.subheader("AI Chatbot - Chat with the historical data.")
-        render_chat_with_data(page="market_overview", tab="main")
+        # (AI Chatbot removed: see standalone AI Chat page)
     else:
         st.warning("No data available. Please check the database connection details in the sidebar.")
         st.info("Possible issues:")

@@ -56,6 +56,7 @@ def log_chat_interaction(
             :page, :tab, :prompt_structure, :session_id, :user_id, :created_at
         )
     ''')
+    import json
     try:
         with engine.begin() as conn:
             conn.execute(insert_sql, {
@@ -65,7 +66,7 @@ def log_chat_interaction(
                 "response_type": response_type,
                 "page": page,
                 "tab": tab,
-                "prompt_structure": prompt_structure,
+                "prompt_structure": json.dumps(prompt_structure) if prompt_structure is not None else None,
                 "session_id": session_id,
                 "user_id": user_id,
                 "created_at": datetime.utcnow()

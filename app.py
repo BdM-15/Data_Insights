@@ -54,6 +54,7 @@ try:
     from src.frontend.pages.strategic_dashboard import main as strategic_dashboard_main
     from src.frontend.pages.advanced_opportunity_explorer import main as capture_profiles_main
     from src.frontend.pages.capability_stance import main as capability_stance_main
+    from src.frontend.pages.ai_chat import main as ai_chat_main
     # Optionally import placeholders for capture_profiles and ai_tools if they exist
     # from src.frontend.pages.capture_profiles import main as capture_profiles_page_main
     # from src.frontend.pages.ai_tools import main as ai_tools_page_main
@@ -68,6 +69,7 @@ try:
         st.Page(strategic_dashboard_main, title="Strategic Dashboard", icon="📊", url_path="dashboard"),
         st.Page(capture_profiles_main, title="Advanced Opportunity Explorer", icon="🔍", url_path="advanced-explorer"),
         st.Page(capability_stance_main, title="Capability Stance", icon="🏆", url_path="capability-stance"),
+        st.Page(ai_chat_main, title="AI Chat with the Data", icon="🤖", url_path="ai-chat"),
         # st.Page(capture_profiles_page_main, title="Capture Profiles", icon="📄", url_path="capture-profiles"),
         # st.Page(ai_tools_page_main, title="AI Tools", icon="🤖", url_path="ai-tools"),
     ]
@@ -104,6 +106,8 @@ try:
         capture_profiles_main()
     elif st.session_state.current_page == "capability-stance":
         capability_stance_main()
+    elif st.session_state.current_page == "ai-chat":
+        ai_chat_main()
     else:
         # Fallback to dashboard
         strategic_dashboard_main()
