@@ -1,3 +1,18 @@
+def set_note_active(note_id: int, active: bool) -> bool:
+    """
+    Set the 'active' status of a note by its ID (soft delete/restore).
+    Returns True if updated, False otherwise.
+    """
+    update_sql = text('''
+        UPDATE app_logs.user_notes SET active = :active WHERE id = :id
+    ''')
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(update_sql, {"id": note_id, "active": active})
+            return result.rowcount > 0
+    except SQLAlchemyError as e:
+        print(f"[Notes] Failed to set note active status: {e}")
+        return False
 """
 notes.py
 

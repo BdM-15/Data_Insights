@@ -6,17 +6,32 @@ This FastAPI app serves as the backend for the "chat with the data" feature. It 
 Author: Data_Insights Team
 """
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Path, Body
 from fastapi.responses import JSONResponse
 from src.backend.data.models.data_models import ChatRequest, ChatResponse, NoteRequest, NoteDeleteRequest, NoteUpdateRequest, ChatHistoryRequest, VisualizationRequest, VisualizationResponse, ProfileGenerateRequest, ProfileGenerateResponse, DataSummaryResponse
 from src.mcp_server.llm_interface import query_llm
-from src.mcp_server.notes import add_note, get_notes, delete_note, update_note
+from src.mcp_server.notes import add_note, get_notes, delete_note, update_note, set_note_active
 from src.mcp_server.logger import log_chat_interaction, get_chat_history, engine
 from sqlalchemy import text as sa_text
 from typing import List
 from datetime import datetime
 
 app = FastAPI(title="MCP Chat Server", description="Backend for chat with the data feature.")
+
+# --- PATCH endpoint for soft delete/restore of a note ---
+@app.patch("/note/{note_id}")
+def patch_note_active(note_id: int = Path(..., description="Note ID to update"), data: dict = Body(...)):
+    """
+    Update the 'active' status of a note (soft delete/restore).
+    Expects JSON: {"active": bool}
+    """
+    active = data.get("active")
+    if active is None:
+        return JSONResponse(status_code=400, content={"error": "Missing 'active' in request body."})
+    success = set_note_active(note_id, active)
+    if not success:
+        return JSONResponse(status_code=404, content={"error": "Note not found or could not be updated."})
+    return {"success": True, "id": note_id, "active": active}
 
 @app.post("/chat", response_model=ChatResponse)
 def chat_with_data(request: ChatRequest):
