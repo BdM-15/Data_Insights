@@ -1,5 +1,29 @@
 # Agentic LLM Architecture Plan (Dynamic, Intent-Driven)
 
+## Phased Agentic LLM Integration Checklist
+
+- [ ] 1. Document plan and requirements (**this section**)
+- [ ] 2. Refactor backend for agentic, intent-driven pattern
+- [ ] 3. Update prompt/context for dynamic tool selection (Llama3.2-8B as primary, Mistral-7B as fallback)
+- [ ] 4. Add tool router for intent-based agent dispatch
+- [ ] 5. Test with Llama3.2-8B and Mistral-7B (prompt engineering)
+- [ ] 6. Fine-tune and phase in new models
+
+---
+
+## Requirements Summary
+
+- All LLM inference is local (Ollama, CUDA, no external API calls)
+- Modular, agent-based architecture: orchestrator LLM routes to specialized agents (data, visualization, document, web, analysis)
+- Streamlit frontend, FastAPI backend, PostgreSQL for storage
+- All context (user, session, page, tab, notes) is tracked and passed to agents
+- Pydantic models for all agent APIs
+- Designed for extensibility: new agents/tools can be added as business needs arise
+- No hardcoded tool selection—LLM interprets user intent and selects tools dynamically
+- All user actions and context are logged for observability and context enrichment
+
+See also: `PLANNING.md`, `MODULARIZATION_AND_AI_PLAN.md`, and `TASKS.md` for supporting details and implementation notes.
+
 ## Vision
 
 - The LLM acts as an agent, orchestrating tool use for data, visualization, notes, and document generation.

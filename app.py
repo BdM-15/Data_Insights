@@ -11,11 +11,14 @@ import logging
 from datetime import datetime
 import streamlit as st
 
-# Add the project root to the path to ensure imports work correctly
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
+# Add the src directory to sys.path so 'backend' is importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 # Import from project modules
 from config import get_db_config, get_app_config, get_log_config
+
+
 
 # Configure logging
 log_config = get_log_config()

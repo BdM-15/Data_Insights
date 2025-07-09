@@ -37,89 +37,13 @@ def check_and_handle_session_timeout():
         st.session_state["last_activity_ts"] = now
 
 
-# --- Notes Feature as Fragment ---
-@st.fragment
-def notes_fragment():
-    st.subheader("Your Notes")
-    # Notes are stored as a list of dicts: {"content": str, "active": bool}
-    if "notes" not in st.session_state:
-        st.session_state["notes"] = []
-    if "note_input" not in st.session_state:
-        st.session_state["note_input"] = ""
 
-    note_text = st.text_area(
-        "Add notes about your findings, ideas, or follow-ups:",
-        value=st.session_state["note_input"],
-        height=68,
-        key="notes_area"
-    )
-    import requests
-    add_note = st.button("Add Note", key="add_note_button")
-    if add_note and note_text.strip():
-        # Add new note as active in session
-        new_note = {"content": note_text.strip(), "active": True}
-        # Try to add note to backend
-        try:
-            # Ensure these are set in session_state somewhere in your app
-            page = st.session_state.get("page", "ai_chat")
-            tab = st.session_state.get("tab", "default")
-            user_id = st.session_state.get("user_id")
-            session_id = st.session_state.get("session_id")
-            response = requests.post(
-                "http://localhost:8001/note",
-                json={
-                    "note_text": note_text.strip(),
-                    "page": page,
-                    "tab": tab,
-                    "user_id": user_id,
-                    "session_id": session_id
-                },
-                timeout=5
-            )
-            if response.status_code == 200:
-                data = response.json()
-                note_id = data.get("note_id")  # Backend returns note_id, not id
-                if note_id is not None:
-                    new_note["id"] = note_id
-        except Exception as e:
-            st.warning(f"Backend add note failed: {e}")
-        st.session_state["notes"].append(new_note)
-        st.session_state["note_input"] = ""
-        st.success("Note saved.")
-        st.rerun()
-    # Display only active notes with delete options if any exist
-    import requests
-    active_notes = [n for n in st.session_state["notes"] if n["active"]]
-    if active_notes:
-        st.markdown("**Current Notes:**")
-        for idx, note in enumerate(active_notes):
-            note_col1, note_col2 = st.columns([5, 1])
-            with note_col1:
-                st.markdown(f"- {note['content']}")
-            with note_col2:
-                # Trash icon button for soft delete
-                if st.button("🗑️", key=f"delete_note_{idx}", help="Delete note"):
-                    # SOFT DELETE: Mark note as inactive in session and backend
-                    for n in st.session_state["notes"]:
-                        if n["content"] == note["content"] and n["active"]:
-                            n["active"] = False
-                            break
-                    # If note has an id, call backend to set active=False (soft delete)
-                    note_id = note.get("id")
-                    if note_id is not None:
-                        try:
-                            # Reason: Use PATCH to update active=False for soft delete
-                            response = requests.patch(
-                                f"http://localhost:8001/note/{note_id}",
-                                json={"active": False},
-                                timeout=5
-                            )
-                            if response.status_code != 200:
-                                st.warning(f"Backend soft delete failed: {response.text}")
-                        except Exception as e:
-                            st.warning(f"Backend soft delete failed: {e}")
-                    st.success("Note deleted (hidden from context).")
-                    st.rerun()
+# --- Notes feature is currently disabled. To re-enable, uncomment the notes_fragment function and its usages below. ---
+# @st.fragment
+# def notes_fragment():
+#     st.subheader("Your Notes")
+#     ... (full implementation commented out) ...
+#     pass
 
 # --- Chat Feature as Fragment ---
 @st.fragment
@@ -177,7 +101,7 @@ def main():
         _For context-specific analysis, use the other dashboard pages._
         """
     )
-    notes_fragment()
+    # notes_fragment()  # Notes feature disabled
     st.markdown("---")
     chat_fragment()
 

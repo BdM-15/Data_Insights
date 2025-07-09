@@ -7,6 +7,22 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
+# ---------------- Agentic LLM Intent Model (for Tool Routing) ----------------
+
+class AgenticIntent(BaseModel):
+    """
+    Unified intent schema for agentic LLM output.
+    Used by the backend tool router to dispatch requests to the correct agent/tool.
+    """
+    intent: str  # e.g., 'data_query', 'visualization', 'note', 'document', 'analysis'
+    tool: Optional[str] = None  # Optional: explicit tool/agent name if LLM specifies
+    parameters: Dict[str, Any] = Field(default_factory=dict)  # All other parameters (filters, chart_type, etc.)
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    page: Optional[str] = None
+    tab: Optional[str] = None
+    # Reason: This model allows the LLM to flexibly specify any action/tool/parameters for dynamic routing.
+
 # Models for data related to 'agencies.py' (used for agency summary and charting in dashboard)
 class TopAgencyByCount(BaseModel):
     parent_award_agency_name: str

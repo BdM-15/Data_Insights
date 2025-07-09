@@ -18,7 +18,6 @@ import traceback
 # If you use an Ollama Python client, import it here (e.g., ollama or open-interpreter)
 # import ollama
 
-
 def query_llm(
     user_prompt: str,
     context_data: Optional[Dict[str, Any]] = None,
