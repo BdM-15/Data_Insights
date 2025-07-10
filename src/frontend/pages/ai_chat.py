@@ -1,4 +1,3 @@
-
 import streamlit as st
 import time
 import requests
@@ -36,7 +35,15 @@ def check_and_handle_session_timeout():
         # Update last activity timestamp
         st.session_state["last_activity_ts"] = now
 
-
+def get_agentic_response(user_input, context=None):
+    try:
+        payload = {"prompt": user_input, "context": context or {}}
+        response = requests.post("http://localhost:8001/agentic/route", json=payload, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("message", str(data))
+    except Exception as e:
+        return f"[Error contacting agentic LLM backend: {e}]"
 
 # --- Notes feature is currently disabled. To re-enable, uncomment the notes_fragment function and its usages below. ---
 # @st.fragment
@@ -45,46 +52,46 @@ def check_and_handle_session_timeout():
 #     ... (full implementation commented out) ...
 #     pass
 
-# --- Chat Feature as Fragment ---
-@st.fragment
+
+# --- Chat Feature as Modular Function ---
+
+
 def chat_fragment():
-    st.subheader("Chat with the Data")
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
+    if "pending_user_input" not in st.session_state:
+        st.session_state["pending_user_input"] = ""
 
-    # Display chat history (top to bottom)
-    for msg in st.session_state["chat_history"]:
-        if msg["role"] == "user":
-            st.markdown(f"**You:** {msg['content']}")
-        else:
-            st.markdown(f"<span style='color:#4B8BBE'><b>AI:</b> {msg['content']}</span>", unsafe_allow_html=True)
-
-    # Chat input at the bottom
-    user_input = st.text_input("Ask a question about the data, contracts, or trends:", key="chat_input")
-    send = st.button("Send", key="send_button")
-
-    if send and user_input.strip():
-        # Append user message
+    # Chat input box (always at the bottom)
+    user_input = st.chat_input("Ask a question about the data, contracts, or trends:", key="chat_input")
+    if user_input and user_input.strip() and user_input.strip().lower() != "chat":
         st.session_state["chat_history"].append({"role": "user", "content": user_input})
-        # Placeholder for AI response (replace with backend call)
-        ai_response = "[AI response will appear here. Integration with agentic LLM backend is coming soon.]"
+        ai_response = get_agentic_response(user_input)
         st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
+        st.session_state["pending_user_input"] = ""
+    elif user_input and user_input.strip().lower() == "chat":
+        st.warning("Please enter a real question, not just 'chat'.")
 
+    # Display chat history (including the latest response if just submitted)
+    for msg in st.session_state["chat_history"]:
+        with st.chat_message("user" if msg["role"] == "user" else "assistant"):
+            st.markdown(msg["content"])
 
-
+# --- Main Streamlit Page ---
 def main():
     """
-    Streamlit page entry point for AI Chat with the Data.
-    Sets up theme, description, and renders notes and chat fragments.
+    Streamlit page entry point for AI Data Agent.
+    Sets up theme, description, and renders chat fragment.
     """
     # Automatic session timeout/soft-delete check
     check_and_handle_session_timeout()
     # Inject custom theme CSS for visual consistency
     st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
-    st.title("🤖 AI Chat with the Data")
+    st.title("🤖 AI Data Agent")
+    st.subheader("Chat with the Data")
     st.markdown(
         """
-        **Welcome to the AI Chat with the Data!**
+        **Welcome to the AI Data Agent!**
 
         This page lets you interact with an advanced AI assistant powered by multiple local LLMs running via Ollama. The system uses an "orchestrator" LLM (Llama3.2-8B or Mistral-7B) to interpret your intent and route requests to specialized models for code, visualization, and analysis.
 
@@ -96,14 +103,9 @@ def main():
         - Ask about spending trends, top agencies, expiring contracts, or any other business intelligence question.
         - The AI has access to all available data, not just the current dashboard or filtered view.
         - Use natural language—no need for technical terms or SQL.
-        - Add notes to capture your findings or ideas.
-
         _For context-specific analysis, use the other dashboard pages._
         """
     )
     # notes_fragment()  # Notes feature disabled
     st.markdown("---")
     chat_fragment()
-
-if __name__ == "__main__":
-    main()
