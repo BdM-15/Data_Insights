@@ -38,10 +38,10 @@ def check_and_handle_session_timeout():
 def get_agentic_response(user_input, context=None):
     try:
         payload = {"prompt": user_input, "context": context or {}}
-        response = requests.post("http://localhost:8001/agentic/route", json=payload, timeout=60)
+        response = requests.post("http://localhost:8001/orchestrator/route", json=payload, timeout=60)
         response.raise_for_status()
         data = response.json()
-        return data.get("message", str(data))
+        return data.get("response", str(data))
     except Exception as e:
         return f"[Error contacting agentic LLM backend: {e}]"
 

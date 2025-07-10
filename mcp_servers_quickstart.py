@@ -14,13 +14,17 @@ import subprocess
 # Add the src directory to sys.path so 'backend' is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-def run_agentic_server():
-    agentic_module = importlib.import_module("backend.ai.mcp_servers.agentic.agentic_server")
-    uvicorn.run(agentic_module.app, host="0.0.0.0", port=8001, log_level="info")
+def run_orchestrator_server():
+    orchestrator_module = importlib.import_module("backend.ai.mcp_servers.orchestrator.orchestrator_server")
+    uvicorn.run(orchestrator_module.app, host="0.0.0.0", port=8001, log_level="info")
 
 def run_chat_server():
     chat_module = importlib.import_module("backend.ai.mcp_servers.chat.chat_server")
     uvicorn.run(chat_module.app, host="0.0.0.0", port=8002, log_level="info")
+
+def run_database_schema_server():
+    schema_module = importlib.import_module("backend.ai.mcp_servers.database_schema_server.database_schema_server")
+    uvicorn.run(schema_module.app, host="0.0.0.0", port=8003, log_level="info")
 
 def run_ollama_llm():
     # Start Ollama with llama3.1:8b model (if not already running)
@@ -30,13 +34,16 @@ def run_ollama_llm():
 
 def start_mcp_servers():
     run_ollama_llm()
-    t1 = threading.Thread(target=run_agentic_server, daemon=True)
+    t1 = threading.Thread(target=run_orchestrator_server, daemon=True)
     t2 = threading.Thread(target=run_chat_server, daemon=True)
+    t3 = threading.Thread(target=run_database_schema_server, daemon=True)
     t1.start()
     t2.start()
-    print("[INFO] MCP servers started: Agentic (8001), Chat (8002)")
+    t3.start()
+    print("[INFO] MCP servers started: Orchestrator (8001), Chat (8002), Database Schema (8003)")
     t1.join()
     t2.join()
+    t3.join()
 
 if __name__ == "__main__":
     start_mcp_servers()

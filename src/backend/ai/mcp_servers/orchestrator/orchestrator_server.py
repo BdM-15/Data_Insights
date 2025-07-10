@@ -1,5 +1,5 @@
 """
-Agentic Orchestrator MCP Server
+Orchestrator MCP Server
 
 - Receives user prompts/intents from the frontend (e.g., chat UI)
 - Calls the LLM to extract intent (using centralized intent schema)
@@ -17,12 +17,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from backend.data.models.data_models import AgenticIntent
-# Import the chat MCP server as chat_server (renamed from mcp_server)
 from backend.ai.mcp_servers.chat import chat_server
-# Import other agents/tools as needed
-from .agentic_router import router as agentic_router
+from .orchestrator_router import router as orchestrator_router
 
-app = FastAPI(title="Agentic Orchestrator MCP Server")
-app.include_router(agentic_router)
-
-    # ...existing code...
+app = FastAPI(title="Orchestrator MCP Server")
+app.include_router(orchestrator_router, prefix="/orchestrator")

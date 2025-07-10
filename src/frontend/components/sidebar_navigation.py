@@ -96,7 +96,7 @@ def get_page_config():
             },
             {
                 "id": "ai-chat",
-                "title": "AI Chat with the Data",
+                "title": "AI Data Agent",
                 "icon": "🤖",
                 "function": None
             }
