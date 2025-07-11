@@ -18,4 +18,57 @@ from datetime import datetime
 
 app = FastAPI(title="MCP Chat Server", description="Backend for chat with the data feature.")
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for service discovery."""
+    return {
+        "name": "chat_server",
+        "status": "healthy",
+        "service_type": "chat",
+        "version": "1.0.0",
+        "description": "Conversational AI interface with domain expertise"
+    }
+
+@app.get("/capabilities")
+async def get_capabilities():
+    """Return server capabilities for dynamic service discovery."""
+    return {
+        "capabilities": [
+            {
+                "name": "chat",
+                "description": "General Q&A and conversational responses with domain expertise in defense contracting",
+                "endpoint": "http://localhost:8002/chat/route",
+                "method": "POST",
+                "parameters": {
+                    "prompt": "str",
+                    "user_id": "str",
+                    "session_id": "str",
+                    "page": "str",
+                    "tab": "str"
+                },
+                "examples": [
+                    "What are the key factors in defense contracting?",
+                    "Explain the difference between prime and subcontract awards",
+                    "How do I identify potential teaming partners?"
+                ]
+            },
+            {
+                "name": "visualization",
+                "description": "Generate data visualizations and charts",
+                "endpoint": "http://localhost:8002/visualization/route",
+                "method": "POST",
+                "parameters": {
+                    "chart_type": "str",
+                    "data_source": "str",
+                    "filters": "dict"
+                },
+                "examples": [
+                    "Create a bar chart of top agencies by spending",
+                    "Generate a trend line for quarterly obligations",
+                    "Show a pie chart of contract types"
+                ]
+            }
+        ]
+    }
+
 # ...existing endpoints and logic from mcp_server.py...

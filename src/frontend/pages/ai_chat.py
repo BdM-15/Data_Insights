@@ -37,11 +37,30 @@ def check_and_handle_session_timeout():
 
 def get_agentic_response(user_input, context=None):
     try:
-        payload = {"prompt": user_input, "context": context or {}}
+        # Use the new flexible routing endpoint with enhanced context
+        payload = {
+            "prompt": user_input, 
+            "context": context or {},
+            "user_id": st.session_state.get("user_id", "streamlit_user"),
+            "session_id": st.session_state.get("session_id", "default_session"),
+            "page": "ai_chat",
+            "tab": "chat"
+        }
+        
+        # Use the main orchestrator route with dynamic tool discovery
         response = requests.post("http://localhost:8001/orchestrator/route", json=payload, timeout=60)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("response", str(data))
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("response", str(data))
+        else:
+            # Fallback to legacy routing if main routing fails
+            legacy_payload = {"prompt": user_input, "context": context or {}}
+            response = requests.post("http://localhost:8001/legacy/route", json=legacy_payload, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("response", str(data))
+            
     except Exception as e:
         return f"[Error contacting agentic LLM backend: {e}]"
 
@@ -89,6 +108,18 @@ def main():
     st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
     st.title("🤖 AI Data Agent")
     st.subheader("Chat with the Data")
+    
+    # Phase 1 status indicator
+    try:
+        status_response = requests.get("http://localhost:8001/orchestrator/system_status", timeout=5)
+        if status_response.status_code == 200:
+            status_data = status_response.json()
+            st.success(f"✅ Phase 1 Active: Dynamic Discovery ({status_data['total_capabilities']} capabilities from {status_data['healthy_servers']}/{status_data['total_servers']} servers)")
+        else:
+            st.warning("⚠️ Using Legacy Routing (Phase 1 services unavailable)")
+    except:
+        st.warning("⚠️ Using Legacy Routing (Phase 1 services unavailable)")
+    
     st.markdown(
         """
         **Welcome to the AI Data Agent!**

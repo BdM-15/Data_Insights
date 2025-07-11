@@ -5,8 +5,9 @@ Exposes the s3_processed schema and enables read-only query execution for LLM ag
 """
 
 from fastapi import FastAPI
-from .schema_router import router as schema_router
+from .schema_router import router as schema_router, app as schema_app
 
-app = FastAPI(title="Database Schema MCP Server", description="Expose s3_processed schema and run read-only queries for LLM access.")
+# Use the app from schema_router which has the health and capabilities endpoints
+app = schema_app
 
 app.include_router(schema_router, prefix="/schema", tags=["schema"])

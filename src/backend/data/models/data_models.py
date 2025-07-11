@@ -23,6 +23,37 @@ class AgenticIntent(BaseModel):
     tab: Optional[str] = None
     # Reason: This model allows the LLM to flexibly specify any action/tool/parameters for dynamic routing.
 
+class FlexibleIntent(BaseModel):
+    """
+    Advanced intent schema for LLM-driven decision making and multi-step workflows.
+    Replaces rigid routing with intelligent, context-aware orchestration.
+    """
+    intent: str  # Primary intent (e.g., 'analyze_contracts', 'generate_report', 'multi_step_analysis')
+    approach: str  # LLM's chosen approach: 'conversational', 'single_tool', 'multi_step', 'workflow'
+    reasoning: str  # LLM's explanation of its decision-making process
+    confidence: float = Field(ge=0.0, le=1.0)  # LLM's confidence in its analysis (0.0 to 1.0)
+    
+    # Tool orchestration
+    primary_tool: Optional[str] = None  # Main tool/capability to use
+    secondary_tools: List[str] = Field(default_factory=list)  # Additional tools needed
+    tool_sequence: List[Dict[str, Any]] = Field(default_factory=list)  # Ordered execution plan
+    
+    # Context and parameters
+    parameters: Dict[str, Any] = Field(default_factory=dict)  # Tool-specific parameters
+    context: Dict[str, Any] = Field(default_factory=dict)  # Additional context for execution
+    
+    # Session information
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    page: Optional[str] = None
+    tab: Optional[str] = None
+    
+    # Execution metadata
+    expected_output: Optional[str] = None  # What the LLM expects to produce
+    fallback_strategy: Optional[str] = None  # What to do if primary approach fails
+    requires_user_input: bool = False  # Whether additional user input is needed
+
+
 # Models for data related to 'agencies.py' (used for agency summary and charting in dashboard)
 class TopAgencyByCount(BaseModel):
     parent_award_agency_name: str
@@ -405,3 +436,19 @@ class DataSummaryResponse(BaseModel):
     expiring_contracts: int
     last_updated: datetime
     # Reason: Can be extended with more summary fields as needed
+
+class ServiceDiscoveryResponse(BaseModel):
+    """Response model for service discovery information."""
+    servers: List[Dict[str, Any]]
+    total_servers: int
+    healthy_servers: int
+    total_capabilities: int
+    discovery_time: Optional[str] = None
+
+
+class DynamicToolResponse(BaseModel):
+    """Response model for dynamically discovered tools."""
+    tools: List[Dict[str, Any]]
+    total_tools: int
+    server_count: int
+    last_updated: str
