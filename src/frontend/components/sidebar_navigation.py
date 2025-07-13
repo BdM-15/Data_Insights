@@ -80,36 +80,28 @@ def get_page_config():
                 "id": "dashboard",
                 "title": "Strategic Dashboard",
                 "icon": "📊",
-                "function": None  # Will be set by the main app
+                "function": None
             },
             {
-                "id": "advanced-explorer", 
+                "id": "advanced-explorer",
                 "title": "Advanced Opportunity Explorer",
                 "icon": "🔍",
-                "function": None  # Will be set by the main app
+                "function": None
             },
             {
                 "id": "capability-stance",
                 "title": "Capability Stance",
                 "icon": "🏆",
-                "function": None  # Will be set by the main app
+                "function": None
+            },
+            {
+                "id": "ai-chat",
+                "title": "AI Data Agent",
+                "icon": "🤖",
+                "function": None
             }
         ],
-        "Tools": [
-            # Future pages can be added here
-            # {
-            #     "id": "advanced-explorer",
-            #     "title": "Advanced Data Explorer", 
-            #     "icon": "🔍",
-            #     "function": None
-            # },
-            # {
-            #     "id": "ai-tools",
-            #     "title": "AI Tools",
-            #     "icon": "🤖", 
-            #     "function": None
-            # }
-        ]
+        "Tools": []
     }
 
 

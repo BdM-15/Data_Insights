@@ -233,21 +233,7 @@ def render_tab(df: pd.DataFrame):
         else:
             st.warning("Insufficient data for contract flow analysis.")
 
-        # --- AI Chatbot Placeholder ---
-        st.subheader("AI Chatbot (Coming Soon)")
-        st.info(
-            """
-            **Capture Insights AI Chatbot**
-            
-            This section will provide an interactive AI assistant for capture managers to ask questions about the data in the `s3_processed` schema. The chatbot will leverage a local LLM (e.g., Mistral via Ollama) and use the mcp-alchemy tool for secure, read-only SQL access to the capture insights database. All processing will remain local for privacy and compliance.
-            
-            _Planned features:_
-            - Natural language Q&A about contracts, agencies, competitors, and trends
-            - Context-aware responses using the latest dashboard filters
-            - Secure, local inference (no external API calls)
-            - Future support for document generation and strategic recommendations
-            """
-        )
+        # (AI Chatbot removed: see standalone AI Chat page)
     else:
         st.warning("No data available. Please check the database connection details in the sidebar.")
         st.info("Possible issues:")

@@ -147,6 +147,222 @@
   - ✅ Added CATEGORY_COLORS for future categorical charts
   - ✅ All error handling and missing data cases are covered
 
+## Revised LLM-First MCP Integration Strategy
+
+### **Phase 1: Modern Agent Architecture with Realistic Database Integration (COMPLETED)**
+
+**Objective**: ✅ **COMPLETED** - Established modern LangGraph-based agent architecture with realistic database tool responses to eliminate LLM hallucination.
+
+**Core Changes Implemented**:
+
+- ✅ **Modern Agent Architecture**: Replaced LlamaIndex with LangGraph-based system in `modern_agent.py`
+- ✅ **Realistic Database Tool Responses**: Eliminated hallucinated responses with actual PostgreSQL schema information
+- ✅ **Proper Tool Selection Logic**: Implemented working tool orchestration with concise, accurate responses
+- ✅ **CUDA-Optimized Ollama**: Configured data_insights_optimized model with 512 tokens, 5 iterations, 30s timeout
+- ✅ **Comprehensive Testing**: Created test suite revealing technical success but domain expertise gaps
+
+**Completed Implementation**:
+
+- ✅ **Modern Agent with 4 MCP Database Tools**:
+  - ✅ Database schema tool with actual PostgreSQL structure (5 schemas, 66.6M records)
+  - ✅ Table information tool with realistic row counts and field descriptions
+  - ✅ SQL execution tool with proper query guidance and safety checks
+  - ✅ Working schema tool with actual database context and realistic responses
+- ✅ **Eliminated LLM Hallucination**:
+  - ✅ Replaced fake table names with actual database schema information
+  - ✅ Implemented realistic tool responses based on actual 66.6M usaspending_prime_awards data
+  - ✅ Fixed tool selection logic to prevent generic fallback responses
+- ✅ **Comprehensive Test Suite**:
+  - ✅ 6 test cases including challenging NAICS 811310 domain knowledge test
+  - ✅ Validated technical framework works but revealed domain expertise gaps
+  - ✅ Agent understands database structure but lacks government contracting domain knowledge
+
+**Current Status**: ✅ **Technical foundation complete, ready for Phase 2 optimization**
+
+### **Phase 2: Agentic Framework Optimization & Performance Enhancement (CURRENT PRIORITY)**
+
+**Objective**: Complete the agentic LLM framework with advanced tool chaining, complex query handling, and performance optimization before proceeding to domain-specific fine-tuning.
+
+**Core Focus Areas**:
+
+- **Advanced Tool Orchestration**: Multi-step reasoning and tool chaining for complex business intelligence queries
+- **Performance Optimization**: CUDA utilization optimization and response time improvements
+- **Complex Query Handling**: Support for multi-table joins, temporal analysis, and competitive intelligence
+- **Domain-Agnostic Intelligence**: Sophisticated reasoning patterns that work across different domains
+- **Error Handling & Recovery**: Robust fallback mechanisms and error correction
+
+**Implementation Tasks**:
+
+- [ ] **Advanced Multi-Step Reasoning**:
+  - [ ] Implement tool chaining for complex queries requiring multiple database operations
+  - [ ] Create reasoning workflows that break down complex questions into component steps
+  - [ ] Add context retention across multi-step tool calls
+  - [ ] Implement result synthesis from multiple tool outputs
+- [ ] **Performance & CUDA Optimization**:
+  - [ ] Optimize Ollama model parameters for NVIDIA GTX 4060 performance
+  - [ ] Implement response streaming for better user experience
+  - [ ] Add response caching for frequently accessed database information
+  - [ ] Optimize tool selection speed and accuracy
+- [ ] **Complex Query Intelligence**:
+  - [ ] Enhance SQL generation for multi-table joins and complex aggregations
+  - [ ] Implement temporal analysis capabilities (fiscal quarters, contract lifecycles)
+  - [ ] Add competitive intelligence query patterns
+  - [ ] Create intelligent query optimization suggestions
+- [ ] **Error Handling & Recovery**:
+  - [ ] Implement robust error detection and correction mechanisms
+  - [ ] Add fallback strategies for failed tool calls
+  - [ ] Create query validation and safety checks
+  - [ ] Implement user-friendly error explanations
+- [ ] **Testing & Validation**:
+  - [ ] Expand test suite to cover complex multi-step scenarios
+  - [ ] Add performance benchmarks and optimization targets
+  - [ ] Test error handling and recovery mechanisms
+  - [ ] Validate tool chaining accuracy and efficiency
+
+**Expected Benefits**:
+
+- **Sophisticated Reasoning**: Advanced multi-step problem solving capabilities
+- **Optimized Performance**: Fast, efficient responses leveraging CUDA acceleration
+- **Complex Analysis Support**: Handle sophisticated business intelligence queries
+- **Robust Operation**: Reliable error handling and recovery mechanisms
+- **Foundation for Specialization**: Strong technical base ready for domain fine-tuning
+
+### **Phase 3: Domain-Specific Fine-Tuning & Expert Specialization (FUTURE)**
+
+**Objective**: After completing the agentic framework optimization, implement domain-specific fine-tuning to transform the agent into a true government contracting expert consultant.
+
+**Strategic Approach**:
+
+- **Complete Technical Foundation First**: Ensure robust agentic framework before specialization
+- **Domain Knowledge Integration**: Fine-tune model with government contracting expertise
+- **Expert Consultation Capability**: Enable non-experts to receive expert-level insights
+- **Specialized Query Understanding**: Deep understanding of contracting terminology and processes
+
+**Implementation Tasks (After Phase 2 Completion)**:
+
+- [ ] **Government Contracting Domain Fine-Tuning**:
+  - [ ] Create comprehensive training dataset from government contracting domain knowledge
+  - [ ] Include FAR (Federal Acquisition Regulation) understanding and terminology
+  - [ ] Add NAICS code expertise and industry-specific knowledge
+  - [ ] Implement understanding of modification_number = '0' meaning "awards not modifications"
+  - [ ] Train on contract vehicle types, set-aside categories, and competition procedures
+- [ ] **Expert Consultation Patterns**:
+  - [ ] Develop sophisticated reasoning patterns for capture management decisions
+  - [ ] Implement win probability assessment methodologies
+  - [ ] Create competitive analysis frameworks and strategic recommendations
+  - [ ] Add market intelligence interpretation and synthesis capabilities
+- [ ] **Specialized Query Intelligence**:
+  - [ ] Advanced understanding of government fiscal cycles and procurement patterns
+  - [ ] Sophisticated contract lifecycle analysis and expiration planning
+  - [ ] Deep competitive intelligence and market positioning analysis
+  - [ ] Expert-level capture strategy development and proposal guidance
+
+**Expected Benefits**:
+
+- **True Expert Capability**: Deep government contracting domain knowledge
+- **Advanced Consultation**: Expert-level strategic recommendations and analysis
+- **Specialized Understanding**: Nuanced comprehension of contracting terminology and processes
+- **Strategic Decision Support**: Sophisticated capture management and business development guidance
+
+### **Phase 4: Enhanced MCP Tool Ecosystem & Workflow Integration**
+
+**Objective**: Expand the MCP tool ecosystem with specialized tools for comprehensive capture management and business intelligence workflows.
+
+**Enhanced MCP Tool Development**:
+
+- [ ] **Advanced Database Analytics Tool**:
+  - [ ] Sophisticated multi-table join capabilities and complex aggregations
+  - [ ] Temporal analysis for contract lifecycles and spending patterns
+  - [ ] Competitive intelligence query templates and market analysis
+  - [ ] Predictive modeling for opportunity forecasting
+- [ ] **Web Intelligence Scraper**:
+  - [ ] SAM.gov opportunity monitoring with automated alerts
+  - [ ] Competitor intelligence gathering from multiple sources
+  - [ ] Market trend analysis and industry intelligence synthesis
+  - [ ] Automated intelligence digests and strategic briefings
+- [ ] **Document Creator/Editor Agent**:
+  - [ ] Comprehensive capture profile generation with AI-assisted narratives
+  - [ ] Proposal templates and executive summary automation
+  - [ ] Multi-format document support (Word, Excel, PowerPoint, PDF)
+  - [ ] Integration with visualization outputs and competitive analysis
+- [ ] **Visualization Intelligence Tool**:
+  - [ ] Dynamic chart generation based on query context and analysis needs
+  - [ ] Interactive data exploration with intelligent drill-down suggestions
+  - [ ] Automated visualization recommendations for business intelligence insights
+  - [ ] Export capabilities optimized for presentations and proposal materials
+- [ ] **Strategic Analysis & Recommendation Engine**:
+  - [ ] Company capability analysis and competitive gap identification
+  - [ ] Win probability estimation using multi-factor analysis
+  - [ ] Strategic recommendation generation for capture decisions
+  - [ ] Market positioning analysis and competitive strategy development
+
+**Workflow Integration Tasks**:
+
+- [ ] **Multi-Tool Workflow Orchestration**:
+  - [ ] Chain multiple MCP tools for comprehensive opportunity analysis
+  - [ ] Create predefined workflows for common capture management tasks
+  - [ ] Enable intelligent tool result sharing and context building across workflows
+  - [ ] Implement adaptive workflow templates that customize based on opportunity characteristics
+- [ ] **Advanced Analytics Integration**:
+  - [ ] Integrate predictive modeling for win probability assessment
+  - [ ] Implement market trend forecasting and opportunity pipeline analysis
+  - [ ] Add automated risk assessment and mitigation strategy development
+  - [ ] Create strategic opportunity identification and qualification frameworks
+
+### **Phase 5: Comprehensive Capture Management Platform & External Integration**
+
+**Objective**: Transform the system into a complete capture management and business intelligence platform with external data source integration and advanced user experience capabilities.
+
+**External Data Integration Tasks**:
+
+- [ ] **Government Data Sources**:
+  - [ ] SAM.gov API integration for real-time opportunity monitoring
+  - [ ] NATO NSPA data integration for international opportunities
+  - [ ] USAspending.gov enhanced integration for comprehensive historical analysis
+  - [ ] GovWin IQ and Bloomberg Government API connections for market intelligence
+- [ ] **Business Intelligence Integration**:
+  - [ ] Salesforce REST API for CRM synchronization and opportunity management
+  - [ ] Competitor intelligence feeds for automated competitive analysis
+  - [ ] Market analysis data sources for industry trend monitoring
+  - [ ] Financial data integration for pricing strategy development
+
+**Advanced User Experience Tasks**:
+
+- [ ] **Expert-Level Consultation Interface**:
+  - [ ] Natural language query processing for complex business questions
+  - [ ] Multi-modal interaction supporting text, visualizations, and document generation
+  - [ ] Adaptive expertise level detection and response customization
+  - [ ] Collaborative workspace features for team-based capture management
+- [ ] **Comprehensive Automation**:
+  - [ ] Automated opportunity analysis using integrated MCP tool workflows
+  - [ ] Competitive intelligence automation with strategic insights generation
+  - [ ] Document generation with AI-assisted narratives and integrated analysis
+  - [ ] Capture profile automation incorporating all data sources and analysis capabilities
+
+**Self-Improving System Architecture**:
+
+- [ ] **Learning & Continuous Improvement**:
+  - [ ] System performance analysis and optimization recommendations
+  - [ ] Pattern recognition for improved routing strategies and workflow efficiency
+  - [ ] User interaction analysis for personalized experience enhancement
+  - [ ] Automated capability gap identification and tool enhancement suggestions
+
+**Key Technical Architecture Summary**:
+
+- **Phase 1 (COMPLETED)**: Modern LangGraph-based agent with realistic database tools and CUDA optimization
+- **Phase 2 (CURRENT)**: Advanced tool orchestration, performance optimization, and complex query handling
+- **Phase 3 (FUTURE)**: Domain-specific fine-tuning for government contracting expertise
+- **Phase 4 (PLANNED)**: Enhanced MCP tool ecosystem and workflow integration
+- **Phase 5 (PLANNED)**: Comprehensive capture management platform with external data integration
+
+**Expected Final Outcomes**:
+
+- ✅ **Technical Foundation Complete**: Modern agent architecture with realistic database integration
+- 🔄 **Performance Optimization In Progress**: CUDA utilization and advanced tool chaining capabilities
+- 🎯 **Expert Consultation Target**: Transform non-experts into expert-level government contracting consultants
+- 🚀 **Comprehensive Platform Vision**: Full capture management system with AI-powered intelligence and automation
+- 📈 **Continuous Evolution**: Self-improving system that adapts to user needs and market changes
+
 ## Strategic Dashboard Implementation Tasks
 
 ### Phase 1: Core Dashboard Development (Completed)
@@ -760,140 +976,36 @@
   - [ ] Create proposal strategy recommendation schema
   - [ ] Implement win themes generator with structured outputs
 
-Future Development Tasks
+## **Completed: FastMCP & LlamaIndex Architecture Planning**
 
-### Competition Analysis Enhancement
+✅ **Analysis and Planning Completed** (January 2025):
 
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
+- [x] Researched FastMCP framework and @mcp.tool() decorator pattern
+- [x] Analyzed LlamaIndex ReActAgent integration with MCP servers
+- [x] Studied best practices from MCP community (flight search example)
+- [x] Identified current architecture limitations (custom FastAPI vs. standardized MCP)
+- [x] Designed migration path from current implementation to FastMCP + LlamaIndex
+- [x] Updated requirements.txt with new dependencies
+- [x] Created FastMCP-based database schema server template
+- [x] Created LlamaIndex MCP communication module template
+- [x] Updated TASKS.md with phased implementation plan
+- [x] Added migration notes to existing communication modules
 
-### Automated Data Fetch Scheduler
+**Key Findings**:
 
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
+- Current custom FastAPI approach works but isn't following MCP standards
+- FastMCP + @mcp.tool() provides cleaner, more maintainable server implementation
+- LlamaIndex ReActAgent offers superior tool orchestration vs. custom parsing
+- Migration can be done incrementally without breaking existing functionality
+- Lean architecture principles from the MCP community prevent over-engineering
 
-Future Development Tasks
+**Files Created/Updated**:
 
-### Competition Analysis Enhancement
+- `src/backend/ai/mcp_servers/fastmcp_database_server.py` - FastMCP server template
+- `src/frontend/ai/llamaindex_mcp_communication.py` - LlamaIndex integration template
+- `fastmcp_servers_launcher.py` - Lean FastMCP server launcher
+- `requirements.txt` - Added FastMCP and LlamaIndex dependencies
+- `src/frontend/ai/llm_communication.py` - Added migration notes
+- `src/frontend/pages/ai_chat.py` - Added transition planning comments
 
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
-
-### Automated Data Fetch Scheduler
-
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
-
-Future Development Tasks
-
-### Competition Analysis Enhancement
-
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
-
-### Automated Data Fetch Scheduler
-
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
-
-Future Development Tasks
-
-### Competition Analysis Enhancement
-
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
-
-### Automated Data Fetch Scheduler
-
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
-
-Future Development Tasks
-
-### Competition Analysis Enhancement
-
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
-
-### Automated Data Fetch Scheduler
-
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
-
-Future Development Tasks
-
-### Competition Analysis Enhancement
-
-- [ ] Integrate "number_of_offers_received" data from USAspending.gov for competition intensity analysis
-- [ ] Develop visualization for competitive density by agency, NAICS, and contract type
-- [ ] Create mathematical pWin model using number of bidders as a key factor
-- [ ] Add competition level filter to strategic dashboard sidebar (Low: 1-2, Medium: 3-5, High: 6+)
-- [ ] Generate "sweet spot" analysis identifying optimal value-to-competition ratio opportunities
-- [ ] Add competition intensity metrics to executive summary dashboard
-- [ ] Incorporate competition level insights into Shipley milestone process
-
-### Automated Data Fetch Scheduler
-
-- [ ] Implement scheduled data fetching system to replace manual refresh process
-- [ ] Create configurable schedule for different data sources (USAspending, SAM.gov, NATO NSPA)
-- [ ] Add logging and notification system for scheduled fetch results
-- [ ] Implement retry mechanism for failed fetches with exponential backoff
-- [ ] Create admin dashboard for schedule configuration and monitoring
-- [ ] Add health check reporting for data source connectivity
-- [ ] Implement differential update to only fetch new/changed records
-- [ ] Develop email/notification alerts for fetch failures or anomalies
+**Status**: Architecture designed and templates created. Ready for Phase 1 implementation when dependencies are installed.

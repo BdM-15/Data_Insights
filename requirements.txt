@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+aiohttp
 altair==5.5.0
 annotated-types==0.7.0
 anyio==4.9.0
@@ -65,3 +66,15 @@ typing_extensions==4.13.1
 tzdata==2025.2
 urllib3==2.3.0
 watchdog==6.0.0
+
+# FastMCP and LangChain MCP Integration
+fastmcp
+langchain-mcp-adapters
+langchain-core
+langgraph
+nest_asyncio
+
+# Legacy LlamaIndex (to be removed)
+llama-index
+llama-index-llms-ollama
+llama-index-tools-mcp
