@@ -4,7 +4,7 @@ import requests
 import asyncio
 from src.frontend.styles.theme import THEME
 from src.frontend.styles.custom_css import generate_theme_css
-from src.frontend.ai.llamaindex_mcp_communication import LangGraphOrchestratorAgent
+from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
 
 SESSION_TIMEOUT_SECONDS = 1800  # 30 minutes
 
@@ -38,9 +38,9 @@ def check_and_handle_session_timeout():
         # Update last activity timestamp
         st.session_state["last_activity_ts"] = now
 
-def check_langchain_agent_status():
+def check_capture_intelligence_agent_status():
     """
-    Check if the LangGraph Orchestrator Agent with FastMCP integration is available.
+    Check if the Capture Intelligence Agent with FastMCP integration is available.
     Performs comprehensive health check including agent initialization.
     """
     try:
@@ -49,9 +49,9 @@ def check_langchain_agent_status():
         if ollama_response.status_code != 200:
             return {"status": "error", "message": "Ollama LLM server not available"}
         
-        # Check if FastMCP server is responding
+        # Check if FastMCP server is responding at the correct SSE endpoint
         try:
-            mcp_response = requests.get("http://localhost:8003/", timeout=3)
+            mcp_response = requests.get("http://localhost:8003/sse/", timeout=3)
             # Any response (including 404) means the server is running
             server_running = True
         except requests.exceptions.ConnectionError:
@@ -60,40 +60,40 @@ def check_langchain_agent_status():
         if not server_running:
             return {"status": "warning", "message": "FastMCP database server not running"}
         
-        # Check if the LangGraph agent is importable and can initialize
+        # Check if the Capture Intelligence agent is importable and can initialize
         try:
-            from src.frontend.ai.llamaindex_mcp_communication import LangGraphOrchestratorAgent
+            from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
             # Test basic initialization (this is lightweight)
-            agent = LangGraphOrchestratorAgent()
+            agent = CaptureIntelligenceAgent()
             return {
                 "status": "success", 
-                "message": "LangGraph Agent Architecture Active",
+                "message": "Capture Intelligence Agent Architecture Active",
                 "details": "Ollama LLM and FastMCP database server ready"
             }
         except ImportError:
-            return {"status": "error", "message": "LangGraph Orchestrator Agent not available"}
+            return {"status": "error", "message": "Capture Intelligence Agent not available"}
         except Exception as e:
             return {"status": "error", "message": f"Agent initialization failed: {str(e)[:50]}..."}
         
     except Exception as e:
         return {"status": "error", "message": f"System check failed: {str(e)[:50]}..."}
 
-def get_langchain_agent():
+def get_capture_intelligence_agent():
     """
-    Get or create a LangGraph Orchestrator Agent instance with session state caching.
+    Get or create a Capture Intelligence Agent instance with session state caching.
     Handles async initialization properly.
     """
-    if "langchain_agent" not in st.session_state:
+    if "capture_intelligence_agent" not in st.session_state:
         try:
-            from src.frontend.ai.llamaindex_mcp_communication import LangGraphOrchestratorAgent
-            agent = LangGraphOrchestratorAgent()
-            st.session_state["langchain_agent"] = agent
+            from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
+            agent = CaptureIntelligenceAgent()
+            st.session_state["capture_intelligence_agent"] = agent
             st.session_state["agent_initialized"] = False
         except Exception as e:
-            st.error(f"Failed to initialize LangGraph agent: {e}")
+            st.error(f"Failed to initialize Capture Intelligence agent: {e}")
             return None
     
-    return st.session_state.get("langchain_agent")
+    return st.session_state.get("capture_intelligence_agent")
 
 async def initialize_agent_if_needed(agent):
     """
@@ -111,12 +111,12 @@ async def initialize_agent_if_needed(agent):
 
 def get_agentic_response(user_input, context=None):
     """
-    Get response using LangGraph Orchestrator Agent with FastMCP integration.
+    Get response using Capture Intelligence Agent with FastMCP integration.
     Simplified async handling based on working implementation.
     """
     try:
         # Get the cached agent instance
-        agent = get_langchain_agent()
+        agent = get_capture_intelligence_agent()
         
         if not agent:
             return "[Error: AI system not properly initialized. Please refresh the page.]"
@@ -127,7 +127,7 @@ def get_agentic_response(user_input, context=None):
             if not await initialize_agent_if_needed(agent):
                 return "[Error: Agent initialization failed. Please try again.]"
             
-            # Use LangGraph Orchestrator Agent for intelligent tool orchestration
+            # Use Capture Intelligence Agent for intelligent tool orchestration
             response = await agent.chat_async(user_input)
             return response
         
@@ -138,7 +138,7 @@ def get_agentic_response(user_input, context=None):
             return f"[Error processing request: {str(e)[:100]}...]"
         
     except Exception as e:
-        return f"[Error with LangGraph Agent communication: {e}]"
+        return f"[Error with Capture Intelligence Agent communication: {e}]"
 
 # --- Notes feature is currently disabled. To re-enable, uncomment the notes_fragment function and its usages below. ---
 # @st.fragment
@@ -186,7 +186,7 @@ def main():
     st.subheader("Natural Conversation with Data")
     
     # LangGraph Agent + FastMCP Architecture Status
-    architecture_status = check_langchain_agent_status()
+    architecture_status = check_capture_intelligence_agent_status()
     
     if architecture_status["status"] == "success":
         st.success(f"✅ {architecture_status['message']}: {architecture_status['details']}")
@@ -194,7 +194,7 @@ def main():
         # Add detailed health check button
         if st.button("🔍 Run Detailed Health Check", help="Check agent initialization and tool availability"):
             with st.spinner("Running comprehensive health check..."):
-                agent = get_langchain_agent()
+                agent = get_capture_intelligence_agent()
                 if agent:
                     try:
                         async def run_health_check():
@@ -207,25 +207,18 @@ def main():
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.metric("LLM Status", "✅ Ready" if health_info.get('llm_initialized') else "❌ Failed")
+                            st.metric("LLM Status", "✅ Ready" if health_info.get('llm_available') else "❌ Failed")
                             st.metric("Agent Status", "✅ Ready" if health_info.get('agent_initialized') else "❌ Failed")
                         
                         with col2:
-                            st.metric("Total Tools", health_info.get('total_tools', 0))
-                            server_count = len([s for s in health_info.get('mcp_servers', {}).values() if s.get('status') == 'connected'])
-                            st.metric("MCP Servers", f"{server_count} connected")
+                            st.metric("Total Tools", health_info.get('tools_count', 0))
+                            st.metric("MCP Connected", "✅ Yes" if health_info.get('mcp_connected') else "❌ No")
                         
-                        # Show detailed server status
-                        if health_info.get('mcp_servers'):
-                            st.write("**MCP Server Details:**")
-                            for server_name, server_info in health_info.get('mcp_servers', {}).items():
-                                status = server_info.get('status', 'unknown')
-                                if status == 'connected':
-                                    st.success(f"🟢 {server_name}: Connected ({server_info.get('tool_count', 0)} tools)")
-                                else:
-                                    st.error(f"🔴 {server_name}: {status}")
-                                    if server_info.get('error'):
-                                        st.text(f"   Error: {server_info['error']}")
+                        # Show available tools
+                        if health_info.get('available_tools'):
+                            st.write("**Available Tools:**")
+                            for tool in health_info.get('available_tools', []):
+                                st.write(f"🔧 {tool}")
                         
                     except Exception as e:
                         st.error(f"Health check failed: {e}")
@@ -241,21 +234,28 @@ def main():
         """
         **Welcome to your AI Business Intelligence Consultant!**
 
-        This system uses a **revolutionary LangGraph + FastMCP Architecture** where the AI works as a skilled consultant with access to your capture insights database.
+        This system uses a **revolutionary LangGraph + FastMCP Architecture** where Roberto, your AI consultant, works as a skilled defense contracting expert with direct access to your capture insights database.
 
-        **The LangGraph Agent Philosophy:**
-        This AI consultant intelligently decides when and how to use database tools. It can handle simple conversations without unnecessary tool usage, but when you need data analysis, it seamlessly connects to your s3_processed database to explore contract data, market intelligence, and competitive insights.
+        **The Capture Intelligence Agent Philosophy:**
+        Roberto intelligently decides when and how to use database tools. He can handle simple conversations without unnecessary tool usage, but when you need data analysis, he seamlessly connects to your PostgreSQL database through FastMCP to explore contract data, market intelligence, and competitive insights.
 
         **Key Features:**
-        - **Intelligent Tool Usage**: Only uses database tools when actually needed
-        - **Natural Conversations**: Handles greetings and simple queries without forcing tool usage
-        - **Database-Driven Intelligence**: All data insights come from your actual contract database
+        - **Expert Domain Knowledge**: Roberto specializes in defense contracting and capture management
+        - **Intelligent Tool Usage**: Only uses database tools when actually needed for your queries
+        - **Natural Conversations**: Handles greetings and consultations without forcing tool usage
+        - **Database-Driven Intelligence**: All data insights come from your actual 66.6M contract records
         - **Real-Time Discovery**: AI explores your database structure and contents dynamically
         - **Strategic Analysis**: Combines database insights with defense contracting expertise
         - **Modern Architecture**: Uses LangGraph for flexible, state-aware agent workflows
         - **FastMCP Integration**: Direct connection to PostgreSQL through MCP protocol
 
-        _Simply ask any question about defense contracting, market analysis, or business development. The AI will intelligently decide whether to use tools or respond from its knowledge base._
+        **Available Database Tools:**
+        - `get_database_schema`: Explore database structure and metadata
+        - `get_table_info`: Get detailed information about specific tables
+        - `execute_sql_query`: Execute SQL queries with safety checks
+        - `get_server_status`: Check database connectivity and status
+
+        _Simply ask Roberto any question about defense contracting, market analysis, or business development. He'll intelligently decide whether to use database tools or respond from his expertise._
         """
     )
     # notes_fragment()  # Notes feature disabled
