@@ -40,7 +40,7 @@ from typing_extensions import TypedDict
 
 # MCP Integration using official LangChain MCP adapters
 try:
-    from langchain_mcp_adapters import MCPToolkit
+    from langchain_mcp_adapters.client import MultiServerMCPClient
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -73,7 +73,7 @@ class CaptureIntelligenceAgent:
         self.model_name = model_name or OLLAMA_MODEL
         self.temperature = temperature or OLLAMA_TEMPERATURE
         self.llm = None
-        self.mcp_toolkit = None
+        self.mcp_client = None
         self.tools = []
         self.graph = None
         self._initialized = False
@@ -115,17 +115,20 @@ class CaptureIntelligenceAgent:
             return
         
         try:
-            # Initialize MCP toolkit pointing to our FastMCP database server
-            self.mcp_toolkit = MCPToolkit()
+            # Create MCP client to connect to our FastMCP database server
+            logger.info("Connecting to MCP server at http://localhost:8003/sse/")
             
-            # Connect to our FastMCP database server on port 8003
-            await self.mcp_toolkit.connect_to_server(
-                "http://localhost:8003",
-                server_name="database_schema_service"
-            )
+            # Create MultiServerMCPClient with our database server configuration
+            # FastMCP SSE servers serve MCP protocol at /sse/ endpoint
+            self.mcp_client = MultiServerMCPClient({
+                "database": {
+                    "transport": "sse",
+                    "url": "http://localhost:8003/sse/"
+                }
+            })
             
-            # Get available tools from the MCP server
-            self.tools = await self.mcp_toolkit.get_tools()
+            # Get all tools from connected MCP servers
+            self.tools = await self.mcp_client.get_tools()
             
             logger.info(f"Successfully connected to MCP server with {len(self.tools)} tools:")
             for tool in self.tools:
@@ -266,12 +269,24 @@ Always aim to provide expert-level insights that help with strategic decision ma
             "agent_initialized": self._initialized,
             "llm_available": self.llm is not None,
             "mcp_available": MCP_AVAILABLE,
-            "mcp_connected": self.mcp_toolkit is not None,
+            "mcp_connected": self.mcp_client is not None,
             "tools_count": len(self.tools),
             "available_tools": [tool.name for tool in self.tools] if self.tools else [],
             "model_name": self.model_name,
             "langgraph_ready": self.graph is not None
         }
+    
+    async def cleanup(self):
+        """Clean up resources including MCP client connections."""
+        if self.mcp_client:
+            try:
+                # MultiServerMCPClient doesn't support context manager protocol
+                # According to the warning, we just set it to None for cleanup
+                logger.info("MCP client cleanup - no explicit close method needed")
+            except Exception as e:
+                logger.warning(f"Error during MCP client cleanup: {e}")
+            finally:
+                self.mcp_client = None
 
 # Alias for backward compatibility
 class ModernAgent(CaptureIntelligenceAgent):
@@ -282,3 +297,43 @@ class ModernAgent(CaptureIntelligenceAgent):
 class LangGraphOrchestratorAgent(CaptureIntelligenceAgent):
     """Backward compatibility alias."""
     pass
+
+# Test function for standalone execution
+async def test_agent():
+    """Test function to validate agent initialization and basic functionality."""
+    print("🚀 Testing Capture Intelligence Agent...")
+    
+    # Initialize agent
+    agent = CaptureIntelligenceAgent()
+    
+    try:
+        # Test health check before initialization
+        health = await agent.health_check()
+        print(f"📊 Pre-initialization health: {health}")
+        
+        # Initialize agent
+        await agent.initialize()
+        
+        # Test health check after initialization
+        health = await agent.health_check()
+        print(f"📊 Post-initialization health: {health}")
+        
+        # Test basic chat functionality
+        response = await agent.chat_async("Hello, can you help me with contract analysis?")
+        print(f"💬 Agent response: {response}")
+        
+        print("✅ Agent test completed successfully!")
+        
+        # Test tool functionality if available
+        if agent.tools:
+            print(f"\n🔧 Testing MCP tools functionality...")
+            tool_response = await agent.chat_async("Can you show me the database schema?")
+            print(f"🛠️  Tool response: {tool_response}")
+        
+    finally:
+        # Clean up resources
+        await agent.cleanup()
+        print("🧹 Cleanup completed")
+
+if __name__ == "__main__":
+    asyncio.run(test_agent())

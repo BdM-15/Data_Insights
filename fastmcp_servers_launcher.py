@@ -98,7 +98,7 @@ def test_fastmcp_servers():
     # Test DATABASE MCP Server (port 8003)
     print(f"\n{Fore.CYAN}📊 Testing DATABASE MCP Server connectivity...{Style.RESET_ALL}")
     try:
-        response = requests.get("http://127.0.0.1:8003", timeout=10)
+        response = requests.get("http://127.0.0.1:8003/sse/", timeout=10)
         print(f"{Fore.GREEN}✅ DATABASE MCP Server (port 8003): Responding{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.YELLOW}⚠️  DATABASE MCP Server connectivity test: {e}{Style.RESET_ALL}")
@@ -116,17 +116,14 @@ def test_fastmcp_servers():
     # Test MCP client integration
     print(f"\n{Fore.CYAN}🤖 Testing MCP client integration...{Style.RESET_ALL}")
     try:
-        # Try to import and test MCP client - check multiple possible import paths
-        try:
-            from langchain_mcp_adapters import MCPToolkit
-            print(f"{Fore.GREEN}✅ LangChain MCP adapters available (langchain_mcp_adapters){Style.RESET_ALL}")
-        except ImportError:
-            from langchain_mcp import MCPToolkit
-            print(f"{Fore.GREEN}✅ LangChain MCP adapters available (langchain_mcp){Style.RESET_ALL}")
-        
+        # Test the correct import path for langchain-mcp-adapters
+        from langchain_mcp_adapters.sessions import create_session
+        from langchain_mcp_adapters.tools import convert_mcp_tool_to_langchain_tool
+        print(f"{Fore.GREEN}✅ LangChain MCP adapters available (langchain_mcp_adapters){Style.RESET_ALL}")
         print(f"{Fore.GREEN}✅ Ready for agent-to-MCP server communication{Style.RESET_ALL}")
     except ImportError as e:
         print(f"{Fore.YELLOW}⚠️  LangChain MCP adapters not found - install with: pip install langchain-mcp-adapters{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}⚠️  Import error: {e}{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.YELLOW}⚠️  MCP client test: {e}{Style.RESET_ALL}")
     
