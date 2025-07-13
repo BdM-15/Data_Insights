@@ -40,7 +40,6 @@ from src.frontend.visualizations.charts.trend_charts import plot_quarterly_trend
 from src.frontend.visualizations.charts.distribution_charts import plot_capture_intensity_scatter, plot_sankey_competitive_landscape
 from src.frontend.visualizations.charts.comparison_charts import plot_top_agencies_bar, plot_top_agencies_obligation_bar
 from src.frontend.visualizations.components.metric_cards import display_summary_metrics
-from src.frontend.components.chat_with_data import render_chat_with_data
 
 def render_tab(df: pd.DataFrame):
     """

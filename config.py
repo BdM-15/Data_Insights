@@ -59,6 +59,23 @@ SDMX_API_URL = "https://www.ilo.org/sdmx/rest"
 BLS_API_URL = "https://api.bls.gov/publicAPI/v2"
 BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
 
+# AI and GPU Configuration
+# Ollama Configuration
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "data_insights_optimized")  # Using optimized model
+OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0.7"))
+
+# CUDA Configuration for GPU acceleration
+CUDA_ENABLED = os.getenv("CUDA_ENABLED", "true").lower() == "true"
+CUDA_DEVICE = os.getenv("CUDA_DEVICE", "0")  # GPU device ID
+GPU_MEMORY_FRACTION = float(os.getenv("GPU_MEMORY_FRACTION", "0.8"))  # Use 80% of GPU memory
+
+# Performance Settings
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "512"))  # Reduced for faster response
+CONTEXT_WINDOW = int(os.getenv("CONTEXT_WINDOW", "2048"))  # Reduced memory usage
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))  # Faster timeout
+MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))  # Limit agent iterations
+
 
 # Prompt Repository (for agent/LLM prompt templates)
 def get_prompt_repo_path() -> str:
@@ -88,14 +105,20 @@ def get_langfuse_config() -> Dict[str, Any]:
 def get_ollama_config() -> Dict[str, Any]:
     """
     Get Ollama configuration from environment variables.
+    Returns optimized configuration for Data Insights with CUDA acceleration.
+    
     Returns:
         Dictionary containing Ollama configuration parameters
     """
     return {
         "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "mistral"),
-        "TEMPERATURE": float(os.getenv("TEMPERATURE", "0.7")),
-        "MAX_TOKENS": int(os.getenv("MAX_TOKENS", "2000")),
+        "OLLAMA_MODEL": OLLAMA_MODEL,  # Use the optimized model from direct config
+        "TEMPERATURE": OLLAMA_TEMPERATURE,
+        "MAX_TOKENS": MAX_TOKENS,  # Optimized for performance
+        "CONTEXT_WINDOW": CONTEXT_WINDOW,
+        "REQUEST_TIMEOUT": REQUEST_TIMEOUT,
+        "MAX_ITERATIONS": MAX_ITERATIONS,
+        "CUDA_ENABLED": CUDA_ENABLED
     }
 
 # Placeholders for future MCP/AI agent config
@@ -106,9 +129,45 @@ def get_mcp_config() -> Dict[str, Any]:
         Dictionary containing MCP/AI agent configuration parameters
     """
     return {
-        "MCP_SERVER_URL": os.getenv("MCP_SERVER_URL", "http://localhost:8000"),
+        "MCP_SERVER_URL": os.getenv("MCP_SERVER_URL", "http://localhost:8003"),  # Updated to FastMCP port
         "MCP_API_KEY": os.getenv("MCP_API_KEY", ""),
-        "PYDANTIC_AI_MODEL": os.getenv("PYDANTIC_AI_MODEL", "mistral"),
+        "PYDANTIC_AI_MODEL": OLLAMA_MODEL,  # Use optimized model
+        "FASTMCP_DATABASE_PORT": 8003,
+        "LLAMAINDEX_ENABLED": True
+    }
+
+def get_ai_config() -> Dict[str, Any]:
+    """
+    Get comprehensive AI configuration for Data Insights platform.
+    Combines Ollama, CUDA, and performance settings.
+    
+    Returns:
+        Dictionary containing all AI-related configuration
+    """
+    return {
+        # Model Configuration
+        "MODEL_NAME": OLLAMA_MODEL,
+        "MODEL_TEMPERATURE": OLLAMA_TEMPERATURE,
+        "MODEL_HOST": OLLAMA_HOST,
+        
+        # Performance Configuration  
+        "MAX_TOKENS": MAX_TOKENS,
+        "CONTEXT_WINDOW": CONTEXT_WINDOW,
+        "REQUEST_TIMEOUT": REQUEST_TIMEOUT,
+        "MAX_ITERATIONS": MAX_ITERATIONS,
+        
+        # CUDA Configuration
+        "CUDA_ENABLED": CUDA_ENABLED,
+        "CUDA_DEVICE": CUDA_DEVICE,
+        "GPU_MEMORY_FRACTION": GPU_MEMORY_FRACTION,
+        
+        # MCP Integration
+        "FASTMCP_PORT": 8003,
+        "LLAMAINDEX_ENABLED": True,
+        
+        # Optimization Flags
+        "OPTIMIZED_MODEL": "data_insights_optimized",
+        "PERFORMANCE_MODE": "high_speed_low_memory"
     }
 
 # Reason: Centralizes all AI/LLM/MCP config for easy access and validation
@@ -233,20 +292,6 @@ def get_app_config() -> Dict[str, Any]:
         "HISTORICAL_CHUNK_DAYS": int(os.getenv("HISTORICAL_CHUNK_DAYS", "2"))
     }
 
-def get_ollama_config() -> Dict[str, Any]:
-    """
-    Get Ollama configuration from environment variables.
-    
-    Returns:
-        Dictionary containing Ollama configuration parameters
-    """
-    return {
-        "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "mistral"),
-        "TEMPERATURE": float(os.getenv("TEMPERATURE", "0.7")),
-        "MAX_TOKENS": int(os.getenv("MAX_TOKENS", "2000"))
-    }
-
 def get_log_config() -> Dict[str, Any]:
     """
     Get logging configuration from environment variables.
@@ -283,3 +328,21 @@ os.makedirs("logs", exist_ok=True)
 
 # Perform validation when module is loaded
 config_valid = validate_config()
+
+def print_ai_config_summary():
+    """Print a summary of AI configuration for debugging."""
+    print("🤖 Data Insights AI Configuration Summary")
+    print("=" * 50)
+    print(f"Model: {OLLAMA_MODEL}")
+    print(f"Temperature: {OLLAMA_TEMPERATURE}")
+    print(f"Max Tokens: {MAX_TOKENS}")
+    print(f"Context Window: {CONTEXT_WINDOW}")
+    print(f"Request Timeout: {REQUEST_TIMEOUT}s")
+    print(f"Max Iterations: {MAX_ITERATIONS}")
+    print(f"CUDA Enabled: {CUDA_ENABLED}")
+    if CUDA_ENABLED:
+        print(f"CUDA Device: {CUDA_DEVICE}")
+        print(f"GPU Memory: {GPU_MEMORY_FRACTION*100}%")
+    print(f"FastMCP Port: 8003")
+    print(f"Config Valid: {config_valid}")
+    print("=" * 50)
