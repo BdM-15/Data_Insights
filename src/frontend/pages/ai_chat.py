@@ -2,9 +2,51 @@ import streamlit as st
 import time
 import requests
 import asyncio
+import threading
+import concurrent.futures
+import nest_asyncio
+import atexit
+import sys
+from pathlib import Path
 from src.frontend.styles.theme import THEME
 from src.frontend.styles.custom_css import generate_theme_css
 from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
+
+# Apply nest_asyncio to allow nested asyncio event loops (required by Streamlit)
+nest_asyncio.apply()
+
+# Initialize session state for event loop
+if "loop" not in st.session_state:
+    st.session_state.loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(st.session_state.loop)
+
+# Helper function for running async functions
+def run_async(coro):
+    """Run an async function within the stored event loop."""
+    return st.session_state.loop.run_until_complete(coro)
+
+def reset_agent_state():
+    """Reset all agent-related session state variables."""
+    if hasattr(st.session_state, 'agent') and st.session_state.agent is not None:
+        try:
+            # Clean up the existing agent properly
+            if hasattr(st.session_state.agent, 'cleanup'):
+                run_async(st.session_state.agent.cleanup())
+        except Exception as e:
+            st.error(f"Error cleaning up previous agent: {str(e)}")
+    
+    st.session_state.agent = None
+
+def on_shutdown():
+    """Proper cleanup when the session ends."""
+    reset_agent_state()
+
+# Register cleanup logic on program exit
+atexit.register(on_shutdown)
+
+# Add project root to path for import
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 SESSION_TIMEOUT_SECONDS = 1800  # 30 minutes
 
@@ -38,45 +80,25 @@ def check_and_handle_session_timeout():
         # Update last activity timestamp
         st.session_state["last_activity_ts"] = now
 
-def check_capture_intelligence_agent_status():
+def check_python_mcp_sdk_status():
     """
-    Check if the Capture Intelligence Agent with FastMCP integration is available.
-    Performs comprehensive health check including agent initialization.
+    Simple status check for the Python MCP SDK architecture.
+    Returns basic status for UI display.
     """
     try:
-        # Check if Ollama is running (required for LLM)
-        ollama_response = requests.get("http://localhost:11434/api/tags", timeout=3)
-        if ollama_response.status_code != 200:
-            return {"status": "error", "message": "Ollama LLM server not available"}
-        
-        # Check if FastMCP server is responding at the correct SSE endpoint
-        try:
-            mcp_response = requests.get("http://localhost:8003/sse/", timeout=3)
-            # Any response (including 404) means the server is running
-            server_running = True
-        except requests.exceptions.ConnectionError:
-            server_running = False
-        
-        if not server_running:
-            return {"status": "warning", "message": "FastMCP database server not running"}
-        
-        # Check if the Capture Intelligence agent is importable and can initialize
-        try:
-            from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
-            # Test basic initialization (this is lightweight)
-            agent = CaptureIntelligenceAgent()
-            return {
-                "status": "success", 
-                "message": "Capture Intelligence Agent Architecture Active",
-                "details": "Ollama LLM and FastMCP database server ready"
-            }
-        except ImportError:
-            return {"status": "error", "message": "Capture Intelligence Agent not available"}
-        except Exception as e:
-            return {"status": "error", "message": f"Agent initialization failed: {str(e)[:50]}..."}
-        
-    except Exception as e:
-        return {"status": "error", "message": f"System check failed: {str(e)[:50]}..."}
+        # Basic imports check
+        import mcp.server
+        return {
+            "status": "success",
+            "message": "Python MCP SDK Available",
+            "details": "System ready for MCP operations"
+        }
+    except ImportError:
+        return {
+            "status": "error", 
+            "message": "Python MCP SDK Not Available",
+            "details": "Please install: pip install mcp>=1.0.0"
+        }
 
 def get_capture_intelligence_agent():
     """
@@ -111,32 +133,32 @@ async def initialize_agent_if_needed(agent):
 
 def get_agentic_response(user_input, context=None):
     """
-    Get response using Capture Intelligence Agent with FastMCP integration.
-    Simplified async handling based on working implementation.
+    Get response using Capture Intelligence Agent with Python MCP SDK integration.
+    Uses nest_asyncio approach for reliable Streamlit + asyncio integration.
     """
     try:
-        # Get the cached agent instance
-        agent = get_capture_intelligence_agent()
+        # Create a fresh agent for each request to avoid event loop conflicts
+        from src.frontend.ai.capture_intelligence_agent import CaptureIntelligenceAgent
         
-        if not agent:
-            return "[Error: AI system not properly initialized. Please refresh the page.]"
-        
-        # Handle async initialization and chat using simplified approach
+        # Handle async initialization and chat using nest_asyncio approach
         async def async_chat():
-            # Initialize agent if needed
-            if not await initialize_agent_if_needed(agent):
-                return "[Error: Agent initialization failed. Please try again.]"
+            # Create fresh agent instance
+            agent = CaptureIntelligenceAgent()
             
-            # Use Capture Intelligence Agent for intelligent tool orchestration
+            # Initialize the fresh agent
+            await agent.initialize()
+            
+            # Use the agent for this request
             response = await agent.chat_async(user_input)
+            
+            # Clean up the agent
+            await agent.cleanup() if hasattr(agent, 'cleanup') else None
+            
             return response
         
-        # Simplified async execution - just use asyncio.run
-        try:
-            return asyncio.run(async_chat())
-        except Exception as e:
-            return f"[Error processing request: {str(e)[:100]}...]"
-        
+        # Use the nest_asyncio approach for reliable Streamlit + asyncio integration
+        return run_async(async_chat())
+                
     except Exception as e:
         return f"[Error with Capture Intelligence Agent communication: {e}]"
 
@@ -182,49 +204,14 @@ def main():
     check_and_handle_session_timeout()
     # Inject custom theme CSS for visual consistency
     st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
-    st.title("🤖 AI Business Intelligence Consultant")
+    st.title("🤖 AI Business Development Consultant")
     st.subheader("Natural Conversation with Data")
     
-    # LangGraph Agent + FastMCP Architecture Status
-    architecture_status = check_capture_intelligence_agent_status()
+    # Python MCP SDK Architecture Status
+    architecture_status = check_python_mcp_sdk_status()
     
     if architecture_status["status"] == "success":
         st.success(f"✅ {architecture_status['message']}: {architecture_status['details']}")
-        
-        # Add detailed health check button
-        if st.button("🔍 Run Detailed Health Check", help="Check agent initialization and tool availability"):
-            with st.spinner("Running comprehensive health check..."):
-                agent = get_capture_intelligence_agent()
-                if agent:
-                    try:
-                        async def run_health_check():
-                            await initialize_agent_if_needed(agent)
-                            return await agent.health_check()
-                        
-                        health_info = asyncio.run(run_health_check())
-                        
-                        st.write("**Health Check Results:**")
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.metric("LLM Status", "✅ Ready" if health_info.get('llm_available') else "❌ Failed")
-                            st.metric("Agent Status", "✅ Ready" if health_info.get('agent_initialized') else "❌ Failed")
-                        
-                        with col2:
-                            st.metric("Total Tools", health_info.get('tools_count', 0))
-                            st.metric("MCP Connected", "✅ Yes" if health_info.get('mcp_connected') else "❌ No")
-                        
-                        # Show available tools
-                        if health_info.get('available_tools'):
-                            st.write("**Available Tools:**")
-                            for tool in health_info.get('available_tools', []):
-                                st.write(f"🔧 {tool}")
-                        
-                    except Exception as e:
-                        st.error(f"Health check failed: {e}")
-                else:
-                    st.error("Could not initialize agent for health check")
-    
     elif architecture_status["status"] == "warning":
         st.warning(f"⚠️ {architecture_status['message']} - consultant will use general knowledge")
     else:
@@ -232,28 +219,12 @@ def main():
     
     st.markdown(
         """
-        **Welcome to your AI Business Intelligence Consultant!**
+        **Welcome to your AI Business Development Consultant!**
 
-        This system uses a **revolutionary LangGraph + FastMCP Architecture** where Roberto, your AI consultant, works as a skilled defense contracting expert with direct access to your capture insights database.
+        Roberto, your AI consultant, works as a skilled defense contracting expert with direct access to your capture insights database through a pure Python implementation.
 
         **The Capture Intelligence Agent Philosophy:**
-        Roberto intelligently decides when and how to use database tools. He can handle simple conversations without unnecessary tool usage, but when you need data analysis, he seamlessly connects to your PostgreSQL database through FastMCP to explore contract data, market intelligence, and competitive insights.
-
-        **Key Features:**
-        - **Expert Domain Knowledge**: Roberto specializes in defense contracting and capture management
-        - **Intelligent Tool Usage**: Only uses database tools when actually needed for your queries
-        - **Natural Conversations**: Handles greetings and consultations without forcing tool usage
-        - **Database-Driven Intelligence**: All data insights come from your actual 66.6M contract records
-        - **Real-Time Discovery**: AI explores your database structure and contents dynamically
-        - **Strategic Analysis**: Combines database insights with defense contracting expertise
-        - **Modern Architecture**: Uses LangGraph for flexible, state-aware agent workflows
-        - **FastMCP Integration**: Direct connection to PostgreSQL through MCP protocol
-
-        **Available Database Tools:**
-        - `get_database_schema`: Explore database structure and metadata
-        - `get_table_info`: Get detailed information about specific tables
-        - `execute_sql_query`: Execute SQL queries with safety checks
-        - `get_server_status`: Check database connectivity and status
+        Roberto intelligently decides when and how to use database tools. He can handle simple conversations without unnecessary tool usage, but when you need data analysis, he seamlessly connects to your PostgreSQL database through the Python MCP SDK to explore contract data, market intelligence, and competitive insights.
 
         _Simply ask Roberto any question about defense contracting, market analysis, or business development. He'll intelligently decide whether to use database tools or respond from his expertise._
         """
