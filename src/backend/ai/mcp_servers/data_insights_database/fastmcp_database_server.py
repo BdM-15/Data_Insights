@@ -380,26 +380,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️  Database content check failed: {e}")
     
-    # Check Ollama availability (for future direct LLM integration)
-    print(f"\n🧠 Checking Ollama LLM availability...")
-    try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            models = response.json().get('models', [])
-            print(f"✅ Ollama LLM service available with {len(models)} models")
-            # Look for our specific model
-            data_insights_model = next((m for m in models if 'data_insights' in m.get('name', '')), None)
-            if data_insights_model:
-                print(f"✅ Data Insights optimized model found: {data_insights_model['name']}")
-            else:
-                print(f"⚠️  Data Insights optimized model not found (will use default)")
-        else:
-            print(f"⚠️  Ollama LLM service responding with status {response.status_code}")
-    except Exception as e:
-        print(f"⚠️  Ollama LLM service not available: {e}")
-        print(f"    (This is OK - DATABASE MCP Server works independently)")
-    
     # List available MCP tools for THIS server
     print(f"\n🔧 Available DATABASE MCP Tools (this server only):")
     tool_info = [
