@@ -1,11 +1,11 @@
 # Data Insights Database MCP Server
 
-**Python MCP SDK Implementation** - Pure Python database server providing comprehensive PostgreSQL integration for the Data Insights platform.
+**FastMCP Implementation** - High-level MCP database server providing comprehensive PostgreSQL integration for the Data Insights platform using FastMCP from the official MCP Python SDK.
 
 ## Architecture
 
-- **Python MCP SDK**: Official Model Context Protocol implementation (pure Python)
-- **Stdio Transport**: Reliable process-based client-server communication
+- **FastMCP**: Official Model Context Protocol high-level implementation from MCP Python SDK
+- **SSE Transport**: Persistent server connections for multi-client access
 - **Centralized Config**: Uses `config.py` for database settings
 - **Production Ready**: Comprehensive error handling and logging
 
@@ -18,62 +18,84 @@
 
 ## Available Tools
 
-### `get_database_schema`
+### `query_database`
 
-Get comprehensive database schema information across all schemas.
+Execute SQL queries on the PostgreSQL database with comprehensive safety checks.
 
 **Parameters:**
 
-- `schema_name` (optional): Filter by specific schema (e.g., 's3_processed', 's2_interim', 's1_raw')
+- `sql_query` (required): SQL statement to execute
 
 **Returns:**
 
-- Complete schema information with tables, sizes, and organization
+- Query results as list of dictionaries with execution metadata
 
-### `get_table_info`
+### `list_tables`
+
+List all tables in the database with their schemas.
+
+**Returns:**
+
+- List of table information with schema, name, and type
+
+### `describe_table`
 
 Get detailed information about a specific table including structure and statistics.
 
 **Parameters:**
 
 - `table_name` (required): Name of the table to analyze
-- `schema_name` (optional): Schema name (default: 's3_processed')
+- `schema_name` (optional): Schema name (default: 'public')
 
 **Returns:**
 
-- Column definitions, data types, constraints, row count, and table metadata
+- Column definitions, data types, constraints, and metadata
 
-### `execute_sql_query`
+### `get_table_sample`
 
-Execute SELECT queries with comprehensive safety checks.
+Get a sample of data from a table.
 
 **Parameters:**
 
-- `query` (required): SQL SELECT statement to execute
-- `limit` (optional): Maximum rows to return (default: 100, max: 1000)
+- `table_name` (required): Name of the table
+- `schema_name` (optional): Schema name (default: 'public')
+- `limit` (optional): Number of rows to return (default: 10)
 
 **Returns:**
 
-- Query results in formatted table with execution metadata
+- Sample data rows as list of dictionaries
 
-### `get_server_status`
+### `get_database_stats`
 
-Get database server status and connection information.
+Get database statistics and information.
 
 **Returns:**
 
-- PostgreSQL version, database size, connection details, and operational status
+- Database size, table count, and version information
+
+## Resources
+
+### `schema://database_schema`
+
+Get comprehensive database schema description.
+
+**Returns:**
+
+- Complete schema information with tables, columns, and organization
 
 ## Usage
 
 ### Direct Server Execution
 
 ```bash
-# Start the server (stdio transport)
-python -m backend.ai.mcp_servers.data_insights_database.python_mcp_database_server
+# Start the server (SSE transport, default port 8000)
+python fastmcp_database_server.py --transport sse
+
+# Start with stdio transport
+python fastmcp_database_server.py --transport stdio
 
 # With command line options
-python -m backend.ai.mcp_servers.data_insights_database.python_mcp_database_server --log-level DEBUG
+python fastmcp_database_server.py --transport sse
 ```
 
 ### Via MCP Launcher
@@ -100,8 +122,8 @@ from config import get_db_config
 # Fallback configuration if config.py unavailable:
 DATABASE_CONFIG = {
     "host": "localhost",
-    "port": 5433,
-    "database": "usaspending",
+    "port": 5432,
+    "database": "data_insights",
     "user": "postgres",
     "password": ""
 }
@@ -117,28 +139,27 @@ DATABASE_CONFIG = {
 
 ## Safety & Security Features
 
-- **Query Restrictions**: Only SELECT queries allowed (no DDL/DML)
-- **Keyword Filtering**: Blocks dangerous operations (DELETE, DROP, INSERT, etc.)
-- **Automatic Limits**: Adds LIMIT clause if not specified
+- **Query Restrictions**: Separates read-only and write operations
 - **Connection Management**: Proper async connection handling with cleanup
 - **Error Handling**: Comprehensive exception handling and logging
 - **Input Validation**: Parameter validation and sanitization
+- **Rate Limiting**: Built-in protection against excessive queries
 
 ## Integration Benefits
 
-- **Pure Python**: No TypeScript hybrid complexity
-- **Async/Await Stability**: Resolves "Event loop is closed" errors
+- **FastMCP**: High-level, simplified MCP server development
+- **SSE Transport**: Persistent server connections for multi-client access
 - **Official MCP SDK**: Future-proof and well-documented
 - **Centralized Config**: Consistent with platform configuration management
 - **Production Ready**: Comprehensive logging, error handling, and monitoring
 
 ## Client Connection Examples
 
-The server uses stdio transport and can be connected to by any MCP-compatible client:
+The server uses SSE transport by default and can be connected to by any MCP-compatible client:
 
 ```bash
-# Direct connection
-python -m backend.ai.mcp_servers.data_insights_database.python_mcp_database_server
+# Direct connection via SSE (default port 8000)
+python fastmcp_database_server.py --transport sse
 
 # Via launcher (recommended)
 python mcp_servers_launcher.py
@@ -153,10 +174,10 @@ Server activity is logged to:
 
 ## Migration Notes
 
-This server replaces the previous FastMCP implementation with:
+This server uses FastMCP from the official MCP Python SDK with:
 
-- ✅ Improved async/await stability
-- ✅ Better error handling and recovery
-- ✅ Pure Python architecture (no TypeScript dependencies)
-- ✅ Official MCP SDK support and documentation
+- ✅ High-level, simplified server development
+- ✅ Built-in SSE transport for persistent connections
+- ✅ Automatic tool registration and validation
+- ✅ Production-ready error handling and logging
 - ✅ Centralized configuration management

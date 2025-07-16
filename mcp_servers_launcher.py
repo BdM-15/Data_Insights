@@ -1,381 +1,792 @@
 """
-Data Insights Python MCP Servers Launcher
+MCP Servers Launcher - Enhanced
 
-Pure Python MCP SDK implementation replacing the FastMCP hybrid stack.
-Provides automatic tool discovery, Ollama integration, and production-ready MCP server management.
+Comprehensive MCP server management with:
+- Intelligent server discovery and health monitoring
+- Ollama LLM integration and status checking
+- Color-coded logging for better readability
+- User-friendly status reporting
+- Automatic service management
 
-Architecture:
-- Python MCP SDK (official implementation)
-- stdio transport for reliable client-server communication
-- Automatic server discovery and health monitoring
-- Future-proof tool registration system
+Designed for seamless operation with Data Insights AI chat system.
 """
 
 import os
 import sys
 import subprocess
-import time
 import logging
-import importlib
-import pkgutil
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+import time
+import json
 import requests
-from colorama import Fore, Style, init
-import argparse
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+import asyncio
 
-# Initialize colorama for colored output
-init(autoreset=True)
+# Add project root to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
-# Configure logging
+# Color codes for console output
+class Colors:
+    """ANSI color codes for enhanced console output."""
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+# Custom formatter with colors
+class ColoredFormatter(logging.Formatter):
+    """Custom formatter that adds colors to log levels."""
+    
+    COLORS = {
+        'DEBUG': Colors.OKBLUE,
+        'INFO': Colors.OKGREEN,
+        'WARNING': Colors.WARNING,
+        'ERROR': Colors.FAIL,
+        'CRITICAL': Colors.FAIL + Colors.BOLD
+    }
+    
+    def format(self, record):
+        # Add color to levelname
+        levelname = record.levelname
+        if levelname in self.COLORS:
+            record.levelname = f"{self.COLORS[levelname]}{levelname}{Colors.ENDC}"
+        
+        return super().format(record)
+
+# Configure enhanced logging
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(ColoredFormatter(
+    '%(asctime)s | %(levelname)s | %(message)s',
+    datefmt='%H:%M:%S'
+))
+
+file_handler = logging.FileHandler('logs/mcp_server_activity.log', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+))
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/mcp_server_activity.log'),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
 
-# Add src to path for imports
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root / "src"))
+# Ensure logs directory exists
+os.makedirs('logs', exist_ok=True)
 
-def check_mcp_sdk() -> bool:
+class MCPServerLauncher:
     """
-    Check Python MCP SDK availability and version.
+    Enhanced MCP server launcher with comprehensive service management.
     
-    Returns:
-        bool: True if MCP SDK is available and compatible
+    Features:
+    - MCP server discovery and lifecycle management
+    - Ollama LLM service integration and monitoring
+    - Color-coded status reporting
+    - Intelligent health monitoring with auto-restart
+    - User-friendly progress indicators
     """
-    try:
-        import mcp
-        version = getattr(mcp, '__version__', 'unknown')
-        print(f"{Fore.GREEN}✅ Python MCP SDK available (version: {version}){Style.RESET_ALL}")
-        
-        # Check for required components
-        required_modules = ['mcp.server', 'mcp.client', 'mcp.types']
-        for module in required_modules:
-            try:
-                importlib.import_module(module)
-                print(f"{Fore.GREEN}  ✓ {module} available{Style.RESET_ALL}")
-            except ImportError as e:
-                print(f"{Fore.RED}  ✗ {module} missing: {e}{Style.RESET_ALL}")
-                return False
-        
-        return True
-        
-    except ImportError as e:
-        print(f"{Fore.RED}❌ Python MCP SDK not found: {e}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}💡 Install with: pip install mcp>=1.0.0{Style.RESET_ALL}")
-        return False
-
-def check_database_connectivity() -> bool:
-    """
-    Test database connectivity using config.py settings.
     
-    Returns:
-        bool: True if database is accessible
-    """
-    try:
-        from config import get_db_config
-        import asyncpg
-        import asyncio
+    def __init__(self):
+        """Initialize the launcher with enhanced configuration."""
+        self.servers: Dict[str, Dict[str, Any]] = {}
+        self.processes: Dict[str, subprocess.Popen] = {}
+        self.health_status: Dict[str, bool] = {}
         
-        async def test_connection():
-            db_config = get_db_config()
-            conn_params = {
-                "host": db_config["PG_HOST"],
-                "port": int(db_config["PG_PORT"]),
-                "database": db_config["PG_DBNAME"],
-                "user": db_config["PG_USER"],
-                "password": db_config["PG_PASSWORD"]
+        # Server configurations - Only define the primary servers here
+        self.server_configs = {
+            "database": {
+                "name": "Data Insights Database Server",
+                "path": "fastmcp_database_server_fixed.py",
+                "description": "PostgreSQL database access for contract data",
+                "icon": "🗄️"
             }
-            
-            conn = await asyncpg.connect(**conn_params)
-            version_result = await conn.fetchrow("SELECT version();")
-            await conn.close()
-            return version_result
+        }
         
-        result = asyncio.run(test_connection())
-        print(f"{Fore.GREEN}✅ Database connectivity verified{Style.RESET_ALL}")
-        print(f"{Fore.GREEN}  📊 PostgreSQL: {result['version'][:50]}...{Style.RESET_ALL}")
-        return True
-        
-    except Exception as e:
-        print(f"{Fore.RED}❌ Database connectivity failed: {e}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}💡 Check database configuration in config.py{Style.RESET_ALL}")
-        return False
-
-def check_ollama() -> bool:
-    """
-    Check if Ollama LLM service is running and available.
+        # Ollama configuration
+        self.ollama_url = "http://localhost:11434"
+        self.primary_model = "data_insights_optimized:latest"  # Primary orchestrator agent
+        self.discovered_models = []  # Auto-discovered models
+        self.discovered_servers = {}  # Auto-discovered MCP servers
     
-    Returns:
-        bool: True if Ollama is running with models available
-    """
-    try:
-        print(f"{Fore.CYAN}🧠 Checking Ollama LLM service...{Style.RESET_ALL}")
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+    def print_header(self):
+        """Print a welcome header."""
+        print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
+        print(f"{Colors.HEADER}{Colors.BOLD}  🚀 Data Insights MCP Server Launcher  🚀{Colors.ENDC}")
+        print(f"{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
+        print(f"{Colors.OKCYAN}Initializing AI-powered contract intelligence system...{Colors.ENDC}\n")
+    
+    def discover_mcp_servers(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Auto-discover MCP servers in the project (future-proof).
         
-        if response.status_code == 200:
-            models = response.json().get('models', [])
-            print(f"{Fore.GREEN}✅ Ollama LLM service is running with {len(models)} models{Style.RESET_ALL}")
-            
-            # Look for optimized models
-            data_insights_model = next((m for m in models if 'data_insights' in m.get('name', '')), None)
-            if data_insights_model:
-                print(f"{Fore.GREEN}  🎯 Data Insights optimized model: {data_insights_model['name']}{Style.RESET_ALL}")
+        Returns:
+            Dictionary of discovered server configurations
+        """
+        discovered = {}
+        
+        logger.info("🔍 Auto-discovering MCP servers...")
+        
+        # Only search in project directories, not in site-packages or venv
+        search_dirs = [
+            project_root,
+            project_root / "src" / "backend" / "ai" / "mcp_servers",
+            project_root / "src" / "backend" / "mcp_servers",
+            project_root / "mcp_servers"
+        ]
+        
+        # Only look for files that are clearly MCP servers for this project
+        mcp_server_patterns = [
+            "fastmcp_*.py",
+            "*_mcp_server.py",
+            "*_intelligence_server.py",
+            "*_database_server.py",
+            "*_capture_server.py"
+        ]
+        
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
+                
+            for pattern in mcp_server_patterns:
+                for server_file in search_dir.glob(pattern):
+                    # Only process files in the project directory (not in venv/site-packages)
+                    if not server_file.is_file() or "site-packages" in str(server_file) or "venv" in str(server_file):
+                        continue
+                        
+                    server_name = server_file.stem
+                    
+                    # Skip if already found (avoid duplicates)
+                    if server_name in discovered:
+                        continue
+                    
+                    # Auto-determine server type and icon from filename
+                    icon = "🔧"  # Default icon
+                    description = "MCP server"
+                    
+                    if "database" in server_name.lower():
+                        icon = "🗄️"
+                        description = "Database access server"
+                    elif "capture" in server_name.lower() or "intelligence" in server_name.lower():
+                        icon = "🎯"
+                        description = "Intelligence server"
+                    elif "web" in server_name.lower():
+                        icon = "🌐"
+                        description = "Web server"
+                    elif "document" in server_name.lower():
+                        icon = "📄"
+                        description = "Document processing server"
+                    elif "visualization" in server_name.lower():
+                        icon = "📊"
+                        description = "Visualization server"
+                    
+                    discovered[server_name] = {
+                        "name": server_name.replace("_", " ").title(),
+                        "path": str(server_file.relative_to(project_root)),
+                        "description": description,
+                        "icon": icon,
+                        "discovered": True
+                    }
+                    
+                    logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
+        
+        return discovered
+        
+        logger.info("🔍 Auto-discovering MCP servers...")
+        
+        # Search in project root first
+        for server_file in specific_servers:
+            server_path = project_root / server_file
+            if server_path.exists():
+                server_name = server_path.stem
+                
+                # Skip if already in manual config
+                if server_name in self.server_configs:
+                    continue
+                
+                # Skip all database servers since we have one manually configured
+                if "database" in server_name.lower():
+                    continue
+                
+                # Determine server type and icon from filename
+                icon = "🔧"  # Default icon
+                description = "MCP server"
+                
+                if "database" in server_name.lower():
+                    icon = "🗄️"
+                    description = "Database access server"
+                elif "capture" in server_name.lower():
+                    icon = "🎯"
+                    description = "Capture intelligence server"
+                elif "web" in server_name.lower():
+                    icon = "🌐"
+                    description = "Web intelligence server"
+                elif "document" in server_name.lower():
+                    icon = "📄"
+                    description = "Document processing server"
+                elif "visualization" in server_name.lower():
+                    icon = "📊"
+                    description = "Visualization server"
+                
+                discovered[server_name] = {
+                    "name": server_name.replace("_", " ").title(),
+                    "path": server_file,
+                    "description": description,
+                    "icon": icon,
+                    "discovered": True
+                }
+                
+                logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
+        
+        # Also check the MCP servers directory if it exists
+        mcp_servers_dir = project_root / "src" / "backend" / "ai" / "mcp_servers"
+        if mcp_servers_dir.exists():
+            for subdir in mcp_servers_dir.iterdir():
+                if subdir.is_dir():
+                    # Look for the main server file in each subdirectory
+                    for server_file in subdir.glob("*_server.py"):
+                        if server_file.is_file():
+                            server_name = server_file.stem
+                            
+                            # Skip if already found or in manual config
+                            if server_name in discovered or server_name in self.server_configs:
+                                continue
+                            
+                            # Skip all database servers since we have one manually configured
+                            if "database" in server_name.lower():
+                                continue
+                            
+                            # Determine server type
+                            icon = "🔧"
+                            description = "MCP server"
+                            
+                            if "database" in server_name.lower():
+                                icon = "�️"
+                                description = "Database access server"
+                            elif "capture" in server_name.lower():
+                                icon = "🎯"
+                                description = "Capture intelligence server"
+                            elif "web" in server_name.lower():
+                                icon = "🌐"
+                                description = "Web intelligence server"
+                            elif "document" in server_name.lower():
+                                icon = "📄"
+                                description = "Document processing server"
+                            elif "visualization" in server_name.lower():
+                                icon = "📊"
+                                description = "Visualization server"
+                            
+                            discovered[server_name] = {
+                                "name": server_name.replace("_", " ").title(),
+                                "path": str(server_file.relative_to(project_root)),
+                                "description": description,
+                                "icon": icon,
+                                "discovered": True
+                            }
+                            
+                            logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
+        
+        return discovered
+    
+    def discover_ollama_models(self) -> List[str]:
+        """
+        Auto-discover available Ollama models.
+        
+        Returns:
+            List of available model names
+        """
+        models = []
+        
+        try:
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                models_data = response.json()
+                models = [model['name'] for model in models_data.get('models', [])]
+                
+                logger.info(f"🔍 Discovered {len(models)} Ollama models:")
+                for model in models:
+                    # Categorize models by type
+                    model_icon = "🤖"
+                    if "data_insights" in model:
+                        model_icon = "🎯"  # Custom trained model
+                    elif "llama" in model:
+                        model_icon = "🦙"
+                    elif "mistral" in model:
+                        model_icon = "🌟"
+                    elif "code" in model:
+                        model_icon = "💻"
+                    
+                    primary_indicator = " (Primary)" if model == self.primary_model else ""
+                    logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} {model_icon} {model}{primary_indicator}")
+                    
+        except requests.exceptions.RequestException:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Could not discover Ollama models")
+        
+        return models
+    
+    def check_ollama_service(self) -> bool:
+        """Check if Ollama service is running."""
+        try:
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            return response.status_code == 200
+        except requests.exceptions.RequestException:
+            return False
+    
+    def check_ollama_service_with_logging(self) -> bool:
+        """Check if Ollama service is running with detailed logging."""
+        logger.info("🤖 Checking Ollama LLM service...")
+        
+        try:
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Ollama service is running")
+                return True
             else:
-                print(f"{Fore.YELLOW}  ⚠️  Data Insights optimized model not found - using default model{Style.RESET_ALL}")
+                logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Ollama service responded with status {response.status_code}")
+                return False
+        except requests.exceptions.RequestException:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Ollama service is not running")
+            return False
+    
+    def check_ollama_models(self) -> bool:
+        """Check and validate discovered Ollama models."""
+        logger.info("🔍 Checking available LLM models...")
+        
+        # Discover all available models
+        self.discovered_models = self.discover_ollama_models()
+        
+        if not self.discovered_models:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} No Ollama models found")
+            return False
+        
+        # Check if primary model is available
+        if self.primary_model not in self.discovered_models:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Primary model '{self.primary_model}' not found")
+            logger.info(f"   {Colors.OKCYAN}💡{Colors.ENDC} Available models: {', '.join(self.discovered_models)}")
+            return False
+        
+        logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Primary model '{self.primary_model}' is available")
+        return True
+    
+    def start_ollama_if_needed(self) -> bool:
+        """Start Ollama service if it's not running."""
+        if self.check_ollama_service_with_logging():
+            return True
+        
+        logger.info("🔧 Starting Ollama service...")
+        
+        try:
+            # Try to start Ollama in the background
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+            )
+            
+            # Wait a moment for service to start
+            time.sleep(3)
+            
+            # Check if it's running now
+            if self.check_ollama_service():
+                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Ollama service started successfully")
+                return True
+            else:
+                logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Ollama service failed to start")
+                return False
+                
+        except FileNotFoundError:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Ollama is not installed. Please install from https://ollama.ai/")
+            return False
+        except Exception as e:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Failed to start Ollama: {e}")
+            return False
+    
+    def check_prerequisites(self) -> bool:
+        """Check if all prerequisites are met."""
+        logger.info("📋 Checking system prerequisites...")
+        
+        # Check MCP SDK
+        try:
+            import mcp
+            from mcp.server.fastmcp import FastMCP
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} MCP SDK is available")
+        except ImportError:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} MCP SDK not available. Install with: pip install mcp>=1.0.0")
+            return False
+        
+        # Check database connectivity
+        try:
+            from config import get_db_config
+            db_config = get_db_config()
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Database configuration loaded")
+        except Exception as e:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Database configuration error: {e}")
+            return False
+        
+        # Auto-discover MCP servers (future-proof)
+        self.discovered_servers = self.discover_mcp_servers()
+        
+        # Use discovered servers as the active configuration
+        self.server_configs = self.discovered_servers
+        
+        # Check if we found any servers
+        if not self.server_configs:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} No MCP servers discovered")
+            return False
+        
+        # Check server files exist
+        for server_name, config in self.server_configs.items():
+            server_path = project_root / config["path"]
+            if not server_path.exists():
+                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Server file not found: {server_path}")
+                return False
+            else:
+                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} {config['icon']} {config['name']} found")
+        
+        # Check Ollama service
+        if not self.start_ollama_if_needed():
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Ollama service issues - AI features may be limited")
+        
+        # Check Ollama models
+        if not self.check_ollama_models():
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Primary model validation failed - AI features may be limited")
+        
+        return True
+    
+    def start_server(self, server_name: str) -> bool:
+        """
+        Start a specific MCP server with enhanced monitoring.
+        
+        Args:
+            server_name: Name of the server to start
+            
+        Returns:
+            True if server started successfully
+        """
+        if server_name not in self.server_configs:
+            logger.error(f"❌ Unknown server: {server_name}")
+            return False
+        
+        config = self.server_configs[server_name]
+        server_path = project_root / config["path"]
+        
+        logger.info(f"🚀 Starting {config['icon']} {config['name']}...")
+        
+        try:
+            # Start the server process
+            process = subprocess.Popen(
+                [sys.executable, str(server_path)],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(project_root)
+            )
+            
+            # Brief pause to check if process started successfully
+            time.sleep(0.5)
+            if process.poll() is not None:
+                # Process died immediately
+                stdout, stderr = process.communicate()
+                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Server failed to start")
+                if stderr:
+                    logger.error(f"   {Colors.FAIL}Error output:{Colors.ENDC} {stderr.decode()}")
+                return False
+            
+            self.processes[server_name] = process
+            self.health_status[server_name] = True
+            
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Server running (PID: {process.pid})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Failed to start server: {e}")
+            self.health_status[server_name] = False
+            return False
+    
+    def stop_server(self, server_name: str) -> bool:
+        """
+        Stop a specific MCP server gracefully.
+        
+        Args:
+            server_name: Name of the server to stop
+            
+        Returns:
+            True if server stopped successfully
+        """
+        if server_name not in self.processes:
+            logger.info(f"🛑 Server {server_name} is not running")
+            return True
+        
+        config = self.server_configs[server_name]
+        process = self.processes[server_name]
+        
+        logger.info(f"🛑 Stopping {config['icon']} {config['name']}...")
+        
+        try:
+            # Terminate the process
+            process.terminate()
+            
+            # Wait for clean shutdown
+            try:
+                process.wait(timeout=5)
+                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Server stopped gracefully")
+            except subprocess.TimeoutExpired:
+                # Force kill if necessary
+                process.kill()
+                process.wait()
+                logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Server force-killed (unresponsive)")
+            
+            # Clean up
+            del self.processes[server_name]
+            self.health_status[server_name] = False
             
             return True
-        else:
-            print(f"{Fore.YELLOW}⚠️  Ollama responding with status {response.status_code}{Style.RESET_ALL}")
-            return False
             
-    except Exception as e:
-        print(f"{Fore.RED}❌ Ollama LLM service is not running: {e}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}💡 Please start Ollama: 'ollama serve'{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}💡 Then load your model: 'ollama run data_insights_optimized' or 'ollama run llama2'{Style.RESET_ALL}")
-        return False
-
-def discover_mcp_servers() -> List[Dict[str, Any]]:
-    """
-    Automatically discover available MCP servers in the project.
+        except Exception as e:
+            logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Failed to stop server: {e}")
+            return False
     
-    Returns:
-        List[Dict]: List of discovered server configurations
-    """
-    servers = []
-    mcp_servers_dir = project_root / "src" / "backend" / "ai" / "mcp_servers"
-    
-    if not mcp_servers_dir.exists():
-        print(f"{Fore.YELLOW}⚠️  MCP servers directory not found: {mcp_servers_dir}{Style.RESET_ALL}")
-        return servers
-    
-    print(f"{Fore.CYAN}🔍 Discovering MCP servers in {mcp_servers_dir}...{Style.RESET_ALL}")
-    
-    # Look for Python MCP server files
-    for py_file in mcp_servers_dir.rglob("*_server.py"):
-        if py_file.name.startswith("python_mcp_"):
-            try:
-                # Extract server information
-                server_name = py_file.stem.replace("python_mcp_", "").replace("_server", "")
-                
-                # Handle nested server structure (e.g., data_insights_database/python_mcp_database_server.py)
-                relative_path = py_file.relative_to(mcp_servers_dir)
-                if len(relative_path.parts) > 1:
-                    # Server in subfolder
-                    module_path = f"backend.ai.mcp_servers.{relative_path.parts[0]}.{py_file.stem}"
-                else:
-                    # Server in root mcp_servers directory
-                    module_path = f"backend.ai.mcp_servers.{py_file.stem}"
-                
-                servers.append({
-                    "name": server_name,
-                    "module": module_path,
-                    "file_path": str(py_file),
-                    "transport": "stdio",
-                    "type": "python_mcp"
-                })
-                print(f"{Fore.GREEN}  ✓ Found {server_name} server: {relative_path}{Style.RESET_ALL}")
-                
-            except Exception as e:
-                print(f"{Fore.YELLOW}  ⚠️  Error processing {py_file.name}: {e}{Style.RESET_ALL}")
-    
-    return servers
-
-def validate_server(server_config: Dict[str, Any]) -> bool:
-    """
-    Validate that a server module can be imported and has required components.
-    
-    Args:
-        server_config: Server configuration dictionary
+    def start_all_servers(self) -> bool:
+        """
+        Start all configured servers.
         
-    Returns:
-        bool: True if server is valid and can be loaded
-    """
-    try:
-        module = importlib.import_module(server_config["module"])
+        Returns:
+            True if all servers started successfully
+        """
+        logger.info("🚀 Starting all MCP servers...")
         
-        # Check for required server components
-        required_attrs = ["server", "main"]
-        for attr in required_attrs:
-            if not hasattr(module, attr):
-                print(f"{Fore.RED}  ✗ {server_config['name']}: missing {attr}{Style.RESET_ALL}")
-                return False
+        success = True
+        for server_name in self.server_configs:
+            if not self.start_server(server_name):
+                success = False
         
-        print(f"{Fore.GREEN}  ✓ {server_config['name']}: validation passed{Style.RESET_ALL}")
+        if success:
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} All servers started successfully")
+        else:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Some servers failed to start")
+        
+        return success
+    
+    def stop_all_servers(self) -> bool:
+        """
+        Stop all running servers.
+        
+        Returns:
+            True if all servers stopped successfully
+        """
+        logger.info("🛑 Stopping all MCP servers...")
+        
+        success = True
+        for server_name in list(self.processes.keys()):
+            if not self.stop_server(server_name):
+                success = False
+        
+        if success:
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} All servers stopped successfully")
+        else:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Some servers failed to stop cleanly")
+        
+        return success
+    
+    def check_server_health(self, server_name: str) -> bool:
+        """
+        Check if a server is healthy.
+        
+        Args:
+            server_name: Name of the server to check
+            
+        Returns:
+            True if server is healthy
+        """
+        if server_name not in self.processes:
+            return False
+        
+        process = self.processes[server_name]
+        
+        # Check if process is still running
+        if process.poll() is not None:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Server {server_name} process has terminated")
+            self.health_status[server_name] = False
+            return False
+        
+        # Additional health checks could go here
+        # For now, just check if process is running
+        self.health_status[server_name] = True
         return True
+    
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Get comprehensive status of all servers.
         
-    except ImportError as e:
-        print(f"{Fore.RED}  ✗ {server_config['name']}: import failed - {e}{Style.RESET_ALL}")
-        return False
-    except Exception as e:
-        print(f"{Fore.RED}  ✗ {server_config['name']}: validation error - {e}{Style.RESET_ALL}")
-        return False
-
-def get_server_tools(server_config: Dict[str, Any]) -> List[str]:
-    """
-    Get list of available tools from a server module.
-    
-    Args:
-        server_config: Server configuration dictionary
+        Returns:
+            Dictionary with detailed server status information
+        """
+        # Update health status
+        for server_name in self.processes:
+            self.check_server_health(server_name)
         
-    Returns:
-        List[str]: List of tool names
-    """
-    try:
-        module = importlib.import_module(server_config["module"])
-        server = getattr(module, "server", None)
+        status = {
+            "servers": {},
+            "total_servers": len(self.server_configs),
+            "running_servers": len(self.processes),
+            "healthy_servers": sum(1 for health in self.health_status.values() if health),
+            "discovered_models": len(self.discovered_models),
+            "primary_model": self.primary_model
+        }
         
-        if server and hasattr(server, "_list_tools_handler"):
-            # For Python MCP SDK servers
-            import asyncio
-            tools = asyncio.run(server._list_tools_handler())
-            return [tool.name for tool in tools]
+        for server_name, config in self.server_configs.items():
+            is_running = server_name in self.processes
+            is_healthy = self.health_status.get(server_name, False) if is_running else False
+            
+            status["servers"][server_name] = {
+                "name": config["name"],
+                "description": config["description"],
+                "icon": config["icon"],
+                "running": is_running,
+                "healthy": is_healthy,
+                "pid": self.processes[server_name].pid if is_running else None
+            }
         
-        return []
+        return status
+    
+    def print_status(self):
+        """Print a comprehensive status report."""
+        status = self.get_status()
         
-    except Exception as e:
-        logger.debug(f"Could not get tools for {server_config['name']}: {e}")
-        return []
-
-def start_python_mcp_servers(servers: Optional[List[Dict[str, Any]]] = None):
-    """
-    Start Python MCP SDK servers with comprehensive status reporting.
-    
-    Args:
-        servers: Optional list of server configurations. If None, auto-discover.
-    """
-    print(f"{Fore.CYAN}🚀 Starting Python MCP SDK servers...{Style.RESET_ALL}")
-    
-    # Auto-discover servers if not provided
-    if servers is None:
-        servers = discover_mcp_servers()
-    
-    if not servers:
-        print(f"{Fore.YELLOW}⚠️  No MCP servers found for startup{Style.RESET_ALL}")
-        return
-    
-    # Validate servers
-    valid_servers = []
-    print(f"{Fore.CYAN}🔍 Validating discovered servers...{Style.RESET_ALL}")
-    for server in servers:
-        if validate_server(server):
-            valid_servers.append(server)
-    
-    if not valid_servers:
-        print(f"{Fore.RED}❌ No valid MCP servers found{Style.RESET_ALL}")
-        return
-    
-    # Display server information
-    print(f"\n{Fore.GREEN}✅ Python MCP SDK servers ready for client connections:{Style.RESET_ALL}")
-    for server in valid_servers:
-        print(f"{Fore.CYAN}📍 {server['name'].title()} Server:{Style.RESET_ALL}")
-        print(f"  🔗 Transport: {server['transport']}")
-        print(f"  📁 Module: {server['module']}")
-        print(f"  🚀 Command: python -m {server['module']}")
+        print(f"\n{Colors.OKCYAN}📊 System Status Report{Colors.ENDC}")
+        print(f"{Colors.OKCYAN}{'─' * 25}{Colors.ENDC}")
+        
+        # MCP Servers Status
+        print(f"{Colors.OKBLUE}MCP Servers:{Colors.ENDC}")
+        for server_name, info in status["servers"].items():
+            icon = info["icon"]
+            name = info["name"]
+            
+            if info["running"] and info["healthy"]:
+                status_icon = f"{Colors.OKGREEN}🟢{Colors.ENDC}"
+                status_text = f"{Colors.OKGREEN}Running{Colors.ENDC}"
+                pid_text = f"(PID: {info['pid']})"
+            elif info["running"]:
+                status_icon = f"{Colors.WARNING}🟡{Colors.ENDC}"
+                status_text = f"{Colors.WARNING}Unhealthy{Colors.ENDC}"
+                pid_text = f"(PID: {info['pid']})"
+            else:
+                status_icon = f"{Colors.FAIL}🔴{Colors.ENDC}"
+                status_text = f"{Colors.FAIL}Stopped{Colors.ENDC}"
+                pid_text = ""
+            
+            discovered_text = ""
+            print(f"  {status_icon} {icon} {name}: {status_text} {pid_text}{discovered_text}")
+        
+        print(f"\n{Colors.OKBLUE}Overall: {status['healthy_servers']}/{status['total_servers']} servers healthy{Colors.ENDC}")
+        
+        # Ollama Service and Models Status
+        print(f"{Colors.OKBLUE}AI Services:{Colors.ENDC}")
+        if self.check_ollama_service():
+            print(f"  {Colors.OKGREEN}🟢{Colors.ENDC} 🤖 Ollama LLM Service: {Colors.OKGREEN}Running{Colors.ENDC}")
+            
+            # Show available models
+            if self.discovered_models:
+                print(f"  {Colors.OKCYAN}Available Models ({len(self.discovered_models)}):{Colors.ENDC}")
+                for model in self.discovered_models:
+                    model_icon = "🤖"
+                    if "data_insights" in model:
+                        model_icon = "🎯"
+                    elif "llama" in model:
+                        model_icon = "🦙"
+                    elif "mistral" in model:
+                        model_icon = "🌟"
+                    elif "code" in model:
+                        model_icon = "💻"
+                    
+                    primary_indicator = f" {Colors.OKGREEN}(Primary){Colors.ENDC}" if model == self.primary_model else ""
+                    print(f"    {model_icon} {model}{primary_indicator}")
+        else:
+            print(f"  {Colors.FAIL}🔴{Colors.ENDC} 🤖 Ollama LLM Service: {Colors.FAIL}Stopped{Colors.ENDC}")
+        
         print()
     
-    # Show connection information
-    print(f"{Fore.GREEN}🎯 Client Connection Examples:{Style.RESET_ALL}")
-    for server in valid_servers:
-        print(f"  python -m {server['module']}")
-    
-    print(f"\n{Fore.GREEN}🎯 Python MCP SDK Architecture Benefits:{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}✓ Pure Python implementation (no TypeScript hybrid){Style.RESET_ALL}")
-    print(f"{Fore.GREEN}✓ Official MCP SDK support and documentation{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}✓ Better async/await handling and stability{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}✓ Resolves 'Event loop is closed' errors{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}✓ Future-proof tool discovery and registration{Style.RESET_ALL}")
-
-def run_health_checks() -> bool:
-    """
-    Run comprehensive health checks for the MCP environment.
-    
-    Returns:
-        bool: True if all health checks pass
-    """
-    print(f"{Fore.CYAN}🏥 Running MCP environment health checks...{Style.RESET_ALL}")
-    
-    checks = [
-        ("Python MCP SDK", check_mcp_sdk),
-        ("Database Connectivity", check_database_connectivity),
-        ("Ollama LLM Service", check_ollama)
-    ]
-    
-    all_passed = True
-    for check_name, check_func in checks:
-        print(f"\n{Fore.CYAN}Checking {check_name}...{Style.RESET_ALL}")
-        if not check_func():
-            all_passed = False
-    
-    print(f"\n{Fore.CYAN}🔍 Health check summary:{Style.RESET_ALL}")
-    if all_passed:
-        print(f"{Fore.GREEN}✅ All health checks passed - system ready{Style.RESET_ALL}")
-    else:
-        print(f"{Fore.RED}❌ Some health checks failed - see details above{Style.RESET_ALL}")
-    
-    return all_passed
+    def monitor_health(self):
+        """Monitor server health with enhanced reporting."""
+        logger.info("🔍 Starting health monitoring...")
+        logger.info(f"   {Colors.OKCYAN}💡{Colors.ENDC} Press Ctrl+C to stop monitoring")
+        
+        monitor_count = 0
+        while True:
+            try:
+                # Check server health
+                unhealthy_servers = []
+                for server_name in list(self.processes.keys()):
+                    if not self.check_server_health(server_name):
+                        unhealthy_servers.append(server_name)
+                
+                # Restart unhealthy servers
+                if unhealthy_servers:
+                    logger.warning(f"🔄 Restarting {len(unhealthy_servers)} unhealthy server(s)...")
+                    for server_name in unhealthy_servers:
+                        self.stop_server(server_name)
+                        time.sleep(1)
+                        self.start_server(server_name)
+                
+                # Print status every 10 cycles (100 seconds)
+                monitor_count += 1
+                if monitor_count % 10 == 0:
+                    self.print_status()
+                    monitor_count = 0
+                
+                time.sleep(10)  # Check every 10 seconds
+                
+            except KeyboardInterrupt:
+                logger.info("🛑 Health monitoring stopped by user")
+                break
+            except Exception as e:
+                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Error in health monitoring: {e}")
+                time.sleep(5)
 
 def main():
-    """Main entry point for the Python MCP servers launcher."""
-    parser = argparse.ArgumentParser(
-        description='Data Insights Python MCP Servers Launcher',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python python_mcp_servers_launcher.py                    # Start all servers
-  python python_mcp_servers_launcher.py --health-check     # Run health checks only
-  python python_mcp_servers_launcher.py --discover         # Discover servers only
-        """
-    )
+    """Main entry point with enhanced user experience."""
+    launcher = MCPServerLauncher()
     
-    parser.add_argument('--health-check', action='store_true',
-                        help='Run health checks only without starting servers')
-    parser.add_argument('--discover', action='store_true',
-                        help='Discover and validate servers only')
-    parser.add_argument('--verbose', '-v', action='store_true',
-                        help='Enable verbose logging')
+    # Print welcome header
+    launcher.print_header()
     
-    args = parser.parse_args()
+    try:
+        # Check prerequisites
+        if not launcher.check_prerequisites():
+            logger.error(f"{Colors.FAIL}❌ Prerequisites check failed. Please fix the issues above.{Colors.ENDC}")
+            return 1
+        
+        print(f"{Colors.OKGREEN}✅ All prerequisites satisfied{Colors.ENDC}\n")
+        
+        # Start servers
+        if not launcher.start_all_servers():
+            logger.error(f"{Colors.FAIL}❌ Failed to start all servers. Check logs for details.{Colors.ENDC}")
+            return 1
+        
+        # Print initial status
+        launcher.print_status()
+        
+        # Monitor health
+        launcher.monitor_health()
+        
+    except KeyboardInterrupt:
+        print(f"\n{Colors.WARNING}🛑 Shutdown requested by user...{Colors.ENDC}")
+    except Exception as e:
+        logger.error(f"{Colors.FAIL}💥 Unexpected error: {e}{Colors.ENDC}")
+        return 1
+    finally:
+        # Clean shutdown
+        print(f"{Colors.OKCYAN}🔄 Shutting down services...{Colors.ENDC}")
+        launcher.stop_all_servers()
+        print(f"{Colors.OKGREEN}✅ Shutdown complete{Colors.ENDC}")
     
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    
-    print(f"{Fore.CYAN}🚀 Data Insights Python MCP Servers Launcher{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}📡 Pure Python MCP SDK implementation{Style.RESET_ALL}\n")
-    
-    # Run health checks
-    if not run_health_checks():
-        if not args.health_check:
-            print(f"\n{Fore.RED}❌ Health checks failed. Please fix issues before starting servers.{Style.RESET_ALL}")
-            sys.exit(1)
-        else:
-            sys.exit(1)
-    
-    if args.health_check:
-        print(f"\n{Fore.GREEN}🎉 Health checks completed successfully{Style.RESET_ALL}")
-        return
-    
-    # Discover servers
-    servers = discover_mcp_servers()
-    
-    if args.discover:
-        print(f"\n{Fore.GREEN}🔍 Server discovery completed{Style.RESET_ALL}")
-        return
-    
-    # Start servers
-    start_python_mcp_servers(servers)
-    
-    print(f"\n{Fore.GREEN}🔄 Python MCP servers are ready for client connections{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}💡 Use the connection examples above to connect MCP clients{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}📝 Server activity logged to: logs/mcp_server_activity.log{Style.RESET_ALL}")
-
-
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

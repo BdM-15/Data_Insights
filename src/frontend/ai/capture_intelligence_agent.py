@@ -1,23 +1,25 @@
 """
-Capture Intelligence Agent
+Capture Intelligence Agent - Simplified
 
-A business intelligence consultant for defense contracting that specializes in:
-- Contract data analysis and insights
-- Competitive intelligence 
-- Capture management support
-- Strategic opportunity assessment
+A streamlined business intelligence consultant for defense contracting.
+Uses the centralized MCP Client Manager for tool access and focuses on
+LLM orchestration and business logic.
 
-Uses LangGraph for modern tool orchestration and MCP servers for modular data access.
+Key simplifications:
+- Uses MCPClientManager for all MCP interactions
+- Eliminates manual JSON-RPC handling
+- Cleaner LangGraph workflow
+- Better error handling with graceful degradation
 """
 
 import asyncio
 import logging
 import os
 import sys
-from typing import Dict, List, Any, Optional, Annotated
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-# Add backend path for config
+# Add backend path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
@@ -27,303 +29,266 @@ from config import (
     REQUEST_TIMEOUT, MAX_ITERATIONS
 )
 
-# Modern LangChain and LangGraph imports
+# LangChain imports
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
 
-# LangGraph for modern agent orchestration
+# LangGraph for agent orchestration
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
-# MCP Integration using official Python MCP SDK
-try:
-    import mcp.client
-    from mcp.client.stdio import stdio_client
-    from mcp import ClientSession
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    logging.warning("Python MCP SDK not available. Install with: pip install mcp>=1.0.0")
+# MCP Client Manager for centralized tool access
+from src.backend.ai.mcp_client_manager import MCPClientManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Agent state for LangGraph
 class AgentState(TypedDict):
-    """State for the capture intelligence agent."""
-    messages: Annotated[list, add_messages]
-    tool_results: Optional[Dict[str, Any]]
-    reasoning_steps: Optional[List[str]]
+    """State for the agent workflow."""
+    messages: List[HumanMessage | AIMessage | SystemMessage]
+    current_query: Optional[str]
+    context: Dict[str, Any]
 
 class CaptureIntelligenceAgent:
     """
-    A specialized business intelligence consultant for defense contracting.
+    Simplified Capture Intelligence Agent.
     
-    This agent helps with:
-    - Contract database analysis
-    - Competitive intelligence
-    - Opportunity assessment
-    - Strategic recommendations
-    
-    Uses modern LangGraph for tool orchestration and MCP servers for data access.
+    Features:
+    - Centralized MCP tool access
+    - LangGraph workflow orchestration
+    - Graceful error handling
+    - Business intelligence specialization
     """
     
-    def __init__(self, model_name: str = None, temperature: float = None):
-        self.model_name = model_name or OLLAMA_MODEL
-        self.temperature = temperature or OLLAMA_TEMPERATURE
+    def __init__(self):
+        """Initialize the agent."""
+        self.mcp_manager = MCPClientManager()
         self.llm = None
-        self.mcp_session = None
         self.tools = []
-        self.graph = None
+        self.workflow = None
         self._initialized = False
         
-        logger.info(f"CaptureIntelligenceAgent initializing with model: {self.model_name}")
+        # System prompt for business intelligence
+        self.system_prompt = """You are a specialized business intelligence consultant for defense contracting.
+
+Your expertise includes:
+- Contract data analysis and insights
+- Competitive intelligence assessment
+- Capture management support
+- Strategic opportunity evaluation
+- Market trend analysis
+- Proposal strategy guidance
+
+You have access to database tools for querying contract data. Always:
+1. Understand the business context of questions
+2. Provide actionable insights
+3. Use data to support recommendations
+4. Explain your reasoning clearly
+5. Suggest next steps when appropriate
+
+Available tools help you query contract databases and analyze data patterns."""
     
     async def initialize(self):
-        """Initialize the agent with LLM, MCP tools, and LangGraph workflow."""
+        """Initialize the agent with LLM and MCP connections."""
         if self._initialized:
             return
         
-        logger.info("Starting Capture Intelligence Agent initialization...")
+        logger.info("Initializing Capture Intelligence Agent...")
         
-        # Initialize Ollama chat model
+        # Initialize Ollama LLM
         self.llm = ChatOllama(
-            model=self.model_name,
-            temperature=self.temperature,
-            num_predict=MAX_TOKENS,
+            model=OLLAMA_MODEL,
+            temperature=OLLAMA_TEMPERATURE,
+            timeout=REQUEST_TIMEOUT,
+            # Performance optimizations
             num_ctx=CONTEXT_WINDOW,
-            request_timeout=REQUEST_TIMEOUT,
+            num_predict=MAX_TOKENS,
+            top_k=40,
+            top_p=0.9,
         )
         
-        logger.info(f"Ollama LLM initialized: {self.model_name}")
+        # Initialize MCP manager
+        await self.mcp_manager.initialize()
         
-        # Initialize MCP tools
-        await self._initialize_mcp_tools()
+        # Create LangChain tools from MCP tools
+        await self._create_langchain_tools()
         
-        # Build LangGraph workflow
-        self._build_langgraph_workflow()
+        # Build workflow
+        self._build_workflow()
         
         self._initialized = True
-        logger.info("Capture Intelligence Agent initialization completed successfully")
+        logger.info("Capture Intelligence Agent initialized successfully")
     
-    async def _initialize_mcp_tools(self):
-        """Initialize MCP tools using official Python MCP SDK."""
-        if not MCP_AVAILABLE:
-            logger.warning("MCP adapters not available - agent will work without database tools")
-            self.tools = []
-            return
+    async def _create_langchain_tools(self):
+        """Create LangChain tools from MCP tools."""
+        self.tools = []
         
-        try:
-            # For now, skip MCP tool integration and focus on fixing the event loop
-            # The Python MCP SDK server is ready, but tool integration needs more work
-            logger.info("Python MCP SDK server available - tool integration pending")
-            self.tools = []
-                
-        except Exception as e:
-            logger.error(f"Failed to connect to Python MCP SDK server: {e}")
-            logger.info("Agent will operate without database tools")
-            self.tools = []
+        # Get available MCP tools
+        available_tools = await self.mcp_manager.get_available_tools()
+        
+        for tool_info in available_tools:
+            tool_name = tool_info["name"]
+            tool_description = tool_info["description"]
+            
+            # Create a LangChain tool wrapper
+            @tool(name=tool_name, description=tool_description)
+            async def mcp_tool_wrapper(arguments: str, tool_name=tool_name):
+                """Wrapper for MCP tool calls."""
+                try:
+                    # Parse arguments (assuming JSON string)
+                    import json
+                    args = json.loads(arguments) if arguments else {}
+                    
+                    # Call through MCP manager
+                    result = await self.mcp_manager.call_tool(tool_name, args)
+                    return str(result)
+                    
+                except Exception as e:
+                    logger.error(f"Tool call failed: {e}")
+                    return f"Error: {str(e)}"
+            
+            self.tools.append(mcp_tool_wrapper)
+        
+        logger.info(f"Created {len(self.tools)} LangChain tools")
     
-    def _build_langgraph_workflow(self):
-        """Build the LangGraph workflow for tool orchestration."""
+    def _build_workflow(self):
+        """Build the LangGraph workflow."""
+        # Create tool node
+        tool_node = ToolNode(self.tools)
+        
+        # Create workflow graph
         workflow = StateGraph(AgentState)
         
         # Add nodes
         workflow.add_node("agent", self._agent_node)
-        if self.tools:
-            workflow.add_node("tools", ToolNode(self.tools))
+        workflow.add_node("tools", tool_node)
         
-        # Define workflow edges
+        # Add edges
         workflow.set_entry_point("agent")
+        workflow.add_conditional_edges(
+            "agent",
+            self._should_continue,
+            {
+                "continue": "tools",
+                "end": END
+            }
+        )
+        workflow.add_edge("tools", "agent")
         
-        if self.tools:
-            # If tools are available, agent can decide to use them
-            workflow.add_conditional_edges(
-                "agent",
-                self._should_continue,
-                {
-                    "continue": "tools",
-                    "end": END,
-                }
-            )
-            workflow.add_edge("tools", "agent")
-        else:
-            # No tools available, just end after agent response
-            workflow.add_edge("agent", END)
-        
-        # Compile the graph
-        self.graph = workflow.compile()
-        logger.info("LangGraph workflow compiled successfully")
+        # Compile workflow
+        self.workflow = workflow.compile()
     
     async def _agent_node(self, state: AgentState):
         """Main agent reasoning node."""
-        system_prompt = self._create_system_prompt()
+        # Prepare messages with system prompt
+        messages = [SystemMessage(content=self.system_prompt)] + state["messages"]
         
-        # Build messages with system prompt
-        messages = [SystemMessage(content=system_prompt)] + state["messages"]
+        # Get LLM response
+        response = await self.llm.ainvoke(messages)
         
-        # If we have tools, bind them to the LLM
-        if self.tools:
-            llm_with_tools = self.llm.bind_tools(self.tools)
-            response = await llm_with_tools.ainvoke(messages)
-        else:
-            response = await self.llm.ainvoke(messages)
-        
-        return {"messages": [response]}
+        # Update state
+        return {
+            "messages": [response],
+            "current_query": state.get("current_query"),
+            "context": state.get("context", {})
+        }
     
-    def _should_continue(self, state: AgentState):
-        """Determine if the agent should continue with tool use or end."""
+    def _should_continue(self, state: AgentState) -> str:
+        """Determine if workflow should continue or end."""
         last_message = state["messages"][-1]
         
-        # If the last message has tool calls, continue to tools
+        # Check if LLM wants to use tools
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             return "continue"
         else:
             return "end"
     
-    def _create_system_prompt(self) -> str:
-        """Create system prompt for the capture intelligence consultant."""
-        tools_info = ""
-        if self.tools:
-            tool_names = [tool.name for tool in self.tools]
-            tools_info = f"\n\nYou have access to these database tools: {', '.join(tool_names)}. Use them when users ask for specific data analysis, contract information, or database queries."
-        else:
-            tools_info = f"\n\nIMPORTANT: You currently do not have access to any databases or external data sources. You can only provide general consulting advice based on your knowledge. When asked about specific data access, database queries, or real-time information, clearly explain that you don't have access to live databases and suggest where users might find such information (like SAM.gov, USAspending.gov, etc.)."
-        
-        return f"""You are an AI business intelligence consultant with expertise in defense contracting and capture management. Today is {datetime.now().strftime("%B %d, %Y")}.
-
-Your expertise includes:
-- Federal contract analysis and market intelligence concepts
-- Competitive landscape assessment methodologies  
-- Capture strategy development frameworks
-- Opportunity qualification and prioritization techniques
-- Win probability analysis approaches
-- Defense industry trends and insights (general knowledge)
-
-Communication style:
-- Be concise and professional
-- Provide actionable consulting advice
-- Explain methodologies and frameworks clearly
-- Focus on business value and strategic implications
-- Be honest about limitations
-
-For simple greetings, respond briefly and offer to help with contract analysis methodologies or business intelligence consulting questions.{tools_info}
-
-Always aim to provide expert-level consulting insights while being transparent about your capabilities and limitations."""
-    
-    async def chat_async(self, user_input: str, context: Dict[str, Any] = None) -> str:
+    async def chat_async(self, user_input: str) -> str:
         """
-        Process user input using the LangGraph workflow.
+        Process user input and return response.
+        
+        Args:
+            user_input: User's question or request
+            
+        Returns:
+            Agent's response
         """
         if not self._initialized:
             await self.initialize()
         
-        logger.info(f"Processing user input: {user_input[:100]}...")
-        
         try:
-            # Create initial state
+            # Check MCP health
+            if not self.mcp_manager.is_healthy():
+                logger.warning("MCP manager is unhealthy, working with limited capabilities")
+            
+            # Prepare initial state
             initial_state = {
                 "messages": [HumanMessage(content=user_input)],
-                "tool_results": None,
-                "reasoning_steps": []
+                "current_query": user_input,
+                "context": {}
             }
             
-            # Run the LangGraph workflow
-            final_state = await self.graph.ainvoke(initial_state)
+            # Run workflow
+            result = await self.workflow.ainvoke(initial_state)
             
-            # Extract the final response
-            last_message = final_state["messages"][-1]
-            response = last_message.content if hasattr(last_message, 'content') else str(last_message)
+            # Extract response
+            final_message = result["messages"][-1]
             
-            logger.info(f"Generated response: {len(response)} characters")
-            return response
+            if hasattr(final_message, 'content'):
+                return final_message.content
+            else:
+                return str(final_message)
                 
         except Exception as e:
             logger.error(f"Error in chat_async: {e}")
-            return f"I encountered an error processing your request: {e}"
+            return f"I apologize, but I encountered an error: {str(e)}. Please try again or rephrase your question."
     
-    def chat(self, user_input: str, context: Dict[str, Any] = None) -> str:
-        """Synchronous wrapper for chat functionality."""
-        try:
-            return asyncio.run(self.chat_async(user_input, context))
-        except Exception as e:
-            logger.error(f"Error in synchronous chat: {e}")
-            return f"I encountered an error: {e}"
-    
-    async def health_check(self) -> Dict[str, Any]:
-        """Comprehensive health check for the agent."""
+    async def get_tool_status(self) -> Dict[str, Any]:
+        """
+        Get status of available tools.
+        
+        Returns:
+            Dictionary with tool status information
+        """
+        if not self._initialized:
+            return {"status": "not_initialized", "tools": []}
+        
+        # Get health status
+        health_status = await self.mcp_manager.health_check()
+        
+        # Get available tools
+        available_tools = await self.mcp_manager.get_available_tools()
+        
         return {
-            "agent_initialized": self._initialized,
-            "llm_available": self.llm is not None,
-            "mcp_available": MCP_AVAILABLE,
-            "mcp_connected": self.mcp_session is not None,
-            "tools_count": len(self.tools),
-            "available_tools": [tool.name for tool in self.tools] if self.tools else [],
-            "model_name": self.model_name,
-            "langgraph_ready": self.graph is not None
+            "status": "healthy" if self.mcp_manager.is_healthy() else "degraded",
+            "server_health": health_status,
+            "available_tools": available_tools,
+            "total_tools": len(available_tools)
         }
     
     async def cleanup(self):
-        """Clean up resources including MCP client connections."""
-        if self.mcp_session:
-            try:
-                # MultiServerMCPClient doesn't support context manager protocol
-                # According to the warning, we just set it to None for cleanup
-                logger.info("MCP session cleanup - no explicit close method needed")
-            except Exception as e:
-                logger.warning(f"Error during MCP session cleanup: {e}")
-            finally:
-                self.mcp_session = None
+        """Clean shutdown of the agent."""
+        logger.info("Cleaning up Capture Intelligence Agent...")
+        
+        if self.mcp_manager:
+            await self.mcp_manager.cleanup()
+        
+        self._initialized = False
+        logger.info("Agent cleanup completed")
 
-# Alias for backward compatibility
-class ModernAgent(CaptureIntelligenceAgent):
-    """Backward compatibility alias."""
-    pass
+# Create global agent instance for session persistence
+_agent_instance = None
 
-# Additional alias for current usage
-class LangGraphOrchestratorAgent(CaptureIntelligenceAgent):
-    """Backward compatibility alias."""
-    pass
-
-# Test function for standalone execution
-async def test_agent():
-    """Test function to validate agent initialization and basic functionality."""
-    print("🚀 Testing Capture Intelligence Agent...")
+async def get_agent() -> CaptureIntelligenceAgent:
+    """Get or create the global agent instance."""
+    global _agent_instance
     
-    # Initialize agent
-    agent = CaptureIntelligenceAgent()
+    if _agent_instance is None:
+        _agent_instance = CaptureIntelligenceAgent()
+        await _agent_instance.initialize()
     
-    try:
-        # Test health check before initialization
-        health = await agent.health_check()
-        print(f"📊 Pre-initialization health: {health}")
-        
-        # Initialize agent
-        await agent.initialize()
-        
-        # Test health check after initialization
-        health = await agent.health_check()
-        print(f"📊 Post-initialization health: {health}")
-        
-        # Test basic chat functionality
-        response = await agent.chat_async("Hello, can you help me with contract analysis?")
-        print(f"💬 Agent response: {response}")
-        
-        print("✅ Agent test completed successfully!")
-        
-        # Test tool functionality if available
-        if agent.tools:
-            print(f"\n🔧 Testing MCP tools functionality...")
-            tool_response = await agent.chat_async("Can you show me the database schema?")
-            print(f"🛠️  Tool response: {tool_response}")
-        
-    finally:
-        # Clean up resources
-        await agent.cleanup()
-        print("🧹 Cleanup completed")
-
-if __name__ == "__main__":
-    asyncio.run(test_agent())
+    return _agent_instance
