@@ -12,8 +12,9 @@ from datetime import datetime
 import streamlit as st
 
 
-# Add the src directory to sys.path so 'backend' is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+# Always add the src directory to sys.path for reliable imports, regardless of working directory
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
 
 # Import from project modules
 from config import get_db_config, get_app_config, get_log_config
@@ -51,7 +52,7 @@ logger.info(f"Starting Data_Insights application at {datetime.now()}")
 
 # Import page functions
 try:
-    sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+    # src is already in sys.path from the top of the file; no need to append again
     
     # Import page functions
     from src.frontend.pages.strategic_dashboard import main as strategic_dashboard_main
