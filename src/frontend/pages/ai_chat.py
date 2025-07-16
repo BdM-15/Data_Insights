@@ -23,7 +23,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import agent
-from src.frontend.ai.capture_intelligence_agent_simplified import get_agent
+from src.frontend.ai.capture_intelligence_agent import get_agent
 
 # Import theme
 from src.frontend.styles.theme import THEME

@@ -43,26 +43,47 @@ class MCPClientManager:
         self._initialized = False
     
     async def initialize(self):
-        """Initialize all MCP server connections."""
+        """Initialize all MCP server connections using auto-discovery."""
         if self._initialized:
             return
         
         logger.info("Initializing MCP Client Manager...")
         
-        # Initialize database server
-        await self._initialize_database_server()
+        # Auto-discover and initialize all MCP servers
+        await self._discover_and_initialize_servers()
         
         self._initialized = True
         logger.info("MCP Client Manager initialized successfully")
     
-    async def _initialize_database_server(self):
-        """Initialize the database MCP server connection."""
-        server_name = "database"
+    async def _discover_and_initialize_servers(self):
+        """Auto-discover and initialize the MCP servers we need."""
+        # Get project root
+        project_root = Path(__file__).parent.parent.parent.parent
         
+        # Only discover the servers we actually need
+        servers_to_find = [
+            {
+                "name": "fastmcp_database_server",
+                "path": project_root / "src" / "backend" / "ai" / "mcp_servers" / "data_insights_database" / "fastmcp_database_server.py",
+                "type": "database"
+            },
+            # Add other specific servers here as needed
+        ]
+        
+        # Initialize each server we found
+        for server_info in servers_to_find:
+            if server_info["path"].exists():
+                logger.info(f"Found MCP server: {server_info['name']}")
+                await self._initialize_server(server_info["name"], server_info["path"])
+            else:
+                logger.warning(f"MCP server not found: {server_info['name']} at {server_info['path']}")
+        
+        # Log summary
+        logger.info(f"Initialized {len(self.sessions)} MCP servers with {len(self.tools)} total tools")
+    
+    async def _initialize_server(self, server_name: str, server_path: Path):
+        """Initialize a specific MCP server connection."""
         try:
-            # Path to the database server
-            server_path = Path(__file__).parent.parent / "mcp_servers" / "data_insights_database" / "fastmcp_database_server.py"
-            
             # Create server parameters
             server_params = StdioServerParameters(
                 command=sys.executable,
@@ -89,15 +110,15 @@ class MCPClientManager:
                 # Register tools
                 for tool in tools_result.tools:
                     self.tools[tool.name] = server_name
-                    logger.info(f"Registered tool: {tool.name}")
+                    logger.info(f"Registered tool: {tool.name} from {server_name}")
                 
                 # Mark as healthy
                 self.health_status[server_name] = True
                 
-                logger.info(f"Database server initialized with {len(tools_result.tools)} tools")
+                logger.info(f"Server {server_name} initialized with {len(tools_result.tools)} tools")
                 
         except Exception as e:
-            logger.error(f"Failed to initialize database server: {e}")
+            logger.error(f"Failed to initialize server {server_name}: {e}")
             self.health_status[server_name] = False
             # Don't raise - allow graceful degradation
     

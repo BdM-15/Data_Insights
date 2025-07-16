@@ -98,15 +98,8 @@ class MCPServerLauncher:
         self.processes: Dict[str, subprocess.Popen] = {}
         self.health_status: Dict[str, bool] = {}
         
-        # Server configurations - Only define the primary servers here
-        self.server_configs = {
-            "database": {
-                "name": "Data Insights Database Server",
-                "path": "fastmcp_database_server_fixed.py",
-                "description": "PostgreSQL database access for contract data",
-                "icon": "🗄️"
-            }
-        }
+        # No manual server configurations - everything is auto-discovered
+        self.server_configs = {}
         
         # Ollama configuration
         self.ollama_url = "http://localhost:11434"
@@ -123,7 +116,11 @@ class MCPServerLauncher:
     
     def discover_mcp_servers(self) -> Dict[str, Dict[str, Any]]:
         """
-        Auto-discover MCP servers in the project (future-proof).
+        Auto-discover MCP servers that we actually need.
+        
+        Focused discovery for:
+        - Database server (fastmcp_database_server.py)
+        - Any additional project-specific MCP servers
         
         Returns:
             Dictionary of discovered server configurations
@@ -132,170 +129,49 @@ class MCPServerLauncher:
         
         logger.info("🔍 Auto-discovering MCP servers...")
         
-        # Only search in project directories, not in site-packages or venv
-        search_dirs = [
-            project_root,
-            project_root / "src" / "backend" / "ai" / "mcp_servers",
-            project_root / "src" / "backend" / "mcp_servers",
-            project_root / "mcp_servers"
+        # Focused search - only where we expect to find our servers
+        search_locations = [
+            # Database server location
+            project_root / "src" / "backend" / "ai" / "mcp_servers" / "data_insights_database" / "fastmcp_database_server.py",
+            # Future MCP servers would go here
         ]
         
-        # Only look for files that are clearly MCP servers for this project
-        mcp_server_patterns = [
-            "fastmcp_*.py",
-            "*_mcp_server.py",
-            "*_intelligence_server.py",
-            "*_database_server.py",
-            "*_capture_server.py"
-        ]
-        
-        for search_dir in search_dirs:
-            if not search_dir.exists():
+        for server_path in search_locations:
+            if not server_path.exists():
                 continue
                 
-            for pattern in mcp_server_patterns:
-                for server_file in search_dir.glob(pattern):
-                    # Only process files in the project directory (not in venv/site-packages)
-                    if not server_file.is_file() or "site-packages" in str(server_file) or "venv" in str(server_file):
-                        continue
-                        
-                    server_name = server_file.stem
-                    
-                    # Skip if already found (avoid duplicates)
-                    if server_name in discovered:
-                        continue
-                    
-                    # Auto-determine server type and icon from filename
-                    icon = "🔧"  # Default icon
-                    description = "MCP server"
-                    
-                    if "database" in server_name.lower():
-                        icon = "🗄️"
-                        description = "Database access server"
-                    elif "capture" in server_name.lower() or "intelligence" in server_name.lower():
-                        icon = "🎯"
-                        description = "Intelligence server"
-                    elif "web" in server_name.lower():
-                        icon = "🌐"
-                        description = "Web server"
-                    elif "document" in server_name.lower():
-                        icon = "📄"
-                        description = "Document processing server"
-                    elif "visualization" in server_name.lower():
-                        icon = "📊"
-                        description = "Visualization server"
-                    
-                    discovered[server_name] = {
-                        "name": server_name.replace("_", " ").title(),
-                        "path": str(server_file.relative_to(project_root)),
-                        "description": description,
-                        "icon": icon,
-                        "discovered": True
-                    }
-                    
-                    logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
-        
-        return discovered
-        
-        logger.info("🔍 Auto-discovering MCP servers...")
-        
-        # Search in project root first
-        for server_file in specific_servers:
-            server_path = project_root / server_file
-            if server_path.exists():
-                server_name = server_path.stem
-                
-                # Skip if already in manual config
-                if server_name in self.server_configs:
-                    continue
-                
-                # Skip all database servers since we have one manually configured
-                if "database" in server_name.lower():
-                    continue
-                
-                # Determine server type and icon from filename
-                icon = "🔧"  # Default icon
+            server_name = server_path.stem
+            
+            # Skip if already found
+            if server_name in discovered:
+                continue
+            
+            # Determine server type from name
+            if "database" in server_name.lower():
+                icon = "🗄️"
+                description = "PostgreSQL database access for contract data"
+            elif "capture" in server_name.lower():
+                icon = "�"
+                description = "Capture intelligence server"
+            else:
+                icon = "�"
                 description = "MCP server"
-                
-                if "database" in server_name.lower():
-                    icon = "🗄️"
-                    description = "Database access server"
-                elif "capture" in server_name.lower():
-                    icon = "🎯"
-                    description = "Capture intelligence server"
-                elif "web" in server_name.lower():
-                    icon = "🌐"
-                    description = "Web intelligence server"
-                elif "document" in server_name.lower():
-                    icon = "📄"
-                    description = "Document processing server"
-                elif "visualization" in server_name.lower():
-                    icon = "📊"
-                    description = "Visualization server"
-                
-                discovered[server_name] = {
-                    "name": server_name.replace("_", " ").title(),
-                    "path": server_file,
-                    "description": description,
-                    "icon": icon,
-                    "discovered": True
-                }
-                
-                logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
-        
-        # Also check the MCP servers directory if it exists
-        mcp_servers_dir = project_root / "src" / "backend" / "ai" / "mcp_servers"
-        if mcp_servers_dir.exists():
-            for subdir in mcp_servers_dir.iterdir():
-                if subdir.is_dir():
-                    # Look for the main server file in each subdirectory
-                    for server_file in subdir.glob("*_server.py"):
-                        if server_file.is_file():
-                            server_name = server_file.stem
-                            
-                            # Skip if already found or in manual config
-                            if server_name in discovered or server_name in self.server_configs:
-                                continue
-                            
-                            # Skip all database servers since we have one manually configured
-                            if "database" in server_name.lower():
-                                continue
-                            
-                            # Determine server type
-                            icon = "🔧"
-                            description = "MCP server"
-                            
-                            if "database" in server_name.lower():
-                                icon = "�️"
-                                description = "Database access server"
-                            elif "capture" in server_name.lower():
-                                icon = "🎯"
-                                description = "Capture intelligence server"
-                            elif "web" in server_name.lower():
-                                icon = "🌐"
-                                description = "Web intelligence server"
-                            elif "document" in server_name.lower():
-                                icon = "📄"
-                                description = "Document processing server"
-                            elif "visualization" in server_name.lower():
-                                icon = "📊"
-                                description = "Visualization server"
-                            
-                            discovered[server_name] = {
-                                "name": server_name.replace("_", " ").title(),
-                                "path": str(server_file.relative_to(project_root)),
-                                "description": description,
-                                "icon": icon,
-                                "discovered": True
-                            }
-                            
-                            logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
+            
+            discovered[server_name] = {
+                "name": server_name.replace("_", " ").title(),
+                "path": str(server_path.relative_to(project_root)),
+                "description": description,
+                "icon": icon,
+                "discovered": True
+            }
+            
+            logger.info(f"   {Colors.OKCYAN}🔍{Colors.ENDC} Found {icon} {server_name}")
         
         return discovered
     
     def discover_ollama_models(self) -> List[str]:
         """
-        Auto-discover available Ollama models.
+        Discover available Ollama models for our use case.
         
         Returns:
             List of available model names
@@ -306,10 +182,21 @@ class MCPServerLauncher:
             response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
             if response.status_code == 200:
                 models_data = response.json()
-                models = [model['name'] for model in models_data.get('models', [])]
+                all_models = [model['name'] for model in models_data.get('models', [])]
                 
-                logger.info(f"🔍 Discovered {len(models)} Ollama models:")
-                for model in models:
+                # Filter to only show models that are relevant for our use case
+                relevant_models = []
+                for model in all_models:
+                    # Include our primary model and common useful models
+                    if (self.primary_model in model or 
+                        "llama" in model.lower() or 
+                        "mistral" in model.lower() or 
+                        "code" in model.lower() or
+                        "data_insights" in model.lower()):
+                        relevant_models.append(model)
+                
+                logger.info(f"🔍 Found {len(relevant_models)} relevant Ollama models:")
+                for model in relevant_models:
                     # Categorize models by type
                     model_icon = "🤖"
                     if "data_insights" in model:
@@ -323,6 +210,8 @@ class MCPServerLauncher:
                     
                     primary_indicator = " (Primary)" if model == self.primary_model else ""
                     logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} {model_icon} {model}{primary_indicator}")
+                
+                models = relevant_models
                     
         except requests.exceptions.RequestException:
             logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Could not discover Ollama models")
@@ -432,7 +321,7 @@ class MCPServerLauncher:
         # Auto-discover MCP servers (future-proof)
         self.discovered_servers = self.discover_mcp_servers()
         
-        # Use discovered servers as the active configuration
+        # Use only discovered servers
         self.server_configs = self.discovered_servers
         
         # Check if we found any servers
@@ -440,14 +329,16 @@ class MCPServerLauncher:
             logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} No MCP servers discovered")
             return False
         
-        # Check server files exist
+        # Check discovered server files exist
         for server_name, config in self.server_configs.items():
             server_path = project_root / config["path"]
             if not server_path.exists():
-                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Server file not found: {server_path}")
+                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Discovered server file not found: {server_path}")
                 return False
             else:
-                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} {config['icon']} {config['name']} found")
+                logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} {config['icon']} {config['name']} (auto-discovered)")
+        
+        logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Discovered {len(self.server_configs)} MCP servers")
         
         # Check Ollama service
         if not self.start_ollama_if_needed():
