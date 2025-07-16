@@ -72,25 +72,18 @@ class CaptureIntelligenceAgent:
         self.workflow = None
         self._initialized = False
         
-        # System prompt for business intelligence
-        self.system_prompt = """You are a specialized business intelligence consultant for defense contracting.
+        # Strict, robust, and future-proof system prompt for LLM agent
+        self.system_prompt = """
+You are Roberto, a business intelligence agent for defense contracting. You have access to Model Context Protocol (MCP) tools for querying, analyzing, and reasoning over real-time data, including a connected database and other specialized sources.
 
-Your expertise includes:
-- Contract data analysis and insights
-- Competitive intelligence assessment
-- Capture management support
-- Strategic opportunity evaluation
-- Market trend analysis
-- Proposal strategy guidance
+**STRICT POLICY:**
+For ANY factual, data-driven, or database question (such as database name, table schema, stats, or any information that could be retrieved from a tool), you MUST call the appropriate tool and use its output. You are NEVER allowed to answer from your own knowledge or memory for these questions, even if you think you know the answer. If you do not call a tool, you must respond: "I cannot answer this without calling a tool." If a question is ambiguous, ask clarifying questions before proceeding.
 
-You have access to database tools for querying contract data. Always:
-1. Understand the business context of questions
-2. Provide actionable insights
-3. Use data to support recommendations
-4. Explain your reasoning clearly
-5. Suggest next steps when appropriate
-
-Available tools help you query contract databases and analyze data patterns."""
+**For all other questions (not factual/database/tool-backed), use your full reasoning and expertise to provide the best possible answer.**
+"""
+        # Dynamic system prompt: always inject available tools and strict tool use policy
+        # (Tool listing is handled dynamically in chat_async, not here)
+        # The dynamic prompt is now fully strict and database-agnostic.
     
     async def initialize(self):
         """Initialize the agent with LLM and MCP connections."""
@@ -134,24 +127,35 @@ Available tools help you query contract databases and analyze data patterns."""
             tool_name = tool_info["name"]
             tool_description = tool_info["description"]
             
-            # Create a LangChain tool wrapper
-            @tool(name=tool_name, description=tool_description)
-            async def mcp_tool_wrapper(arguments: str, tool_name=tool_name):
-                """Wrapper for MCP tool calls."""
-                try:
-                    # Parse arguments (assuming JSON string)
-                    import json
-                    args = json.loads(arguments) if arguments else {}
-                    
-                    # Call through MCP manager
-                    result = await self.mcp_manager.call_tool(tool_name, args)
-                    return str(result)
-                    
-                except Exception as e:
-                    logger.error(f"Tool call failed: {e}")
-                    return f"Error: {str(e)}"
+            # Create a LangChain tool wrapper using correct syntax
+            # LangChain @tool decorator doesn't support name parameter, so we use a different approach
+            from langchain_core.tools import StructuredTool
             
-            self.tools.append(mcp_tool_wrapper)
+            def create_mcp_tool_wrapper(name: str, description: str):
+                """Factory function to create MCP tool wrapper."""
+                async def mcp_tool_function(arguments: str):
+                    """Wrapper for MCP tool calls."""
+                    try:
+                        # Parse arguments (assuming JSON string)
+                        import json
+                        args = json.loads(arguments) if arguments else {}
+                        
+                        # Call through MCP manager
+                        result = await self.mcp_manager.call_tool(name, args)
+                        return str(result)
+                        
+                    except Exception as e:
+                        logger.error(f"Tool call failed: {e}")
+                        return f"Error: {str(e)}"
+                
+                return StructuredTool.from_function(
+                    func=mcp_tool_function,
+                    name=name,
+                    description=description
+                )
+            
+            wrapped_tool = create_mcp_tool_wrapper(tool_name, tool_description)
+            self.tools.append(wrapped_tool)
         
         logger.info(f"Created {len(self.tools)} LangChain tools")
     
@@ -183,13 +187,14 @@ Available tools help you query contract databases and analyze data patterns."""
         self.workflow = workflow.compile()
     
     async def _agent_node(self, state: AgentState):
-        """Main agent reasoning node."""
-        # Prepare messages with system prompt
-        messages = [SystemMessage(content=self.system_prompt)] + state["messages"]
-        
+        """Main agent reasoning node with dynamic tool awareness."""
+        # Use dynamic system prompt from state context (if present)
+        system_prompt = state["context"].get("system_prompt", self.system_prompt)
+        messages = [SystemMessage(content=system_prompt)] + state["messages"]
+
         # Get LLM response
         response = await self.llm.ainvoke(messages)
-        
+
         # Update state
         return {
             "messages": [response],
@@ -207,45 +212,114 @@ Available tools help you query contract databases and analyze data patterns."""
         else:
             return "end"
     
-    async def chat_async(self, user_input: str) -> str:
+    async def chat_async(self, user_input: str, history: Optional[List[Dict[str, str]]] = None, debug: bool = False) -> Any:
         """
-        Process user input and return response.
-        
-        Args:
-            user_input: User's question or request
-            
-        Returns:
-            Agent's response
+        Process user input and return response, supporting multi-turn conversation.
+        Enforces a strict RAG loop: if the LLM calls a tool, execute it, append the tool output, and re-invoke the LLM for a final answer.
+        For any factual/database/tool-backed question, always call the relevant tool and use its output. Never hallucinate.
         """
         if not self._initialized:
             await self.initialize()
-        
+        debug_info = {}
         try:
             # Check MCP health
             if not self.mcp_manager.is_healthy():
                 logger.warning("MCP manager is unhealthy, working with limited capabilities")
-            
-            # Prepare initial state
-            initial_state = {
-                "messages": [HumanMessage(content=user_input)],
-                "current_query": user_input,
-                "context": {}
-            }
-            
-            # Run workflow
-            result = await self.workflow.ainvoke(initial_state)
-            
-            # Extract response
-            final_message = result["messages"][-1]
-            
-            if hasattr(final_message, 'content'):
-                return final_message.content
+
+            # Build conversation history
+            messages = []
+            if history:
+                for msg in history:
+                    if msg["role"] == "user":
+                        messages.append(HumanMessage(content=msg["content"]))
+                    elif msg["role"] == "assistant":
+                        messages.append(AIMessage(content=msg["content"]))
+                    elif msg["role"] == "system":
+                        messages.append(SystemMessage(content=msg["content"]))
+            # Add the new user message
+            messages.append(HumanMessage(content=user_input))
+
+            # --- Dynamic tool awareness ---
+            available_tools = await self.mcp_manager.get_available_tools()
+            if available_tools:
+                tool_list = "\n".join([
+                    f"- {tool['name']}: {tool['description']}" for tool in available_tools
+                ])
+                tool_prompt = f"\n\nYou currently have access to the following Model Context Protocol (MCP) tools:\n{tool_list}\n\nWhen asked about your tools or capabilities, always answer using this list."
             else:
-                return str(final_message)
-                
+                tool_prompt = "\n\nYou currently have no available MCP tools."
+
+            dynamic_system_prompt = self.system_prompt.strip() + tool_prompt
+
+            # Prepare initial state with dynamic system prompt in context
+            initial_state = {
+                "messages": messages,
+                "current_query": user_input,
+                "context": {"system_prompt": dynamic_system_prompt}
+            }
+
+            # --- Strict RAG loop ---
+            # Always force a tool call for factual/database/tool-backed questions, regardless of LLM output
+            def is_factual_query(user_input: str) -> bool:
+                keywords = [
+                    "database name", "what is the database", "current database", "which database",
+                    "table schema", "list tables", "describe table", "database stats", "database statistics",
+                    "show tables", "get table sample", "query database", "database info", "database information"
+                ]
+                lowered = user_input.lower()
+                return any(kw in lowered for kw in keywords)
+
+            if is_factual_query(user_input):
+                # Always call the relevant tool for factual/database questions
+                tool_name = "get_database_stats" if "database" in user_input.lower() else None
+                # You can expand this logic to map other keywords to other tools as needed
+                if tool_name:
+                    tool_args = {}
+                    tool_debug = {"tool_name": tool_name, "tool_args": tool_args, "forced": True}
+                    try:
+                        tool_result = await self.mcp_manager.call_tool(tool_name, tool_args)
+                        if hasattr(tool_result, 'dict'):
+                            tool_result_display = tool_result.dict()
+                        else:
+                            tool_result_display = tool_result
+                        tool_debug["tool_result"] = tool_result_display
+                        debug_info["tool_calls"].append(tool_debug)
+                        # Format as JSON code block for LLM reliability
+                        import json
+                        tool_output_msg = f"Tool `{tool_name}` output:\n```json\n{json.dumps(tool_result_display, indent=2)}\n```\nPlease use this tool output to answer the user's question. Do not ignore or hallucinate."
+                        messages.append(AIMessage(content=tool_output_msg))
+                        # 2nd pass: re-invoke the LLM with tool output
+                        initial_state2 = {
+                            "messages": messages,
+                            "current_query": user_input,
+                            "context": {"system_prompt": dynamic_system_prompt}
+                        }
+                        result2 = await self.workflow.ainvoke(initial_state2)
+                        final_message2 = result2["messages"][-1]
+                        debug_info["llm_second_pass"] = str(final_message2)
+                        if hasattr(final_message2, 'content'):
+                            return final_message2.content, debug_info if debug else final_message2.content
+                        else:
+                            return str(final_message2), debug_info if debug else str(final_message2)
+                    except Exception as e:
+                        tool_debug["error"] = str(e)
+                        debug_info["tool_calls"].append(tool_debug)
+                        return f"I apologize, but I encountered an error while retrieving the database name: {e}", debug_info if debug else f"I apologize, but I encountered an error while retrieving the database name: {e}"
+                else:
+                    return "I cannot answer this without calling a tool.", debug_info if debug else "I cannot answer this without calling a tool."
+            # For non-factual questions, let the LLM respond as usual
+            result = await self.workflow.ainvoke(initial_state)
+            final_message = result["messages"][-1]
+            debug_info["llm_first_pass"] = str(final_message)
+            debug_info["tool_calls"] = []
+            if hasattr(final_message, 'content'):
+                return final_message.content, debug_info if debug else final_message.content
+            else:
+                return str(final_message), debug_info if debug else str(final_message)
         except Exception as e:
             logger.error(f"Error in chat_async: {e}")
-            return f"I apologize, but I encountered an error: {str(e)}. Please try again or rephrase your question."
+            debug_info["error"] = str(e)
+            return f"I apologize, but I encountered an error: {str(e)}. Please try again or rephrase your question.", debug_info if debug else f"I apologize, but I encountered an error: {str(e)}. Please try again or rephrase your question."
     
     async def get_tool_status(self) -> Dict[str, Any]:
         """

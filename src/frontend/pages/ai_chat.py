@@ -13,10 +13,14 @@ Key simplifications:
 
 import streamlit as st
 import asyncio
+import nest_asyncio
+import atexit
 import logging
 import time
 from pathlib import Path
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project paths
 project_root = Path(__file__).parent.parent.parent.parent
@@ -33,16 +37,34 @@ from src.frontend.styles.custom_css import generate_theme_css
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Page configuration
-st.set_page_config(
-    page_title="AI Chat - Data Insights",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # Apply theme
 st.markdown(generate_theme_css(THEME), unsafe_allow_html=True)
+
+# Global thread pool for async operations
+_thread_pool = ThreadPoolExecutor(max_workers=4)
+
+# --- Asyncio/Streamlit event loop fix ---
+nest_asyncio.apply()
+
+# Initialize session state for event loop
+if "loop" not in st.session_state:
+    st.session_state.loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(st.session_state.loop)
+
+def run_async(coro):
+    """Run async coroutine in a thread-safe way for Streamlit."""
+    """Run an async function within the stored event loop."""
+    return st.session_state.loop.run_until_complete(coro)
+
+# Optional: Cleanup logic for agent/client shutdown (if needed)
+def on_shutdown():
+    if "agent" in st.session_state and st.session_state.agent is not None:
+        try:
+            if hasattr(st.session_state.agent, "cleanup"):
+                run_async(st.session_state.agent.cleanup())
+        except Exception as e:
+            st.error(f"Error during shutdown: {str(e)}")
+atexit.register(on_shutdown)
 
 def initialize_session_state():
     """Initialize session state variables."""
@@ -52,6 +74,8 @@ def initialize_session_state():
         st.session_state.agent_ready = False
     if "agent_status" not in st.session_state:
         st.session_state.agent_status = "initializing"
+    if "debug_info" not in st.session_state:
+        st.session_state.debug_info = None
 
 async def get_agent_status():
     """Get current agent status."""
@@ -67,10 +91,16 @@ async def chat_with_agent(user_input: str) -> str:
     """Send message to agent and get response."""
     try:
         agent = await get_agent()
-        response = await agent.chat_async(user_input)
+        # Pass the full conversation history for multi-turn chat
+        history = st.session_state.get("messages", [])
+        # Clear debug info before each call
+        st.session_state.debug_info = None
+        response, debug_info = await agent.chat_async(user_input, history=history, debug=True)
+        st.session_state.debug_info = debug_info
         return response
     except Exception as e:
         logger.error(f"Error in chat: {e}")
+        st.session_state.debug_info = {"error": str(e)}
         return f"I apologize, but I encountered an error: {str(e)}. Please try again."
 
 def display_agent_status():
@@ -78,8 +108,8 @@ def display_agent_status():
     with st.sidebar:
         st.header("🤖 Agent Status")
         
-        # Get status asynchronously
-        status = asyncio.run(get_agent_status())
+        # Get status using thread-safe async execution
+        status = run_async(get_agent_status())
         
         if status["status"] == "healthy":
             st.success("✅ Agent Ready")
@@ -106,38 +136,56 @@ def main():
     # Initialize session state
     initialize_session_state()
     
-    # Page header
-    st.title("🤖 AI Chat - Defense Contract Intelligence")
-    st.markdown("Ask me about contract data, competitive intelligence, or capture strategy.")
+    # Page header and welcome
+    st.title("🤖 AI Business Development Consultant")
+    st.markdown("""
+**Welcome to your AI Business Development Consultant!**
+
+This system features Roberto, an expert AI agent specializing in defense contracting and business development, with direct access to your capture insights database.
+
+**The Capture Intelligence Agent Philosophy:**
+Roberto responds conversationally and only uses database tools when needed. For simple questions, he answers from expertise; for data-driven analysis, he seamlessly connects to your database to provide contract data, market intelligence, and competitive insights.
+
+_Ask Roberto anything about defense contracting, market analysis, or business development. He will intelligently decide when to use database tools or respond from his expertise._
+    """)
     
     # Display agent status
     display_agent_status()
+
+    # Debug toggle in sidebar
+    with st.sidebar:
+        show_debug = st.checkbox("Show Debug Info", value=False)
     
     # Chat interface
     st.subheader("💬 Chat")
-    
+
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-    
+
     # User input
     if prompt := st.chat_input("Ask me about contract data..."):
         # Add user message to history
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
+
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+
         # Get agent response
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = asyncio.run(chat_with_agent(prompt))
+                response = run_async(chat_with_agent(prompt))
                 st.markdown(response)
-        
+
         # Add assistant response to history
         st.session_state.messages.append({"role": "assistant", "content": response})
+
+    # Debug info display in sidebar
+    if show_debug and st.session_state.debug_info:
+        with st.sidebar.expander("LLM Tool Debug Info", expanded=True):
+            st.write(st.session_state.debug_info)
     
     # Clear chat button
     if st.button("🗑️ Clear Chat"):
