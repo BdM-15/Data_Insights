@@ -11,6 +11,7 @@ Comprehensive MCP server management with:
 Designed for seamless operation with Data Insights AI chat system.
 """
 
+
 import os
 import sys
 import subprocess
@@ -21,6 +22,9 @@ import requests
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import asyncio
+
+# Import model config from config.py
+from config import OLLAMA_MODEL, OLLAMA_BACKUP_MODEL
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -59,8 +63,35 @@ class ColoredFormatter(logging.Formatter):
         
         return super().format(record)
 
+
 # Configure enhanced logging
-console_handler = logging.StreamHandler()
+import sys
+
+# Try to set UTF-8 encoding for stdout/stderr (Python 3.7+)
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
+
+# Custom StreamHandler that strips non-ASCII if not UTF-8
+class SafeConsoleHandler(logging.StreamHandler):
+    def emit(self, record):
+        msg = self.format(record)
+        encoding = getattr(self.stream, 'encoding', None)
+        if encoding is None or encoding.lower() != 'utf-8':
+            # Strip non-ASCII for non-UTF-8 consoles
+            msg = msg.encode('ascii', errors='ignore').decode('ascii')
+        try:
+            self.stream.write(msg + self.terminator)
+            self.flush()
+        except Exception:
+            pass
+
+console_handler = SafeConsoleHandler()
 console_handler.setFormatter(ColoredFormatter(
     '%(asctime)s | %(levelname)s | %(message)s',
     datefmt='%H:%M:%S'
@@ -71,10 +102,14 @@ file_handler.setFormatter(logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 ))
 
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[file_handler, console_handler]
-)
+# Remove all handlers from root logger and add ours
+root_logger = logging.getLogger()
+for h in root_logger.handlers[:]:
+    root_logger.removeHandler(h)
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(file_handler)
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger(__name__)
 
 # Ensure logs directory exists
@@ -103,7 +138,8 @@ class MCPServerLauncher:
         
         # Ollama configuration
         self.ollama_url = "http://localhost:11434"
-        self.primary_model = "data_insights_optimized:latest"  # Primary orchestrator agent
+        self.primary_model = OLLAMA_MODEL  # Use model from config
+        self.backup_model = OLLAMA_BACKUP_MODEL  # Use backup model from config
         self.discovered_models = []  # Auto-discovered models
         self.discovered_servers = {}  # Auto-discovered MCP servers
     

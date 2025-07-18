@@ -66,8 +66,12 @@ class GetDatabaseStatsOutput(BaseModel):
     Output schema for the get_database_stats MCP tool.
     Used by the agent in capture_intelligence_agent.py to validate tool output.
     """
-    database: str
-    # Add other fields as needed, e.g., version, size, etc.
+    stats: List[Dict[str, str]] = Field(description="List of database statistics with metric and value fields")
+    
+    @classmethod
+    def from_raw_list(cls, raw_stats: List[Dict[str, str]]) -> 'GetDatabaseStatsOutput':
+        """Create from the raw list format returned by the MCP tool."""
+        return cls(stats=raw_stats)
 
 # ---------------- Agentic LLM Intent Model (for Tool Routing) ----------------
 

@@ -1,0 +1,31 @@
+---
+query: can you update the flow chart to show one conversational loop between the
+  agent llm and mcp tool call
+references:
+  - "File: /mermaid/sequenceDiagram.mmd"
+  - "File: /.github/copilot-instructions.md"
+generationTime: 2025-07-18T13:27:31.203Z
+---
+// [MermaidChart: a4123705-2352-4731-811b-f6ff08721127]
+flowchart TD
+    A["Start Server"] --> B["Start Ollama Server"]
+    B --> C["Ollama Server Ready"]
+    C --> D["Initialize LLM Connection"]
+    D --> E["Load llama3.1 8b Model"]
+    E --> F["LLM Ready"]
+    F --> G["Start MCP Client Manager"]
+    G --> H["Initialize Database Tools"]
+    H --> I["MCP Tools Ready"]
+    I --> J["Create Capture Intelligence Agent"]
+    J --> K["Connect Agent to Tools"]
+    K --> L["Agent Ready"]
+    L --> M["Display Chat UI"]
+    M --> N["User Enters Query"]
+    N --> O["Process User Message in ai_chat.py"]
+    O --> P["Agent Processes Query"]
+    P --> Q["LLM Handles Query"]
+    Q --> R{"Does LLM Need Tool?"}
+    R -- Yes --> S["MCP Tool Call"]
+    S --> T["Return Tool Result to LLM"]
+    T --> U["LLM Generates Final Response"]
+    R -- No --> V["LLM Generates Final Response"]

@@ -120,7 +120,6 @@ async def list_tables() -> List[Dict[str, Any]]:
         List of dictionaries containing table information
     """
     logger.info("Listing database tables...")
-    
     query = """
     SELECT 
         table_schema,
@@ -130,8 +129,14 @@ async def list_tables() -> List[Dict[str, Any]]:
     WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
     ORDER BY table_schema, table_name;
     """
-    
-    return await query_database(query)
+    try:
+        result = await query_database(query)
+        logger.info(f"list_tables result type: {type(result)}, value: {result}")
+        return result
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in list_tables: {e}\n{traceback.format_exc()}")
+        raise
 
 @mcp.tool()
 async def describe_table(table_name: str, schema_name: str = "public") -> List[Dict[str, Any]]:

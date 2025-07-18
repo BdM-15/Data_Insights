@@ -168,22 +168,9 @@ class MCPClientManager:
             logger.error(f"Failed to initialize server {server_name}: {e}")
             self.health_status[server_name] = False
             
-            # Fall back to mock tools for development
-            logger.warning(f"Using mock tools for {server_name} due to connection failure")
-            mock_tools = [
-                {"name": "query_database", "description": "Execute SQL queries on the database"},
-                {"name": "list_tables", "description": "List all tables in the database"},
-                {"name": "describe_table", "description": "Get column information for a table"},
-                {"name": "get_database_stats", "description": "Get database statistics"}
-            ]
-            
-            for tool in mock_tools:
-                self.tools[tool["name"]] = server_name
-                self.tool_descriptions[tool["name"]] = tool["description"]
-                logger.info(f"Registered mock tool: {tool['name']} from {server_name}")
-            
-            # Mark as healthy for mock operation
-            self.health_status[server_name] = True
+            # If connection fails, do not register any tools and mark as unhealthy
+            logger.error(f"Failed to connect to MCP server {server_name}. No tools registered.")
+            self.health_status[server_name] = False
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         """
@@ -214,6 +201,7 @@ class MCPClientManager:
         if not self.health_status.get(server_name, False):
             raise ValueError(f"Server '{server_name}' is unhealthy")
 
+
         try:
             # Create a fresh connection for each tool call
             if server_name in self.server_params:
@@ -227,51 +215,81 @@ class MCPClientManager:
                         # Call the tool through MCP
                         result = await session.call_tool(tool_name, arguments)
 
+                        # Debug logging for list_tables to see raw result structure
+                        if tool_name == "list_tables":
+                            logger.info(f"Raw MCP result for list_tables: {result}")
+                            logger.info(f"Result type: {type(result)}")
+                            if hasattr(result, 'content'):
+                                logger.info(f"Content: {result.content}")
+                                logger.info(f"Content length: {len(result.content) if result.content else 0}")
+                                for i, item in enumerate(result.content or []):
+                                    logger.info(f"Content[{i}]: {item}")
+                                    logger.info(f"Content[{i}] type: {type(item)}")
+                                    if hasattr(item, 'text'):
+                                        logger.info(f"Content[{i}].text: {item.text}")
+
                         # Extract content from result
                         if hasattr(result, 'content') and result.content:
-                            raw_result = result.content[0].text if result.content else "No result"
+                            # For list_tables, we expect multiple JSON objects as separate content items
+                            if tool_name == "list_tables":
+                                raw_result = []
+                                for item in result.content:
+                                    if hasattr(item, 'text'):
+                                        try:
+                                            import json
+                                            parsed_item = json.loads(item.text)
+                                            raw_result.append(parsed_item)
+                                        except json.JSONDecodeError:
+                                            logger.error(f"Failed to parse content item as JSON: {item.text}")
+                                            continue
+                                logger.info(f"Parsed {len(raw_result)} tables from list_tables")
+                            else:
+                                # For other tools, use the first content item
+                                raw_result = result.content[0].text if result.content else "No result"
                         else:
                             raw_result = str(result)
 
                         # Validate output with Pydantic if model is available
                         if tool_name in self.tool_models and "output" in self.tool_models[tool_name]:
                             try:
-                                # If the result is a string, try to parse as dict
-                                import json
-                                if isinstance(raw_result, str):
-                                    try:
-                                        raw_result = json.loads(raw_result)
-                                    except Exception:
-                                        pass
-                                return self.tool_models[tool_name]["output"](**raw_result)
+                                # Special handling for list_tables which expects a list wrapped in a dict
+                                if tool_name == "list_tables":
+                                    # raw_result is already a list, wrap it in the expected format
+                                    return self.tool_models[tool_name]["output"](tables=raw_result)
+                                else:
+                                    # If the result is a string, try to parse as dict
+                                    import json
+                                    if isinstance(raw_result, str):
+                                        try:
+                                            raw_result = json.loads(raw_result)
+                                        except Exception:
+                                            pass
+                                    # Special handling for query_database: always wrap dict in a list for results
+                                    if tool_name == "query_database":
+                                        if isinstance(raw_result, dict):
+                                            return self.tool_models[tool_name]["output"](results=[raw_result])
+                                        elif isinstance(raw_result, list):
+                                            return self.tool_models[tool_name]["output"](results=raw_result)
+                                        elif isinstance(raw_result, dict) and "results" in raw_result:
+                                            # Already in correct format
+                                            return self.tool_models[tool_name]["output"](**raw_result)
+                                        else:
+                                            raise ValueError(f"Unexpected result type for query_database: {type(raw_result)}")
+                                    return self.tool_models[tool_name]["output"](**raw_result)
                             except Exception as e:
+                                logger.error(f"DEBUG: Output validation failed for {tool_name}: {e}")
                                 raise ValueError(f"Output validation failed for {tool_name}: {e}")
                         return raw_result
 
             else:
-                # Fall back to mock response
-                logger.warning(f"No server params for {server_name}, using mock response")
-                return self._get_mock_response(tool_name, arguments)
+                # No server params, fail fast
+                logger.error(f"No server params for {server_name}, cannot call tool {tool_name}.")
+                raise RuntimeError(f"No server params for {server_name}, cannot call tool {tool_name}.")
 
         except Exception as e:
             logger.error(f"Tool call failed for {tool_name}: {e}")
-            # Return mock response as fallback
-            return self._get_mock_response(tool_name, arguments)
+            raise
     
-    def _get_mock_response(self, tool_name: str, arguments: Dict[str, Any]) -> str:
-        """Generate mock response for tool calls."""
-        logger.info(f"Mock tool call: {tool_name} with args: {arguments}")
-        
-        if tool_name == "query_database":
-            return "Mock database query result: [{'id': 1, 'name': 'Sample Contract', 'value': 100000}]"
-        elif tool_name == "list_tables":
-            return "Mock tables: ['contracts', 'agencies', 'vendors']"
-        elif tool_name == "describe_table":
-            return "Mock table description: id (int), name (varchar), value (decimal)"
-        elif tool_name == "get_database_stats":
-            return "Mock stats: 1000 contracts, 50 agencies, 200 vendors"
-        else:
-            return f"Mock response for {tool_name}"
     
     async def get_available_tools(self) -> List[Dict[str, Any]]:
         """
