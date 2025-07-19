@@ -102,11 +102,10 @@ class CaptureIntelligenceAgent:
 
         self.logger.info("Initializing Capture Intelligence Agent...")
 
-        # Use a tool-calling-capable model (no experimental fallback)
-        model_name = "llama3.1:8b"  # Use the user's specific model
+        # Use a tool-calling-capable model from config (no experimental fallback)
         try:
             self.llm = ChatOllama(
-                model=model_name,
+                model=OLLAMA_MODEL,
                 temperature=OLLAMA_TEMPERATURE,
                 timeout=REQUEST_TIMEOUT,
                 num_ctx=CONTEXT_WINDOW,
@@ -114,7 +113,7 @@ class CaptureIntelligenceAgent:
                 top_k=40,
                 top_p=0.9,
             )
-            self.logger.info(f"Using standard ChatOllama with model '{model_name}'; ensure model supports tool calling.")
+            self.logger.info(f"Using standard ChatOllama with model '{OLLAMA_MODEL}'; ensure model supports tool calling.")
         except Exception as e:
             self.logger.error(f"Failed to initialize LLM: {e}")
             raise
@@ -255,15 +254,21 @@ class CaptureIntelligenceAgent:
                             sql_query = args.get("sql_query", "").lower()
                             if len(data) == 1 and 'count' in str(data[0]).lower():
                                 count_value = list(data[0].values())[0] if data[0] else 0
+                                # Format the count with thousands separator if it's an int or can be cast to int
+                                try:
+                                    count_value_int = int(count_value)
+                                    count_value_fmt = f"{count_value_int:,}"
+                                except Exception:
+                                    count_value_fmt = str(count_value)
                                 if "modification_number = '0'" in sql_query:
-                                    return f"Contract count (base awards only): {count_value}"
+                                    return f"Contract count (base awards only): {count_value_fmt}"
                                 elif "usaspending_prime_awards" in sql_query and "count" in sql_query:
                                     if "modification_number" not in sql_query:
-                                        return f"Total records count (includes all modifications): {count_value}. Note: For actual contract count, filter by modification_number = '0'"
+                                        return f"Total records count (includes all modifications): {count_value_fmt}. Note: For actual contract count, filter by modification_number = '0'"
                                     else:
-                                        return f"Query result: {count_value} contracts"
+                                        return f"Query result: {count_value_fmt} contracts"
                                 else:
-                                    return f"Query result: {count_value} (count of records)"
+                                    return f"Query result: {count_value_fmt} (count of records)"
                             else:
                                 return f"Query results: {data}"
                         elif name == "list_tables" and hasattr(result, 'tables'):
@@ -301,8 +306,9 @@ class CaptureIntelligenceAgent:
         from langgraph.graph import StateGraph, END
         
         # Create custom tool node that captures debug info
+        from langchain_core.messages import ToolMessage
         def custom_tool_node(state: Dict[str, Any]) -> Dict[str, Any]:
-            """Custom tool node that captures tool calls in debug info."""
+            """Custom tool node that captures tool calls in debug info and injects tool outputs as ToolMessage."""
             debug_info = state.get("debug_info", {"tool_calls": [], "logs": []})
             messages = state["messages"]
 
@@ -320,19 +326,21 @@ class CaptureIntelligenceAgent:
                         "tool_id": tool_call["id"]
                     })
 
-                # Inject tool output as a SystemMessage for LLM chain-of-thought
                 # Find the tool output in the new messages (after tool_node.invoke)
                 new_messages = result_state["messages"]
                 if len(new_messages) > len(messages):
-                    # Assume the new message is the tool output (from the tool call)
+                    # The new message is the tool output (from the tool call)
                     tool_output_msg = new_messages[-1]
-                    # Format a human-readable summary for the LLM
+                    # Find the tool_call_id to match
+                    tool_call_id = None
+                    if debug_info["tool_calls"]:
+                        tool_call_id = debug_info["tool_calls"][-1]["tool_id"]
+                    # Insert as a ToolMessage for the LLM to reason over
+                    # ToolMessage(content, name, tool_call_id)
                     tool_name = debug_info["tool_calls"][-1]["tool_name"] if debug_info["tool_calls"] else "tool"
-                    tool_args = debug_info["tool_calls"][-1]["tool_args"] if debug_info["tool_calls"] else {}
                     tool_output_str = getattr(tool_output_msg, "content", str(tool_output_msg))
-                    summary = f"TOOL OUTPUT ({tool_name}):\nArguments: {tool_args}\nResult: {tool_output_str}"
-                    # Insert as a SystemMessage for the LLM to reason over
-                    new_messages.append(SystemMessage(content=summary))
+                    tool_msg = ToolMessage(content=tool_output_str, name=tool_name, tool_call_id=tool_call_id)
+                    new_messages.append(tool_msg)
                     result_state["messages"] = new_messages
 
                 # Update debug_info in the result state
@@ -364,8 +372,9 @@ class CaptureIntelligenceAgent:
         self.graph = workflow.compile()
     
     async def _agent_node(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Main agent reasoning node with dynamic tool awareness."""
+        """Main agent reasoning node with dynamic tool awareness and explicit tool call validation."""
         try:
+            from pydantic import BaseModel, ValidationError, Field
             messages = state["messages"]
             debug_info = state.get("debug_info", {"tool_calls": [], "logs": []})
 
@@ -384,16 +393,38 @@ class CaptureIntelligenceAgent:
             self.logger.info(f"RAW LLM RESPONSE: {repr(response)}")
             debug_info["logs"].append({"llm_response": str(response)})
 
-            # Capture tool calls in debug info
+            # --- Explicit tool call schema validation ---
+            class ToolCallSchema(BaseModel):
+                name: str
+                args: dict
+                id: str
+
+            # Validate tool_calls if present
             if hasattr(response, 'tool_calls') and response.tool_calls:
+                valid_tool_calls = []
                 for tool_call in response.tool_calls:
-                    debug_info["tool_calls"].append({
-                        "tool_name": tool_call["name"],
-                        "tool_args": tool_call["args"],
-                        "tool_id": tool_call["id"]
-                    })
+                    try:
+                        validated = ToolCallSchema(**tool_call)
+                        valid_tool_calls.append(validated)
+                        debug_info["tool_calls"].append({
+                            "tool_name": validated.name,
+                            "tool_args": validated.args,
+                            "tool_id": validated.id
+                        })
+                    except ValidationError as ve:
+                        self.logger.error(f"Malformed tool_call from LLM: {tool_call} | ValidationError: {ve}")
+                        # Add error message to state and return immediately
+                        error_msg = (
+                            "Error: The LLM returned a malformed tool call. "
+                            "Please check the logs for details. No tool was executed."
+                        )
+                        state["messages"].append(AIMessage(content=error_msg))
+                        state["debug_info"] = debug_info
+                        return state
             else:
-                self.logger.warning("No tool_calls found in LLM response. Check model/tool compatibility and prompt.")
+                # Only warn if there were no tool calls in the entire workflow
+                if not debug_info["tool_calls"]:
+                    self.logger.warning("No tool_calls found in LLM response. Check model/tool compatibility and prompt.")
 
             # Add response to messages
             messages.append(response)
@@ -430,7 +461,7 @@ class CaptureIntelligenceAgent:
         Conversational loop: always discover real tables and columns before answering. Never assume table/column names. Uses LangGraph workflow.
         """
         debug_info = {"tool_calls": [], "logs": []}
-        
+
         if not self.mcp_manager.is_healthy():
             self.logger.warning("MCP manager is unhealthy, working with limited capabilities")
 
@@ -440,35 +471,39 @@ class CaptureIntelligenceAgent:
             available_tables = await self.mcp_manager.call_tool("list_tables", {})
         except Exception as e:
             self.logger.error(f"Failed to call list_tables: {e}")
+            concise_msg = "Error: Could not list tables. Please check the logs for details."
             if debug:
-                return f"Error: Could not list tables: {e}", debug_info
+                return concise_msg, debug_info
             else:
-                return f"Error: Could not list tables: {e}"
+                return concise_msg
 
-        # Debug: Log the actual structure of available_tables
         self.logger.info(f"list_tables returned: type={type(available_tables)}, value={available_tables}")
 
         # Handle both Pydantic model and raw list formats
         if hasattr(available_tables, 'tables'):
-            # Pydantic ListTablesOutput model
             tables_list = available_tables.tables
         elif isinstance(available_tables, list):
-            # Raw list format
             tables_list = available_tables
         else:
             self.logger.error(f"Expected list or ListTablesOutput from list_tables, got: {type(available_tables)}")
-            raise ValueError(f"Expected list or ListTablesOutput from list_tables, got: {type(available_tables)}")
+            concise_msg = "Error: Could not parse table list. Please check the logs for details."
+            if debug:
+                return concise_msg, debug_info
+            else:
+                return concise_msg
 
-        # Enforce strict format: list of dicts with 'table_name' key
         table_names = []
         if tables_list:
             for t in tables_list:
                 if not (isinstance(t, dict) and 'table_name' in t):
                     self.logger.error(f"Invalid format from list_tables: expected dict with 'table_name', got: {t}")
-                    raise ValueError(f"Invalid format from list_tables: expected dict with 'table_name', got: {t}")
+                    concise_msg = "Error: Invalid table list format. Please check the logs for details."
+                    if debug:
+                        return concise_msg, debug_info
+                    else:
+                        return concise_msg
                 table_names.append(t['table_name'])
-        table_list_str = ", ".join(table_names) if table_names else "(none)"
-
+        table_list_str = ", ".join(table_names[:10]) + (", ..." if len(table_names) > 10 else "") if table_names else "(none)"
 
         # Build conversation history, always inject dynamic system prompt as the first message
         available_tools = await self.mcp_manager.get_available_tools()
@@ -480,7 +515,6 @@ class CaptureIntelligenceAgent:
         else:
             tool_prompt = "\n\nYou currently have no available MCP tools."
 
-        # Inject real table list into the system prompt
         dynamic_system_prompt = self.system_prompt.strip() + f"\n\n**REAL TABLES IN s3_processed:** {table_list_str}" + tool_prompt
 
         messages = [SystemMessage(content=dynamic_system_prompt)]
@@ -491,7 +525,6 @@ class CaptureIntelligenceAgent:
                 elif msg["role"] == "assistant":
                     messages.append(AIMessage(content=msg["content"]))
                 elif msg["role"] == "system":
-                    # Never allow a second system message, skip
                     continue
         messages.append(HumanMessage(content=user_input))
 
@@ -502,41 +535,27 @@ class CaptureIntelligenceAgent:
             "table_names": table_names
         }
 
-        # Run the LangGraph workflow
         try:
             final_state = await self.graph.ainvoke(state)
-            
-            # Extract the final response
             final_messages = final_state.get("messages", [])
-            if final_messages:
-                final_response = final_messages[-1].content if hasattr(final_messages[-1], 'content') else str(final_messages[-1])
-            else:
-                final_response = "I apologize, but I could not process your request."
-            
-            # Post-processing: Remove or correct hallucinated database/table names
-            if final_response:
-                # Remove or correct any hallucinated database names
-                # Only allow discovered database name(s) and tables
-                allowed_db_names = ["capture_insights"]  # Add more if discovered dynamically
-                for db_name in ["usaspending_subawards", "other_fake_db", "test_db"]:
-                    if db_name in final_response:
-                        final_response = final_response.replace(db_name, allowed_db_names[0])
-                # Remove any suggestion of calling tools as SQL functions
-                if "select * from list_tables()" in final_response.lower():
-                    final_response = final_response.replace("SELECT * FROM list_tables() WHERE table_name LIKE '%usaspending_prime_awards%';", "(Use the list_tables tool and filter results in Python/LLM, not SQL)")
-            
+            # Only accept a real, tool-grounded answer (AIMessage with no tool_calls)
+            for msg in reversed(final_messages):
+                if isinstance(msg, AIMessage) and (not hasattr(msg, "tool_calls") or not msg.tool_calls):
+                    final_response = msg.content if hasattr(msg, "content") else str(msg)
+                    if debug:
+                        return final_response, final_state.get("debug_info", debug_info)
+                    return final_response
+            # If no valid answer, fail fast with a clear error
+            error_msg = "Sorry, I was unable to generate a valid answer from real tool outputs. Please check the logs for details."
             if debug:
-                return final_response, final_state.get("debug_info", debug_info)
-            else:
-                return final_response
-                
+                return error_msg, final_state.get("debug_info", debug_info)
+            return error_msg
         except Exception as e:
             self.logger.error(f"Error in LangGraph workflow: {e}")
-            error_msg = f"Error occurred during conversation: {str(e)}"
+            error_msg = "Sorry, I was unable to retrieve the requested information due to an internal error. Please check the logs for details or try again later."
             if debug:
                 return error_msg, debug_info
-            else:
-                return error_msg
+            return error_msg
     
     async def get_tool_status(self) -> Dict[str, Any]:
         """

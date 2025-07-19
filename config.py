@@ -62,8 +62,8 @@ BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
 # AI and GPU Configuration
 # Ollama Configuration
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen:14b")  # Tool-calling capable model (primary)
-OLLAMA_BACKUP_MODEL = os.getenv("OLLAMA_BACKUP_MODEL", "phi3:medium")  # Backup model
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")  # Tool-calling capable model (primary)
+OLLAMA_BACKUP_MODEL = os.getenv("OLLAMA_BACKUP_MODEL", "llama3.1:8b")  # Backup model (tool-calling capable)
 OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0.7"))
 
 # CUDA Configuration for GPU acceleration
@@ -76,6 +76,7 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "512"))  # Reduced for faster response
 CONTEXT_WINDOW = int(os.getenv("CONTEXT_WINDOW", "2048"))  # Reduced memory usage
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))  # Faster timeout
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))  # Limit agent iterations
+
 
 
 # Prompt Repository (for agent/LLM prompt templates)

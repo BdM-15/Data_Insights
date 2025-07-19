@@ -139,7 +139,7 @@ class MCPServerLauncher:
         # Ollama configuration
         self.ollama_url = "http://localhost:11434"
         self.primary_model = OLLAMA_MODEL  # Use model from config
-        self.backup_model = OLLAMA_BACKUP_MODEL  # Use backup model from config
+        self.backup_model = OLLAMA_BACKUP_MODEL  # Use backup model from config (now mistral:7b)
         self.discovered_models = []  # Auto-discovered models
         self.discovered_servers = {}  # Auto-discovered MCP servers
     
@@ -279,22 +279,38 @@ class MCPServerLauncher:
             return False
     
     def check_ollama_models(self) -> bool:
-        """Check and validate discovered Ollama models."""
+        """Check and validate discovered Ollama models. Pull and run if missing."""
         logger.info("🔍 Checking available LLM models...")
-        
-        # Discover all available models
         self.discovered_models = self.discover_ollama_models()
-        
         if not self.discovered_models:
             logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} No Ollama models found")
             return False
-        
         # Check if primary model is available
         if self.primary_model not in self.discovered_models:
-            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Primary model '{self.primary_model}' not found")
-            logger.info(f"   {Colors.OKCYAN}💡{Colors.ENDC} Available models: {', '.join(self.discovered_models)}")
-            return False
-        
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Primary model '{self.primary_model}' not found. Attempting to pull...")
+            try:
+                pull_result = subprocess.run(["ollama", "pull", self.primary_model], capture_output=True, text=True, timeout=600)
+                if pull_result.returncode == 0:
+                    logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Successfully pulled model '{self.primary_model}'")
+                    # Refresh model list
+                    self.discovered_models = self.discover_ollama_models()
+                else:
+                    logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Failed to pull model '{self.primary_model}': {pull_result.stderr}")
+                    return False
+            except Exception as e:
+                logger.error(f"   {Colors.FAIL}✗{Colors.ENDC} Exception pulling model '{self.primary_model}': {e}")
+                return False
+        # Optionally, run the model to ensure it is loaded (loads weights into memory)
+        try:
+            logger.info(f"   {Colors.OKCYAN}💡{Colors.ENDC} Running 'ollama run {self.primary_model}' to ensure model is loaded (will exit after prompt)...")
+            run_proc = subprocess.Popen(["ollama", "run", self.primary_model], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Send a dummy prompt and terminate
+            run_proc.stdin.write(b"ping\n")
+            run_proc.stdin.flush()
+            run_proc.terminate()
+            logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Model '{self.primary_model}' loaded and ready.")
+        except Exception as e:
+            logger.warning(f"   {Colors.WARNING}⚠{Colors.ENDC} Could not run model '{self.primary_model}': {e}")
         logger.info(f"   {Colors.OKGREEN}✓{Colors.ENDC} Primary model '{self.primary_model}' is available")
         return True
     

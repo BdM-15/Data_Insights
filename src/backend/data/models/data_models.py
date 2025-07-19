@@ -51,7 +51,7 @@ class GetDatabaseSchemaInput(BaseModel):
 
 class GetDatabaseSchemaOutput(BaseModel):
     """Output schema for the get_database_schema MCP tool."""
-    schema: str
+    database_schema: str
 
 class GetDatabaseStatsInput(BaseModel):
     """
