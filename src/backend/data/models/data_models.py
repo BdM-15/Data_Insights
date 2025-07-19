@@ -7,12 +7,79 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
+# ---------------- MCP Tool Input/Output Models ----------------
+
+# Expanded MCP Tool Input/Output Models (grouped here for clarity)
+class QueryDatabaseInput(BaseModel):
+    """Input schema for the query_database MCP tool."""
+    sql_query: str
+
+class QueryDatabaseOutput(BaseModel):
+    """Output schema for the query_database MCP tool."""
+    results: List[Dict[str, Any]]
+
+class ListTablesInput(BaseModel):
+    """Input schema for the list_tables MCP tool (no parameters)."""
+    pass
+
+class ListTablesOutput(BaseModel):
+    """Output schema for the list_tables MCP tool."""
+    tables: List[Dict[str, Any]]
+
+class DescribeTableInput(BaseModel):
+    """Input schema for the describe_table MCP tool."""
+    table_name: str
+    schema_name: str = 'public'
+
+class DescribeTableOutput(BaseModel):
+    """Output schema for the describe_table MCP tool."""
+    columns: List[Dict[str, Any]]
+
+class GetTableSampleInput(BaseModel):
+    """Input schema for the get_table_sample MCP tool."""
+    table_name: str
+    schema_name: str = 'public'
+    limit: int = 10
+
+class GetTableSampleOutput(BaseModel):
+    """Output schema for the get_table_sample MCP tool."""
+    sample: List[Dict[str, Any]]
+
+class GetDatabaseSchemaInput(BaseModel):
+    """Input schema for the get_database_schema MCP tool (no parameters)."""
+    pass
+
+class GetDatabaseSchemaOutput(BaseModel):
+    """Output schema for the get_database_schema MCP tool."""
+    database_schema: str
+
+class GetDatabaseStatsInput(BaseModel):
+    """
+    Input schema for the get_database_stats MCP tool.
+    (No parameters required for this tool, but defined for consistency and future extensibility.)
+    Used by the agent in capture_intelligence_agent.py to validate tool input.
+    """
+    pass
+
+class GetDatabaseStatsOutput(BaseModel):
+    """
+    Output schema for the get_database_stats MCP tool.
+    Used by the agent in capture_intelligence_agent.py to validate tool output.
+    """
+    stats: List[Dict[str, str]] = Field(description="List of database statistics with metric and value fields")
+    
+    @classmethod
+    def from_raw_list(cls, raw_stats: List[Dict[str, str]]) -> 'GetDatabaseStatsOutput':
+        """Create from the raw list format returned by the MCP tool."""
+        return cls(stats=raw_stats)
+
 # ---------------- Agentic LLM Intent Model (for Tool Routing) ----------------
 
 class AgenticIntent(BaseModel):
     """
     Unified intent schema for agentic LLM output.
     Used by the backend tool router to dispatch requests to the correct agent/tool.
+    Can also be used as a generic input schema for agent tool calls, if the tool expects a flexible set of parameters.
     """
     intent: str  # e.g., 'data_query', 'visualization', 'note', 'document', 'analysis'
     tool: Optional[str] = None  # Optional: explicit tool/agent name if LLM specifies
@@ -21,7 +88,7 @@ class AgenticIntent(BaseModel):
     session_id: Optional[str] = None
     page: Optional[str] = None
     tab: Optional[str] = None
-    # Reason: This model allows the LLM to flexibly specify any action/tool/parameters for dynamic routing.
+    # Reason: This model allows the LLM to flexibly specify any action/tool/parameters for dynamic routing and can be extended for tool input validation.
 
 class FlexibleIntent(BaseModel):
     """

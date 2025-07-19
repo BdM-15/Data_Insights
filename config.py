@@ -62,7 +62,8 @@ BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
 # AI and GPU Configuration
 # Ollama Configuration
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "data_insights_optimized")  # Using optimized model
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")  # Tool-calling capable model (primary)
+OLLAMA_BACKUP_MODEL = os.getenv("OLLAMA_BACKUP_MODEL", "llama3.1:8b")  # Backup model (tool-calling capable)
 OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0.7"))
 
 # CUDA Configuration for GPU acceleration
@@ -75,6 +76,7 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "512"))  # Reduced for faster response
 CONTEXT_WINDOW = int(os.getenv("CONTEXT_WINDOW", "2048"))  # Reduced memory usage
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))  # Faster timeout
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))  # Limit agent iterations
+
 
 
 # Prompt Repository (for agent/LLM prompt templates)
@@ -223,7 +225,82 @@ HISTORICAL_CHUNK_DAYS = int(os.getenv("HISTORICAL_CHUNK_DAYS", "2").split('#')[0
 # Current data fetch settings
 CURRENT_DAYS_LOOKBACK = int(os.getenv("CURRENT_DAYS_LOOKBACK", "7").split('#')[0].strip())
 
-# Feature flags
+
+# Business term to column mapping for AI/agent SQL generation
+BUSINESS_TERM_TO_COLUMN = {
+    # Obligations & Amounts
+    "Obligation Amount": "federal_action_obligation",
+    "Award Amount": "award_amount",
+    "Base and All Options Value": "base_and_all_options_value",
+    "Base and Exercised Options Value": "base_and_exercised_options_value",
+    "Potential Award Amount": "potential_total_value_of_award",
+    "Current Award Amount": "current_total_value_of_award",
+    "Total Obligated Amount": "total_obligated_amount",
+    "Total Awarded Amount": "total_awarded_amount",
+    "Modification Amount": "modification_obligation",
+    # Dates
+    "Award Date": "award_date",
+    "Action Date": "action_date",
+    "Start Date": "period_of_performance_start_date",
+    "End Date": "period_of_performance_current_end_date",
+    "Completion Date": "period_of_performance_potential_end_date",
+    # Entities
+    "Contractor": "recipient_name",
+    "Contractor Name": "recipient_name",
+    "Awarding Agency": "awarding_agency_name",
+    "Funding Agency": "funding_agency_name",
+    "Awarding Sub Agency": "awarding_sub_agency_name",
+    "Funding Sub Agency": "funding_sub_agency_name",
+    # Identifiers
+    "Award ID": "award_id",
+    "PIID": "piid",
+    "Parent Award ID": "parent_award_id",
+    "DUNS": "recipient_unique_id",
+    "UEI": "recipient_uei",
+    # Codes
+    "NAICS": "naics_code",
+    "NAICS Code": "naics_code",
+    "NAICS Description": "naics_description",
+    "PSC": "product_or_service_code",
+    "PSC Code": "product_or_service_code",
+    "PSC Description": "product_or_service_code_description",
+    # Contract Details
+    "Contract Type": "type_of_contract_pricing",
+    "Award Type": "award_type",
+    "Award Description": "award_description",
+    "Contract Description": "description",
+    "Competition Type": "extent_competed",
+    "Set Aside": "type_set_aside",
+    # Locations
+    "Place of Performance": "place_of_performance_city_name",
+    "Place of Performance State": "place_of_performance_state_code",
+    "Place of Performance Country": "place_of_performance_country_code",
+    "Place of Performance Zip": "place_of_performance_zip",
+    # Misc
+    "Award Status": "award_status",
+    "Contract Status": "contract_status",
+    "Subcontracting Plan": "subcontracting_plan",
+    "Small Business": "recipient_business_type",
+    "Contracting Office": "contracting_office_name",
+    "Contracting Office Code": "contracting_office_code",
+    # Add more mappings as needed
+}
+
+# Reason: Maps user/business terms to actual database column names for robust, LLM-driven SQL generation and tool use.
+# Centralized here for consistency and maintainability across all modules.
+"""
+BUSINESS_TERM_TO_COLUMN (dict):
+    Maps common business terms to actual database column names for use by AI agents and SQL generation.
+    This mapping should be updated as the schema evolves and new business terms are introduced.
+
+    Example:
+        BUSINESS_TERM_TO_COLUMN = {
+            "contract id": "contract_transaction_unique_key",
+            "obligation": "federal_action_obligation",
+            ...
+        }
+"""
+
 ADMIN_USER_IDS = os.getenv("ADMIN_USER_IDS", "").split(",")
 
 def get_db_config() -> Dict[str, str]:

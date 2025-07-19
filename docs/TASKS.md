@@ -179,9 +179,53 @@
 
 **Current Status**: ✅ **Technical foundation complete, ready for Phase 2 optimization**
 
-### **Phase 2: Agentic Framework Optimization & Performance Enhancement (CURRENT PRIORITY)**
+### **URGENT PRIORITY: Python MCP SDK Migration (TECHNICAL DEBT RESOLUTION) 🚨**
 
-**Objective**: Complete the agentic LLM framework with advanced tool chaining, complex query handling, and performance optimization before proceeding to domain-specific fine-tuning.
+**Objective**: Migrate from FastMCP (Python/TypeScript hybrid) to official Python MCP SDK to resolve "Event loop is closed" errors and simplify the architecture for better maintainability.
+
+**Background**: The current FastMCP implementation suffers from async event loop issues causing failures on complex/second queries. The hybrid Python/TypeScript stack introduces unnecessary complexity. Migration to the official Python MCP SDK (https://github.com/modelcontextprotocol/python-sdk) will provide a robust, Python-native foundation.
+
+**Migration Strategy**:
+
+- [ ] **Phase 1: Server Migration (Week 1)**:
+  - [ ] Implement new `python_mcp_database_server.py` using official MCP SDK
+  - [ ] Migrate all 4 database tools: get_database_schema, get_table_info, execute_sql_query, get_server_status
+  - [ ] Choose transport: Start with stdio for simplicity, SSE if needed
+  - [ ] Create new launcher script for Python MCP server
+- [ ] **Phase 2: Client Migration (Week 2)**:
+  - [ ] Replace MultiServerMCPClient with official Python MCP Client
+  - [ ] Update CaptureIntelligenceAgent to use official MCP session methods
+  - [ ] Maintain existing LangGraph workflow structure
+  - [ ] Test async event loop handling (key issue resolution)
+- [ ] **Phase 3: Integration & Testing (Week 3)**:
+  - [ ] Update Streamlit AI Chat interface for new MCP architecture
+  - [ ] Run comprehensive integration tests
+  - [ ] Validate "Event loop is closed" error resolution
+  - [ ] Performance testing and optimization
+- [ ] **Phase 4: Documentation & Cleanup (Week 4)**:
+  - [ ] Update TASKS.md, FRESH_CONVERSATION_CONTEXT.md, README.md
+  - [ ] Archive FastMCP implementation
+  - [ ] Clean up dependencies and requirements.txt
+
+**Expected Benefits**:
+
+- **Simplified Architecture**: Pure Python stack, easier maintenance
+- **Better Async Handling**: Official SDK should resolve event loop issues
+- **Official Support**: Backed by ModelContextProtocol organization
+- **Future Compatibility**: Aligned with MCP standard evolution
+
+**Success Criteria**:
+
+- [ ] "Event loop is closed" error eliminated
+- [ ] All 4 database tools functional with new architecture
+- [ ] Streamlit AI Chat interface working seamlessly
+- [ ] Performance equal to or better than FastMCP
+
+**Reference**: See `docs/PYTHON_MCP_SDK_MIGRATION_PLAN.md` for detailed migration strategy
+
+### **Phase 2: Agentic Framework Optimization & Performance Enhancement (NEXT PRIORITY)**
+
+**Objective**: After completing the MCP migration, enhance the agentic LLM framework with advanced tool chaining, complex query handling, and performance optimization.
 
 **Core Focus Areas**:
 

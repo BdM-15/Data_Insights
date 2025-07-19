@@ -10,27 +10,20 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import json
-import sys
-import os
-
-# Add paths for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../backend"))
-
-try:
-    from backend.ai.chat_logger import ChatLogger
-    logger_available = True
-except ImportError:
-    logger_available = False
-    st.error("Chat logging system not available")
+import asyncio
+from agent_logger import AgentLogger
+logger_available = True
 
 def load_chat_analytics(days: int = 7):
     """Load chat analytics data."""
     if not logger_available:
         return None
-    
     try:
-        chat_logger = ChatLogger()
-        return chat_logger.get_interaction_analytics(days)
+        logger = AgentLogger()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        analytics = loop.run_until_complete(logger.get_analytics(days))
+        return analytics
     except Exception as e:
         st.error(f"Failed to load analytics: {e}")
         return None
@@ -39,32 +32,15 @@ def load_recent_chats(limit: int = 50):
     """Load recent chat interactions."""
     if not logger_available:
         return pd.DataFrame()
-    
     try:
-        chat_logger = ChatLogger()
-        if not chat_logger.connection:
+        logger = AgentLogger()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        logs = loop.run_until_complete(logger.get_recent_logs(limit=limit))
+        if not logs:
             return pd.DataFrame()
-        
-        query = """
-        SELECT 
-            id,
-            user_query,
-            llm_response,
-            model_name,
-            model_temperature,
-            processing_time_ms,
-            tools_used,
-            status,
-            user_feedback,
-            created_at
-        FROM app_logs.chat_logs 
-        ORDER BY created_at DESC 
-        LIMIT %s
-        """
-        
-        df = pd.read_sql_query(query, chat_logger.connection, params=[limit])
+        df = pd.DataFrame(logs)
         return df
-        
     except Exception as e:
         st.error(f"Failed to load recent chats: {e}")
         return pd.DataFrame()
@@ -73,27 +49,15 @@ def load_tool_usage_stats():
     """Load tool usage statistics."""
     if not logger_available:
         return pd.DataFrame()
-    
     try:
-        chat_logger = ChatLogger()
-        if not chat_logger.connection:
+        # For now, use recent logs to compute tool usage stats in Python
+        df = load_recent_chats(200)
+        if df.empty or 'tool_name' not in df.columns:
             return pd.DataFrame()
-        
-        query = """
-        SELECT 
-            jsonb_array_elements(tools_used)->>'name' as tool_name,
-            COUNT(*) as usage_count,
-            AVG((jsonb_array_elements(tools_used)->>'execution_time_ms')::int) as avg_execution_time
-        FROM app_logs.chat_logs 
-        WHERE tools_used IS NOT NULL 
-          AND created_at >= NOW() - INTERVAL '30 days'
-        GROUP BY tool_name
-        ORDER BY usage_count DESC
-        """
-        
-        df = pd.read_sql_query(query, chat_logger.connection)
-        return df
-        
+        tool_stats = df.groupby('tool_name').agg(
+            usage_count=('tool_name', 'count')
+        ).reset_index()
+        return tool_stats
     except Exception as e:
         st.error(f"Failed to load tool usage stats: {e}")
         return pd.DataFrame()

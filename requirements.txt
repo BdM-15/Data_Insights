@@ -67,14 +67,19 @@ tzdata==2025.2
 urllib3==2.3.0
 watchdog==6.0.0
 
-# FastMCP and LangChain MCP Integration
-fastmcp
-langchain-mcp-adapters
-langchain-core
-langgraph
+# MCP (Model Context Protocol) Integration
+# Official Python MCP SDK - pure Python implementation
+mcp>=1.0.0
+
+# Streamlit asyncio compatibility
 nest_asyncio
 
-# Legacy LlamaIndex (to be removed)
-llama-index
-llama-index-llms-ollama
-llama-index-tools-mcp
+# LangGraph for agentic workflows
+langchain-core
+langgraph
+
+# Database connectivity for MCP database tools
+asyncpg>=0.29.0
+
+# Note: FastMCP and LlamaIndex dependencies removed
+# after successful migration to Python MCP SDK architecture

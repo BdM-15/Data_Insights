@@ -1,0 +1,28 @@
+flowchart TD
+    A[Start Server] --> B[Start Ollama Server]
+    B --> C[Ollama Server Ready]
+    C --> D[Initialize LLM Connection]
+    D --> E[Load llama3.1:8b Model]
+    E --> F[LLM Ready]
+    F --> G[Start MCP Client Manager]
+    G --> H[Initialize Database Tools]
+    H --> I[MCP Tools Ready]
+    I --> J[Initialize Logging]
+    J --> K[Logging Ready]
+    K --> L[Navigate to AI Chat]
+    L --> M[Initialize Chat Interface]
+    M --> N[Create Capture Intelligence Agent]
+    N --> O[Connect Agent to Tools]
+    O --> P[Agent Ready]
+    P --> Q[Display Chat UI]
+    Q --> R[User Enters Query]
+    R --> S[Process User Message in ai_chat.py]
+    S --> T[Log User Input]
+    T --> U[Agent Processes Query]
+    U --> V[LLM Handles Query]
+    V --> W[Does LLM Need Tool]?
+    W -- Yes --> X[MCP Tool Call (e.g., Database)]
+    X --> Y[Return Tool Result to LLM]
+    Y --> Z[LLM Generates Final Response]
+    W -- No --> Z
+    Z

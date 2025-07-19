@@ -1,94 +1,183 @@
 # Data Insights Database MCP Server
 
-This FastMCP server provides database schema introspection and query execution capabilities for the Data Insights platform.
+**FastMCP Implementation** - High-level MCP database server providing comprehensive PostgreSQL integration for the Data Insights platform using FastMCP from the official MCP Python SDK.
+
+## Architecture
+
+- **FastMCP**: Official Model Context Protocol high-level implementation from MCP Python SDK
+- **SSE Transport**: Persistent server connections for multi-client access
+- **Centralized Config**: Uses `config.py` for database settings
+- **Production Ready**: Comprehensive error handling and logging
 
 ## Features
 
-- **Database Schema Discovery**: Get comprehensive schema information including tables, columns, and metadata
-- **Table Information**: Detailed information about specific tables including row counts and sizes
-- **Safe Query Execution**: Execute SELECT queries with safety checks and result limits
-- **Server Status**: Get database server status and connection information
+- **Database Schema Discovery**: Complete schema introspection with tables, columns, and metadata
+- **Table Analysis**: Detailed table information including row counts, sizes, and column definitions
+- **Safe Query Execution**: SELECT-only queries with safety checks and result limits
+- **Server Status Monitoring**: Database server health and connection information
 
 ## Available Tools
 
-### `get_database_schema`
+### `query_database`
 
-Get comprehensive database schema information including tables, columns, and metadata.
-
-**Parameters:**
-
-- `schema_filter` (optional): Filter results by schema name (e.g., 's3_processed')
-
-**Returns:**
-
-- Complete schema information with tables and columns
-
-### `get_table_info`
-
-Get detailed information about a specific table.
+Execute SQL queries on the PostgreSQL database with comprehensive safety checks.
 
 **Parameters:**
 
-- `table_name`: Name of the table to inspect
-- `schema_name`: Schema containing the table (default: 's3_processed')
+- `sql_query` (required): SQL statement to execute
 
 **Returns:**
 
-- Table information including columns, row count, and size
+- Query results as list of dictionaries with execution metadata
 
-### `execute_sql_query`
+### `list_tables`
 
-Execute a SQL query with safety checks and return results.
+List all tables in the database with their schemas.
+
+**Returns:**
+
+- List of table information with schema, name, and type
+
+### `describe_table`
+
+Get detailed information about a specific table including structure and statistics.
 
 **Parameters:**
 
-- `query_request`: QueryRequest containing SQL query and optional limit
+- `table_name` (required): Name of the table to analyze
+- `schema_name` (optional): Schema name (default: 'public')
 
 **Returns:**
 
-- Query results with execution metadata
+- Column definitions, data types, constraints, and metadata
 
-### `get_server_status`
+### `get_table_sample`
 
-Get database server status and connection information.
+Get a sample of data from a table.
+
+**Parameters:**
+
+- `table_name` (required): Name of the table
+- `schema_name` (optional): Schema name (default: 'public')
+- `limit` (optional): Number of rows to return (default: 10)
 
 **Returns:**
 
-- Server status including version, connection info, and database size
+- Sample data rows as list of dictionaries
+
+### `get_database_stats`
+
+Get database statistics and information.
+
+**Returns:**
+
+- Database size, table count, and version information
+
+## Resources
+
+### `schema://database_schema`
+
+Get comprehensive database schema description.
+
+**Returns:**
+
+- Complete schema information with tables, columns, and organization
 
 ## Usage
 
-### Standalone Server
+### Direct Server Execution
 
 ```bash
-python fastmcp_database_server.py
+# Start the server (SSE transport, default port 8000)
+python fastmcp_database_server.py --transport sse
+
+# Start with stdio transport
+python fastmcp_database_server.py --transport stdio
+
+# With command line options
+python fastmcp_database_server.py --transport sse
 ```
 
-### HTTP Connection
+### Via MCP Launcher
 
 ```bash
-python fastmcp_database_server.py --connection_type http
-```
+# Start all MCP servers with health checks
+python mcp_servers_launcher.py
 
-### STDIO Connection
+# Health checks only
+python mcp_servers_launcher.py --health-check
 
-```bash
-python fastmcp_database_server.py --connection_type stdio
+# Server discovery
+python mcp_servers_launcher.py --discover
 ```
 
 ## Configuration
 
-The server uses environment variables for database configuration:
+The server uses centralized configuration from `config.py`:
 
-- `DB_HOST`: Database host (default: 'localhost')
-- `DB_PORT`: Database port (default: 5433)
-- `DB_NAME`: Database name (default: 'capture_insights')
-- `DB_USER`: Database user (default: 'postgres')
-- `DB_PASSWORD`: Database password (default: 'postgres')
+```python
+# Database settings automatically loaded from config.py
+from config import get_db_config
 
-## Safety Features
+# Fallback configuration if config.py unavailable:
+DATABASE_CONFIG = {
+    "host": "localhost",
+    "port": 5432,
+    "database": "data_insights",
+    "user": "postgres",
+    "password": ""
+}
+```
 
-- Only SELECT and WITH queries are allowed
-- Automatic LIMIT clause addition if not present
-- Connection pooling and error handling
-- Comprehensive logging
+**Environment Variables** (set in `.env`):
+
+- `PG_HOST`: PostgreSQL host
+- `PG_PORT`: PostgreSQL port
+- `PG_DBNAME`: Database name
+- `PG_USER`: Database user
+- `PG_PASSWORD`: Database password
+
+## Safety & Security Features
+
+- **Query Restrictions**: Separates read-only and write operations
+- **Connection Management**: Proper async connection handling with cleanup
+- **Error Handling**: Comprehensive exception handling and logging
+- **Input Validation**: Parameter validation and sanitization
+- **Rate Limiting**: Built-in protection against excessive queries
+
+## Integration Benefits
+
+- **FastMCP**: High-level, simplified MCP server development
+- **SSE Transport**: Persistent server connections for multi-client access
+- **Official MCP SDK**: Future-proof and well-documented
+- **Centralized Config**: Consistent with platform configuration management
+- **Production Ready**: Comprehensive logging, error handling, and monitoring
+
+## Client Connection Examples
+
+The server uses SSE transport by default and can be connected to by any MCP-compatible client:
+
+```bash
+# Direct connection via SSE (default port 8000)
+python fastmcp_database_server.py --transport sse
+
+# Via launcher (recommended)
+python mcp_servers_launcher.py
+```
+
+## Logging
+
+Server activity is logged to:
+
+- **Console**: Real-time status and errors
+- **File**: `logs/mcp_server_activity.log` for persistent logging
+
+## Migration Notes
+
+This server uses FastMCP from the official MCP Python SDK with:
+
+- ✅ High-level, simplified server development
+- ✅ Built-in SSE transport for persistent connections
+- ✅ Automatic tool registration and validation
+- ✅ Production-ready error handling and logging
+- ✅ Centralized configuration management

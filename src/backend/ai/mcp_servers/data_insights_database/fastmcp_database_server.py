@@ -1,434 +1,348 @@
+#!/usr/bin/env python3
 """
-FastMCP Database Schema Server
+FastMCP Database Server - Data Insights
 
-This server provides database schema introspection and query execution capabilities
-using the FastMCP framework and @mcp.tool() decorator pattern.
+A simplified MCP database server using FastMCP from the official MCP Python SDK.
+Provides PostgreSQL database access through MCP tools with automatic SSE transport handling.
 
-Based on best practices from the MCP community and focused on lean, maintainable code.
+This replaces the complex low-level implementation with FastMCP's high-level API.
 """
 
-import asyncio
-import logging
-import warnings
-from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field
-from fastmcp import FastMCP
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import json
 import os
-from datetime import datetime
-from fastapi import FastAPI
+import sys
+import logging
+import asyncio
+import asyncpg
+from typing import Any, Dict, List, Optional
+import click
 
-# Suppress known deprecation warnings from uvicorn/websockets compatibility issues
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="websockets.legacy")
-warnings.filterwarnings("ignore", message="websockets.server.WebSocketServerProtocol is deprecated")
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..'))
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+from mcp.server.fastmcp import FastMCP
+import mcp.types as types
+
+# Configure logging to write to file
+log_file = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'logs', 'mcp_server_activity.log')
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()  # Also log to console for debugging
+    ]
+)
 logger = logging.getLogger(__name__)
 
-# Initialize FastMCP server
-mcp = FastMCP("DatabaseSchemaService")
+# Log server startup
+logger.info("FastMCP Database Server starting up...")
+logger.info(f"Logging to: {log_file}")
 
-# Database connection configuration
-DB_CONFIG = {
-    'host': os.getenv('PG_HOST', 'localhost'),
-    'port': int(os.getenv('PG_PORT', '5432')),
-    'database': os.getenv('PG_DBNAME', 'capture_insights'),
-    'user': os.getenv('PG_USER', 'postgres'),
-    'password': os.getenv('PG_PASSWORD', 'postgres')
-}
-
-# Pydantic Models for structured inputs/outputs
-class DatabaseSchemaResponse(BaseModel):
-    """Response model for database schema information."""
-    schemas: List[Dict[str, Any]] = Field(description="List of database schemas with their tables and columns")
-    total_schemas: int = Field(description="Total number of schemas")
-    total_tables: int = Field(description="Total number of tables across all schemas")
-    timestamp: str = Field(description="Timestamp when schema was retrieved")
-
-class TableInfo(BaseModel):
-    """Response model for specific table information."""
-    table_name: str = Field(description="Name of the table")
-    schema_name: str = Field(description="Schema containing the table")
-    columns: List[Dict[str, Any]] = Field(description="List of columns with their properties")
-    row_count: Optional[int] = Field(description="Approximate number of rows in the table", default=None)
-    table_size: Optional[str] = Field(description="Size of the table", default=None)
-
-class QueryResult(BaseModel):
-    """Response model for query execution results."""
-    success: bool = Field(description="Whether the query executed successfully")
-    data: Optional[List[Dict[str, Any]]] = Field(description="Query result data", default=None)
-    columns: Optional[List[str]] = Field(description="Column names in the result", default=None)
-    row_count: Optional[int] = Field(description="Number of rows returned", default=None)
-    execution_time: Optional[float] = Field(description="Query execution time in seconds", default=None)
-    error_message: Optional[str] = Field(description="Error message if query failed", default=None)
-
-class QueryRequest(BaseModel):
-    """Request model for query execution."""
-    query: str = Field(description="SQL query to execute")
-    limit: Optional[int] = Field(description="Maximum number of rows to return", default=1000)
-
-# Database connection utilities
-def get_db_connection():
-    """Get a database connection."""
+def get_database_config() -> Dict[str, Any]:
+    """Get database configuration from environment variables."""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        return conn
+        from config import get_db_config
+        db_config = get_db_config()
+        # Convert PG_ prefixed keys to standard keys
+        return {
+            "host": db_config["PG_HOST"],
+            "port": int(db_config["PG_PORT"]),
+            "database": db_config["PG_DBNAME"],
+            "user": db_config["PG_USER"],
+            "password": db_config["PG_PASSWORD"]
+        }
+    except ImportError:
+        # Fallback to environment variables
+        return {
+            "host": os.getenv("PG_HOST", "localhost"),
+            "port": int(os.getenv("PG_PORT", "5432")),
+            "database": os.getenv("PG_DBNAME", "data_insights"),
+            "user": os.getenv("PG_USER", "postgres"),
+            "password": os.getenv("PG_PASSWORD", "")
+        }
+
+# Create FastMCP instance
+mcp = FastMCP("Data Insights Database Server")
+
+# Log server creation
+logger.info("FastMCP server instance created")
+
+@mcp.tool()
+async def query_database(sql_query: str) -> List[Dict[str, Any]]:
+    """
+    Execute a SQL query on the PostgreSQL database and return results.
+    
+    Args:
+        sql_query: The SQL query to execute
+        
+    Returns:
+        List of dictionaries containing query results
+    """
+    logger.info(f"Tool called: query_database with query: {sql_query[:100]}...")
+    
+    try:
+        # Get database configuration
+        db_config = get_database_config()
+        
+        # Connect to database
+        conn = await asyncpg.connect(**db_config)
+        
+        try:
+            # Execute query
+            if sql_query.strip().upper().startswith(('SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN')):
+                # Read-only queries
+                rows = await conn.fetch(sql_query)
+                results = [dict(row) for row in rows]
+                logger.info(f"Query returned {len(results)} rows")
+                return results
+            else:
+                # Write operations
+                result = await conn.execute(sql_query)
+                logger.info(f"Query executed successfully: {result}")
+                return [{"status": "success", "result": result}]
+                
+        finally:
+            await conn.close()
+            
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        error_msg = f"Database query error: {str(e)}"
+        logger.error(error_msg)
+        return [{"error": error_msg}]
+
+@mcp.tool()
+async def list_tables() -> List[Dict[str, Any]]:
+    """
+    List all tables in the database with their schemas.
+    
+    Returns:
+        List of dictionaries containing table information
+    """
+    logger.info("Listing database tables...")
+    query = """
+    SELECT 
+        table_schema,
+        table_name,
+        table_type
+    FROM information_schema.tables 
+    WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+    ORDER BY table_schema, table_name;
+    """
+    try:
+        result = await query_database(query)
+        logger.info(f"list_tables result type: {type(result)}, value: {result}")
+        return result
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in list_tables: {e}\n{traceback.format_exc()}")
         raise
 
-def execute_query(query: str, fetch_results: bool = True) -> Dict[str, Any]:
-    """Execute a SQL query and return results."""
-    start_time = datetime.now()
-    
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query)
-                
-                if fetch_results:
-                    results = cur.fetchall()
-                    columns = [desc[0] for desc in cur.description] if cur.description else []
-                    data = [dict(row) for row in results]
-                    row_count = len(results)
-                else:
-                    data = None
-                    columns = []
-                    row_count = cur.rowcount
-                
-                execution_time = (datetime.now() - start_time).total_seconds()
-                
-                return {
-                    "success": True,
-                    "data": data,
-                    "columns": columns,
-                    "row_count": row_count,
-                    "execution_time": execution_time
-                }
-                
-    except Exception as e:
-        execution_time = (datetime.now() - start_time).total_seconds()
-        logger.error(f"Query execution failed: {e}")
-        return {
-            "success": False,
-            "error_message": str(e),
-            "execution_time": execution_time
-        }
-
-# MCP Tools using @mcp.tool() decorator
 @mcp.tool()
-async def get_database_schema(schema_filter: Optional[str] = None) -> DatabaseSchemaResponse:
+async def describe_table(table_name: str, schema_name: str = "public") -> List[Dict[str, Any]]:
     """
-    Get comprehensive database schema information including tables, columns, and metadata.
+    Describe the structure of a specific table.
     
     Args:
-        schema_filter: Optional schema name to filter results (e.g., 's3_processed')
-    
+        table_name: Name of the table to describe
+        schema_name: Schema name (default: public)
+        
     Returns:
-        DatabaseSchemaResponse with complete schema information
+        List of dictionaries containing column information
     """
+    logger.info(f"Describing table: {schema_name}.{table_name}")
+    
+    query = """
+    SELECT 
+        column_name,
+        data_type,
+        is_nullable,
+        column_default,
+        character_maximum_length,
+        numeric_precision,
+        numeric_scale
+    FROM information_schema.columns 
+    WHERE table_schema = $1 AND table_name = $2
+    ORDER BY ordinal_position;
+    """
+    
     try:
-        # Query to get schema information
-        schema_query = """
-        SELECT 
-            schemaname,
-            tablename,
-            ARRAY_AGG(
-                jsonb_build_object(
-                    'column_name', column_name,
-                    'data_type', data_type,
-                    'is_nullable', is_nullable,
-                    'column_default', column_default,
-                    'character_maximum_length', character_maximum_length
-                ) ORDER BY ordinal_position
-            ) as columns
-        FROM (
-            SELECT 
-                t.schemaname,
-                t.tablename,
-                c.column_name,
-                c.data_type,
-                c.is_nullable,
-                c.column_default,
-                c.character_maximum_length,
-                c.ordinal_position
-            FROM pg_tables t
-            JOIN information_schema.columns c ON (
-                t.schemaname = c.table_schema 
-                AND t.tablename = c.table_name
-            )
-            WHERE t.schemaname NOT IN ('information_schema', 'pg_catalog')
-        ) schema_info
-        """
+        db_config = get_database_config()
+        conn = await asyncpg.connect(**db_config)
         
-        if schema_filter:
-            schema_query += f" AND schemaname = '{schema_filter}'"
-        
-        schema_query += """
-        GROUP BY schemaname, tablename
-        ORDER BY schemaname, tablename
-        """
-        
-        result = execute_query(schema_query)
-        
-        if not result["success"]:
-            raise Exception(result["error_message"])
-        
-        # Organize data by schema
-        schemas = {}
-        total_tables = 0
-        
-        for row in result["data"]:
-            schema_name = row["schemaname"]
-            if schema_name not in schemas:
-                schemas[schema_name] = {
-                    "schema_name": schema_name,
-                    "tables": []
-                }
-            
-            schemas[schema_name]["tables"].append({
-                "table_name": row["tablename"],
-                "columns": row["columns"]
-            })
-            total_tables += 1
-        
-        return DatabaseSchemaResponse(
-            schemas=list(schemas.values()),
-            total_schemas=len(schemas),
-            total_tables=total_tables,
-            timestamp=datetime.now().isoformat()
-        )
-        
-    except Exception as e:
-        logger.error(f"Schema retrieval failed: {e}")
-        raise Exception(f"Failed to retrieve database schema: {e}")
-
-@mcp.tool()
-async def get_table_info(table_name: str, schema_name: str = "s3_processed") -> TableInfo:
-    """
-    Get detailed information about a specific table.
-    
-    Args:
-        table_name: Name of the table to inspect
-        schema_name: Schema containing the table (default: s3_processed)
-    
-    Returns:
-        TableInfo with detailed table information
-    """
-    try:
-        # Get column information
-        columns_query = """
-        SELECT 
-            column_name,
-            data_type,
-            is_nullable,
-            column_default,
-            character_maximum_length,
-            ordinal_position
-        FROM information_schema.columns 
-        WHERE table_schema = %s AND table_name = %s
-        ORDER BY ordinal_position
-        """
-        
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(columns_query, (schema_name, table_name))
-                columns = [dict(row) for row in cur.fetchall()]
-                
-                # Get table statistics
-                stats_query = f"""
-                SELECT 
-                    reltuples::bigint as row_count,
-                    pg_size_pretty(pg_total_relation_size('{schema_name}.{table_name}')) as table_size
-                FROM pg_class 
-                WHERE relname = %s
-                """
-                cur.execute(stats_query, (table_name,))
-                stats = cur.fetchone()
-                
-                return TableInfo(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    columns=columns,
-                    row_count=int(stats["row_count"]) if stats and stats["row_count"] else None,
-                    table_size=stats["table_size"] if stats else None
-                )
-                
-    except Exception as e:
-        logger.error(f"Table info retrieval failed: {e}")
-        raise Exception(f"Failed to retrieve table info for {schema_name}.{table_name}: {e}")
-
-@mcp.tool()
-async def execute_sql_query(query_request: QueryRequest) -> QueryResult:
-    """
-    Execute a SQL query with safety checks and return results.
-    
-    Args:
-        query_request: QueryRequest containing the SQL query and optional limit
-    
-    Returns:
-        QueryResult with query execution results
-    """
-    try:
-        query = query_request.query.strip()
-        limit = query_request.limit or 1000
-        
-        # Basic safety checks
-        if not query.upper().startswith(('SELECT', 'WITH')):
-            raise Exception("Only SELECT and WITH queries are allowed")
-        
-        # Add limit if not present
-        if 'LIMIT' not in query.upper():
-            query += f" LIMIT {limit}"
-        
-        result = execute_query(query)
-        
-        return QueryResult(
-            success=result["success"],
-            data=result.get("data"),
-            columns=result.get("columns"),
-            row_count=result.get("row_count"),
-            execution_time=result.get("execution_time"),
-            error_message=result.get("error_message")
-        )
-        
-    except Exception as e:
-        logger.error(f"Query execution failed: {e}")
-        return QueryResult(
-            success=False,
-            error_message=str(e)
-        )
-
-@mcp.tool()
-async def get_server_status() -> Dict[str, Any]:
-    """
-    Get database server status and connection information.
-    
-    Returns:
-        Dictionary with server status information
-    """
-    try:
-        status_query = """
-        SELECT 
-            version() as postgres_version,
-            current_database() as current_database,
-            current_user as current_user,
-            inet_server_addr() as server_address,
-            inet_server_port() as server_port,
-            pg_postmaster_start_time() as server_start_time,
-            pg_database_size(current_database()) as database_size
-        """
-        
-        result = execute_query(status_query)
-        
-        if result["success"] and result["data"]:
-            status_data = result["data"][0]
-            status_data["database_size_pretty"] = f"{status_data['database_size'] / (1024**3):.2f} GB"
-            status_data["connection_config"] = {
-                "host": DB_CONFIG["host"],
-                "port": DB_CONFIG["port"],
-                "database": DB_CONFIG["database"]
-            }
-            status_data["timestamp"] = datetime.now().isoformat()
-            return status_data
-        else:
-            raise Exception(result.get("error_message", "Unknown error"))
+        try:
+            rows = await conn.fetch(query, schema_name, table_name)
+            results = [dict(row) for row in rows]
+            logger.info(f"Table {schema_name}.{table_name} has {len(results)} columns")
+            return results
+        finally:
+            await conn.close()
             
     except Exception as e:
-        logger.error(f"Server status check failed: {e}")
-        return {
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }
+        error_msg = f"Error describing table {schema_name}.{table_name}: {str(e)}"
+        logger.error(error_msg)
+        return [{"error": error_msg}]
 
-if __name__ == "__main__":
-    import argparse
+@mcp.tool()
+async def get_table_sample(table_name: str, schema_name: str = "public", limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Get a sample of data from a table.
     
-    parser = argparse.ArgumentParser(description="FastMCP Database Schema Service")
-    parser.add_argument("--connection_type", type=str, default="http", 
-                       choices=["http", "stdio"], help="Connection type")
-    args = parser.parse_args()
+    Args:
+        table_name: Name of the table
+        schema_name: Schema name (default: public)
+        limit: Number of rows to return (default: 10)
+        
+    Returns:
+        List of dictionaries containing sample data
+    """
+    logger.info(f"Getting sample data from: {schema_name}.{table_name} (limit: {limit})")
     
-    # Comprehensive startup health checks for DATABASE MCP Server
-    print(f"\n🔍 Running DATABASE MCP Server startup health checks...")
-    print(f"📡 This is the DATABASE MCP Server - one of multiple MCP servers in the Data Insights platform")
+    # Sanitize inputs to prevent SQL injection
+    if not table_name.replace('_', '').replace('-', '').isalnum():
+        return [{"error": "Invalid table name"}]
+    if not schema_name.replace('_', '').replace('-', '').isalnum():
+        return [{"error": "Invalid schema name"}]
+    
+    query = f'SELECT * FROM "{schema_name}"."{table_name}" LIMIT {min(limit, 100)};'
+    
+    return await query_database(query)
+
+@mcp.tool()
+async def get_database_stats() -> List[Dict[str, Any]]:
+    """
+    Get database statistics and information.
+    
+    Returns:
+        List of dictionaries containing database statistics
+    """
+    logger.info("Getting database statistics...")
+    
+    query = """
+    SELECT 
+        'database_size' as metric,
+        pg_size_pretty(pg_database_size(current_database())) as value
+    UNION ALL
+    SELECT 
+        'table_count' as metric,
+        COUNT(*)::text as value
+    FROM information_schema.tables 
+    WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+    UNION ALL
+    SELECT 
+        'version' as metric,
+        version() as value;
+    """
+    
+    return await query_database(query)
+
+@mcp.resource("schema://database_schema")
+async def get_database_schema() -> str:
+    """
+    Get a comprehensive database schema description.
+    
+    Returns:
+        String containing database schema information
+    """
+    logger.info("Resource called: get_database_schema")
+    
+    try:
+        tables = await list_tables()
+        
+        schema_info = "Database Schema:\n\n"
+        
+        current_schema = None
+        for table in tables:
+            if table.get('table_schema') != current_schema:
+                current_schema = table.get('table_schema')
+                schema_info += f"\nSchema: {current_schema}\n"
+                schema_info += "=" * (len(current_schema) + 8) + "\n"
+            
+            table_name = table.get('table_name')
+            table_type = table.get('table_type', 'TABLE')
+            schema_info += f"\n{table_type}: {table_name}\n"
+            
+            # Get column information
+            columns = await describe_table(table_name, current_schema)
+            if columns and not columns[0].get('error'):
+                for col in columns:
+                    col_name = col.get('column_name')
+                    data_type = col.get('data_type')
+                    is_nullable = col.get('is_nullable', 'YES')
+                    nullable_str = "NULL" if is_nullable == "YES" else "NOT NULL"
+                    schema_info += f"  - {col_name}: {data_type} {nullable_str}\n"
+            
+        return schema_info
+        
+    except Exception as e:
+        error_msg = f"Error getting database schema: {str(e)}"
+        logger.error(error_msg)
+        return error_msg
+
+@click.command()
+@click.option('--transport', default='stdio', help='Transport type (stdio or sse)')
+@click.option('--port', default=8765, help='Port for SSE transport')
+def main(transport: str, port: int):
+    """
+    Main entry point for the FastMCP Database Server.
+    
+    Args:
+        transport: Transport type (stdio or sse)
+        port: Port for SSE transport
+    """
+    logger.info("=== FastMCP Database Server Starting ===")
+    logger.info(f"Transport: {transport}, Port: {port}")
     
     # Test database connection
     try:
-        test_result = execute_query("SELECT 1 as test")
-        if test_result["success"]:
-            print(f"✅ PostgreSQL database connection successful")
-            logger.info("Database connection successful")
-        else:
-            print(f"❌ PostgreSQL database connection failed: {test_result['error_message']}")
-            logger.error(f"Database connection failed: {test_result['error_message']}")
+        db_config = get_database_config()
+        safe_config = db_config.copy()
+        safe_config['password'] = '***' if safe_config['password'] else 'EMPTY'
+        logger.info(f"Database config: {safe_config}")
+        
+        # Test connection
+        async def test_connection():
+            logger.info("Testing database connection...")
+            conn = await asyncpg.connect(**db_config)
+            await conn.close()
+            logger.info("Database connection test successful")
+        
+        asyncio.run(test_connection())
+        
     except Exception as e:
-        print(f"❌ PostgreSQL database connection test failed: {e}")
-        logger.error(f"Database connection test failed: {e}")
+        logger.error(f"Database connection failed: {e}")
+        sys.exit(1)
     
-    # Test database content
-    try:
-        count_result = execute_query("SELECT COUNT(*) as count FROM s3_processed.usaspending_prime_awards LIMIT 1")
-        if count_result["success"] and count_result["data"]:
-            record_count = count_result["data"][0]["count"]
-            print(f"✅ Database content verified: {record_count:,} prime contract records")
-        else:
-            print(f"⚠️  Could not verify database content")
-    except Exception as e:
-        print(f"⚠️  Database content check failed: {e}")
-    
-    # Check Ollama availability (for future direct LLM integration)
-    print(f"\n🧠 Checking Ollama LLM availability...")
-    try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            models = response.json().get('models', [])
-            print(f"✅ Ollama LLM service available with {len(models)} models")
-            # Look for our specific model
-            data_insights_model = next((m for m in models if 'data_insights' in m.get('name', '')), None)
-            if data_insights_model:
-                print(f"✅ Data Insights optimized model found: {data_insights_model['name']}")
-            else:
-                print(f"⚠️  Data Insights optimized model not found (will use default)")
-        else:
-            print(f"⚠️  Ollama LLM service responding with status {response.status_code}")
-    except Exception as e:
-        print(f"⚠️  Ollama LLM service not available: {e}")
-        print(f"    (This is OK - DATABASE MCP Server works independently)")
-    
-    # List available MCP tools for THIS server
-    print(f"\n🔧 Available DATABASE MCP Tools (this server only):")
-    tool_info = [
-        ("get_database_schema", "Get comprehensive database schema information"),
-        ("get_table_info", "Get detailed information about specific tables"),
-        ("execute_sql_query", "Execute SQL queries with safety checks"),
-        ("get_server_status", "Get database server status and connection info")
-    ]
-    
-    for tool_name, description in tool_info:
-        print(f"  📋 {tool_name}: {description}")
-    
-    print(f"\n🚀 DATABASE MCP Server Configuration:")
-    print(f"  🏷️  Server Name: DatabaseSchemaService")
-    print(f"  🏠 Database Host: {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-    print(f"  🗄️  Database: {DB_CONFIG['database']}")
-    print(f"  👤 User: {DB_CONFIG['user']}")
-    print(f"  🔗 Connection Type: {args.connection_type}")
-    print(f"  📡 MCP Server URL: http://127.0.0.1:8003/sse/")
-    
-    print(f"\n📝 Future MCP Servers (planned):")
-    print(f"  🌐 Web Intelligence Scraper MCP Server")
-    print(f"  📄 Document Creator/Editor MCP Server") 
-    print(f"  📊 Visualization Generator MCP Server")
-    print(f"  🧠 Strategic Analysis MCP Server")
-    
-    # Start the server
-    server_type = "sse" if args.connection_type == "http" else "stdio"
-    print(f"\n🎯 Starting DATABASE MCP Server on port 8003 with {args.connection_type} connection")
-    print(f"🔗 LangChain agents will connect to this server via MCP protocol")
-    
-    mcp.run(server_type, port=8003)
+    # Run the server
+    if transport == "sse":
+        logger.info("Starting FastMCP server with SSE transport")
+        logger.info("Server will accept connections at http://127.0.0.1:8000/sse/")
+        logger.info("Note: MCP SDK's FastMCP uses /sse/ endpoint (with trailing slash)")
+        try:
+            mcp.run(transport="sse")
+        except Exception as e:
+            logger.error(f"Failed to start FastMCP server with SSE transport: {e}")
+            raise
+    else:
+        logger.info("Starting FastMCP server with stdio transport")
+        try:
+            mcp.run(transport="stdio")
+        except Exception as e:
+            logger.error(f"Failed to start FastMCP server with stdio transport: {e}")
+            raise
+
+def main_stdio():
+    """
+    Entry point for stdio mode without Click (used by MCP clients).
+    """
+    logger.info("Starting FastMCP Database Server in stdio mode...")
+    mcp.run(transport="stdio")
+
+if __name__ == "__main__":
+    # If no arguments are provided (typically when run by MCP client),
+    # use stdio mode without Click
+    if len(sys.argv) == 1:
+        main_stdio()
+    else:
+        # Use Click for command-line interface
+        main()

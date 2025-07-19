@@ -1,6 +1,6 @@
 # Fresh Conversation Context - Data Insights AI Agent Project
 
-## Current Project Status (July 13, 2025)
+## Current Project Status (July 15, 2025)
 
 ### **COMPLETED: Phase 1 - Modern Agent Architecture with MCP Integration ✅**
 
@@ -10,31 +10,41 @@
 - ✅ **Eliminated LLM Hallucination**: Replaced fake database responses with realistic tool responses based on actual PostgreSQL schema
 - ✅ **Established Technical Foundation**: Working modern agent with 4 MCP database tools and CUDA-optimized Ollama model
 - ✅ **Comprehensive Testing**: Created test suite that revealed technical success but identified domain expertise gaps
-- ✅ **100% Working MCP Architecture**: Successfully implemented proper client-server MCP integration using official LangChain adapters
+- ✅ **100% Working MCP Architecture**: Successfully implemented proper client-server MCP integration using FastMCP
 - ✅ **Streamlit Integration Complete**: Refactored ai_chat.py to use CaptureIntelligenceAgent with full MCP integration and health monitoring
 
-**Technical Architecture:**
+### **CURRENT URGENT PRIORITY: Python MCP SDK Migration 🚨**
 
-- **Database**: PostgreSQL with 5 schemas (public, app_logs, s3_processed, s2_interim, s1_raw)
-- **Data Scale**: 66.6M usaspending_prime_awards records, 1.7M subawards
-- **Agent Framework**: LangGraph-based capture_intelligence_agent.py with full MCP integration
-- **LLM Model**: CUDA-optimized data_insights_optimized (512 tokens, 5 iterations, 30s timeout)
-- **MCP Server**: FastMCP Database Server on port 8003 with 4 tools
-- **MCP Client**: MultiServerMCPClient with SSE transport for official MCP protocol communication
+**Critical Issue Identified**: The current FastMCP (Python/TypeScript hybrid) implementation suffers from "Event loop is closed" errors on complex/second queries and introduces unnecessary architectural complexity.
 
-**Key Files:**
+**Migration Decision**: Based on research of the official Python MCP SDK (https://github.com/modelcontextprotocol/python-sdk) and analysis of 16K+ stars, active development, and pure Python implementation patterns, we are migrating to the official SDK for better stability and maintainability.
 
-- `src/frontend/ai/capture_intelligence_agent.py`: Core agent with 100% working MCP integration
-- `src/backend/mcp_servers/fastmcp_database_server.py`: Database MCP server with 4 tools
-- `fastmcp_servers_launcher.py`: MCP server launcher with health monitoring
-- `src/frontend/pages/ai_chat.py`: Streamlit AI chat interface fully integrated with CaptureIntelligenceAgent
-- `test_ai_chat_integration.py`: Integration test suite confirming 100% functionality
+**What We've Researched**:
 
-### **CURRENT PRIORITY: Phase 2 - Advanced Tool Orchestration & Domain Intelligence 🔄**
+- ✅ **Official Python MCP SDK Analysis**: 16,102 stars, 2,049 forks, active development by ModelContextProtocol organization
+- ✅ **Implementation Patterns**: Studied official examples including database integrations, tool patterns, client/server architecture
+- ✅ **Transport Options**: Both stdio and SSE transports available, simpler async handling
+- ✅ **Migration Strategy**: Documented comprehensive 4-phase migration plan in `docs/PYTHON_MCP_SDK_MIGRATION_PLAN.md`
 
-**Strategic Decision Made**: With the MCP architecture now 100% functional, we can focus on advanced tool orchestration and domain-specific intelligence. The technical foundation is solid and ready for complex business intelligence workflows.
+**Why This Migration is Critical**:
 
-**Phase 2 Objectives:**
+- **Technical Stability**: Resolve "Event loop is closed" errors that prevent complex queries
+- **Simplified Architecture**: Move from hybrid Python/TypeScript to pure Python stack
+- **Official Support**: Leverage official SDK with better documentation and community support
+- **Future-Proofing**: Align with standard MCP evolution and best practices
+
+**Migration Timeline**:
+
+- **Week 1**: Server migration using official Python MCP SDK
+- **Week 2**: Client migration with official Python MCP Client  
+- **Week 3**: Integration testing and validation
+- **Week 4**: Documentation updates and cleanup
+
+### **NEXT PHASE: Advanced Tool Orchestration & Domain Intelligence**
+
+**After Migration Complete**: Focus on advanced tool orchestration, domain-specific intelligence, and performance optimization with the stable Python MCP foundation.
+
+**Strategic Objectives**:
 
 1. **Advanced Tool Orchestration**: Multi-step reasoning and tool chaining for complex business intelligence queries
 2. **Domain-Specific Intelligence**: Deep understanding of government contracting terminology, FAR regulations, and NAICS codes
@@ -42,72 +52,60 @@
 4. **Performance Optimization**: CUDA utilization optimization and response time improvements
 5. **Error Handling & Recovery**: Robust fallback mechanisms and error correction
 
-**Why This Approach:**
+### **Current Technical Architecture (Pre-Migration)**
 
-- MCP architecture is now fully functional with proper client-server communication
-- Agent successfully connects to database tools and can execute complex queries
-- Domain knowledge gaps (like understanding "awards not modifications" = modification_number = '0') can now be addressed with working tools
-- Foundation is ready for sophisticated business intelligence workflows
+**Database**: PostgreSQL with 5 schemas (public, app_logs, s3_processed, s2_interim, s1_raw)
+**Data Scale**: 66.6M usaspending_prime_awards records, 1.7M subawards
+**Agent Framework**: LangGraph-based capture_intelligence_agent.py with FastMCP integration  
+**LLM Model**: CUDA-optimized data_insights_optimized (512 tokens, 5 iterations, 30s timeout)
+**MCP Server**: FastMCP Database Server on port 8003 with 4 tools (TO BE REPLACED)
+**MCP Client**: MultiServerMCPClient with SSE transport (TO BE REPLACED)
 
-### **MCP Architecture Success:**
+**Target Architecture (Post-Migration)**:
 
-**What's Working Perfectly:**
+**MCP Server**: Python MCP Database Server using official SDK
+**MCP Client**: Official Python MCP Client with LangGraph integration
+**Transport**: stdio or SSE using official transport implementations
+**Benefits**: Simplified stack, better async handling, official support
 
-- ✅ FastMCP Database Server running on port 8003 with 4 tools
-- ✅ MultiServerMCPClient connecting via SSE transport at `/sse/` endpoint
-- ✅ LangGraph workflow with conditional tool usage
-- ✅ Agent successfully retrieving and using database tools
-- ✅ Health monitoring and proper connection management
-- ✅ 100% MCP protocol compliance using official LangChain adapters
-- ✅ Streamlit AI Chat interface with Roberto's expert persona and comprehensive health checks
-- ✅ Complete integration testing with 4/4 tests passing
-
-**Available Database Tools:**
+### **Available Database Tools (To Be Migrated)**:
 
 - `get_database_schema`: Comprehensive database schema information
 - `get_table_info`: Detailed table information with metadata
 - `execute_sql_query`: SQL execution with safety checks
 - `get_server_status`: Database server status and connection info
 
-### **Key Test Results & Lessons Learned:**
+### **Key Files (Current - To Be Updated)**:
 
-**What's Working:**
+- `src/frontend/ai/capture_intelligence_agent.py`: Core agent with MCP integration (NEEDS CLIENT UPDATE)
+- `src/backend/mcp_servers/fastmcp_database_server.py`: FastMCP Database server (TO BE REPLACED)
+- `fastmcp_servers_launcher.py`: FastMCP launcher (TO BE REPLACED)
+- `src/frontend/pages/ai_chat.py`: Streamlit AI chat interface (NEEDS INTEGRATION UPDATE)
+- `test_ai_chat_integration.py`: Integration tests (NEEDS UPDATE FOR NEW SDK)
 
-- Agent successfully handles basic database queries with realistic responses
-- Tool selection logic works appropriately
-- Database schema information is accurate and helpful
-- Concise, professional response style achieved
+**New Files (To Be Created)**:
 
-**Domain Expertise Gap Identified:**
+- `src/backend/ai/mcp_servers/python_mcp_database_server.py`: Official Python MCP server
+- `python_mcp_servers_launcher.py`: New launcher for Python MCP servers
+- `docs/PYTHON_MCP_SDK_MIGRATION_PLAN.md`: ✅ Detailed migration strategy
 
+### **Lessons Learned from FastMCP**:
+
+**What Worked**:
+- MCP tool pattern and agent integration
+- Database tool implementations and safety checks  
+- LangGraph workflow and tool selection logic
+- Streamlit integration and health monitoring
+
+**Issues to Resolve**:
+- "Event loop is closed" errors on complex queries
+- Hybrid Python/TypeScript complexity
+- Async event loop handling problems
+- Maintenance overhead of hybrid stack
+
+**Domain Expertise Gap** (Post-Migration Priority):
 - Agent failed NAICS 811310 test: didn't understand that "awards not modifications" means filtering for modification_number = '0'
-- With working MCP tools, we can now address this by implementing domain-specific reasoning patterns
-- Next step: Enhance agent prompts with government contracting expertise and test with actual tool execution
-
-**MCP Integration Success:**
-
-- Agent successfully connects to FastMCP Database Server at `http://localhost:8003/sse/`
-- All 4 database tools are available and functional
-- LangGraph workflow handles tool selection and execution properly
-- Proper cleanup and connection management implemented
-- Streamlit AI Chat interface fully integrated with Roberto's expert persona
-- Complete health monitoring and error handling in production UI
-- Integration test suite confirms 100% functionality (4/4 tests passing)
-
-### **FUTURE PHASES:**
-
-**Phase 3: Enhanced MCP Tool Ecosystem & Workflow Integration**
-
-- Web Intelligence Scraper for market research
-- Document Creator/Editor for capture profiles and proposals
-- Visualization Intelligence Tool for dynamic chart generation
-- Strategic Analysis & Recommendation Engine
-
-**Phase 4: Comprehensive Capture Management Platform**
-
-- External data integration (SAM.gov, NATO NSPA, GovWin IQ)
-- Advanced user experience with expert-level consultation interface
-- Automated opportunity analysis and capture profile generation
+- With stable Python MCP tools, we can address this through enhanced domain expertise and prompt engineering
 
 ## Technical Environment
 
@@ -126,14 +124,43 @@
 
 **Project Vision**: Business intelligence application for defense contractors focusing on logistics, operations, maintenance, and technology solutions. Provides visualization and insights for business development and capture management.
 
-## Immediate Next Steps for Phase 2
+## Immediate Next Steps
 
-1. **Test Real Tool Execution**: Have agent actually execute database queries using the working MCP tools
-2. **Enhance Domain Intelligence**: Improve Roberto's government contracting expertise through enhanced prompting
-3. **Advanced Multi-Step Reasoning**: Implement tool chaining for complex queries requiring multiple database operations
-4. **Performance Optimization**: Optimize Ollama model parameters for NVIDIA GTX 4060 performance
-5. **Complex Query Intelligence**: Enhance SQL generation for multi-table joins and complex aggregations
-6. **Error Handling & Recovery**: Implement robust error detection and correction mechanisms
+1. **BEGIN PYTHON MCP SDK MIGRATION** (Week 1 Priority):
+   - Implement `python_mcp_database_server.py` using official Python MCP SDK
+   - Test server functionality with official MCP clients
+   - Create new launcher script and basic integration tests
+
+2. **Client Migration** (Week 2):
+   - Integrate official Python MCP Client with existing LangGraph architecture
+   - Update CaptureIntelligenceAgent for new client
+   - Test async event loop handling and "Event loop is closed" resolution
+
+3. **Integration Testing** (Week 3):
+   - Update Streamlit AI Chat interface
+   - Run comprehensive integration tests
+   - Validate performance and stability improvements
+
+4. **Documentation & Cleanup** (Week 4):
+   - Update all documentation files
+   - Remove legacy FastMCP code
+   - Optimize and finalize new architecture
+
+## Questions to Ask When Starting:
+
+1. **Should we begin the Python MCP SDK migration immediately?**
+   - This resolves the "Event loop is closed" error and simplifies the architecture
+   - Provides a stable foundation for advanced tool orchestration
+
+2. **Which transport should we use for the new Python MCP server?**
+   - stdio: Simpler, more reliable, good for development
+   - SSE: HTTP-based, web-friendly, current approach
+   - Recommendation: Start with stdio, migrate to SSE if needed
+
+3. **How should we maintain backward compatibility during migration?**
+   - Parallel development branches?
+   - Incremental cutover approach?
+   - Full migration with comprehensive testing?
 
 ## Code Quality Standards
 
@@ -144,36 +171,8 @@
 - Files under 500 lines, modular organization
 - Comprehensive testing with Pytest
 
-## Questions to Ask When Starting:
+**Current Status**: Ready to begin Python MCP SDK migration to resolve technical debt and establish a robust foundation for advanced agentic capabilities. The migration plan is documented and the official SDK research is complete.
 
-1. **What specific aspect of Phase 2 should we focus on first?**
+**Priority**: 🚨 **URGENT** - Python MCP SDK migration to resolve "Event loop is closed" errors and simplify architecture before proceeding with advanced features.
 
-   - Testing real tool execution with complex government contracting queries?
-   - Enhancing Roberto's domain expertise and prompt engineering?
-   - Advanced tool chaining and multi-step reasoning?
-   - Performance optimization for CUDA acceleration?
-
-2. **What type of complex scenarios should we test the enhanced agent with?**
-
-   - Multi-table business intelligence queries using the working MCP tools?
-   - Government contracting domain expertise (NAICS codes, FAR regulations)?
-   - Temporal analysis across fiscal quarters?
-   - Competitive intelligence workflows?
-
-3. **Are there specific performance targets or optimization goals we should aim for?**
-   - Response time improvements with CUDA optimization?
-   - Complex query success rates with actual tool execution?
-   - Domain expertise accuracy in government contracting scenarios?
-
-**Recent Success**: The MCP architecture is now 100% functional with proper client-server communication, 4 working database tools, successful agent integration, and complete Streamlit UI integration. The AI Chat interface is production-ready with Roberto's expert persona, comprehensive health monitoring, and seamless tool orchestration. Ready for advanced business intelligence workflows!
-
-**Production Status**:
-
-- ✅ FastMCP Database Server fully operational
-- ✅ CaptureIntelligenceAgent with 100% MCP integration
-- ✅ Streamlit AI Chat interface production-ready
-- ✅ Complete integration testing passed (4/4 tests)
-- ✅ Roberto's expert defense contracting persona active
-- ✅ Comprehensive health monitoring and error handling
-
-This context should provide everything needed to continue development efficiently without losing the strategic direction and technical progress we've made.
+This context should provide everything needed to begin the Python MCP SDK migration efficiently and establish a stable foundation for future development.
