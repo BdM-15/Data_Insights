@@ -1,0 +1,33 @@
+{
+    "prime_awards": {
+        "source_table": "s2_interim.usaspending_prime_awards_nona",
+        "target_table": "s2_interim.usaspending_prime_awards_dedup",
+        "deduplication_key": [
+            "award_id_piid",
+            "modification_number",
+            "action_date",
+            "federal_action_obligation",
+            "recipient_name"
+        ],
+        "original_count": 66552282,
+        "deduplicated_count": 66535331,
+        "removed_count": 16951,
+        "removed_percent": 0.03
+    },
+    "subawards": {
+        "source_table": "s2_interim.usaspending_subawards_nona",
+        "target_table": "s2_interim.usaspending_subawards_dedup",
+        "deduplication_key": [
+            "prime_award_unique_key",
+            "subaward_number",
+            "subaward_action_date",
+            "subaward_amount"
+        ],
+        "original_count": 2474568,
+        "deduplicated_count": 1704094,
+        "removed_count": 770474,
+        "removed_percent": 31.14
+    },
+    "processing_time_seconds": 1150.65,
+    "timestamp": "2025-07-21T12:58:45.458636"
+}
