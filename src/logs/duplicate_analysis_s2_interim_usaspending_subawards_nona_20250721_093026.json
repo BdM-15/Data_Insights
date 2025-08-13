@@ -1,0 +1,9 @@
+{
+  "total_rows": 2474568,
+  "key_stats": {
+    "null_keys": 0,
+    "synthetic_keys": 0,
+    "unique_keys": 172099
+  },
+  "analysis_time_seconds": 1.92
+}

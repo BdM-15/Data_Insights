@@ -83,3 +83,6 @@ asyncpg>=0.29.0
 
 # Note: FastMCP and LlamaIndex dependencies removed
 # after successful migration to Python MCP SDK architecture
+
+# For local embedding generation (semantic vectorization of descriptions)
+sentence-transformers
