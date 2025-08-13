@@ -39,25 +39,38 @@ logger = logging.getLogger(__name__)
 
 def add_semantic_description_prime():
     """
-    Add and populate semantic_description column for prime awards enriched table.
+    Add and populate semantic_description column for prime awards dedup table.
     """
     start_time = time.time()
-    logger.info("Starting semantic_description column creation for prime awards...")
-    with engine.connect() as connection:
-        connection.execute(text("""
-            ALTER TABLE s2_interim.usaspending_prime_awards_enriched
-            ADD COLUMN IF NOT EXISTS semantic_description TEXT;
-        """))
-        connection.execute(text("""
-            UPDATE s2_interim.usaspending_prime_awards_enriched
-            SET semantic_description =
-                COALESCE(prime_award_base_transaction_description, '') || ' ' ||
-                COALESCE(transaction_description, '') || ' ' ||
-                COALESCE(naics_description, '') || ' ' ||
-                COALESCE(product_or_service_code_description, '')
-        """))
-        connection.commit()
-        logger.info("semantic_description column added and populated for prime awards.")
+    logger.info("Starting semantic_description column creation for prime awards (dedup table)...")
+    table_name = "s2_interim.usaspending_prime_awards_dedup"
+    try:
+        with engine.begin() as connection:
+            # Safety timeout
+            try:
+                connection.execute(text("SET LOCAL statement_timeout = '30min'"))
+            except Exception:
+                pass
+            # Ensure column exists
+            connection.execute(text(f"""
+                ALTER TABLE {table_name}
+                ADD COLUMN IF NOT EXISTS semantic_description TEXT;
+            """))
+            # Populate only when NULL to avoid rewriting unchanged rows
+            result = connection.execute(text(f"""
+                UPDATE {table_name}
+                SET semantic_description =
+                    COALESCE(prime_award_base_transaction_description, '') || ' ' ||
+                    COALESCE(transaction_description, '') || ' ' ||
+                    COALESCE(naics_description, '') || ' ' ||
+                    COALESCE(product_or_service_code_description, '')
+                WHERE semantic_description IS NULL
+            """))
+            updated = getattr(result, 'rowcount', None)
+            logger.info(f"semantic_description populated for prime dedup; rows updated: {updated if updated is not None else '?'}.")
+    except Exception as e:
+        logger.error(f"Failed to update {table_name}: {e}")
+        return
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
@@ -71,12 +84,17 @@ def add_semantic_description_subawards():
     """
     start_time = time.time()
     logger.info("Starting semantic_description column creation for subawards...")
-    with engine.connect() as connection:
+    with engine.begin() as connection:
+        # Safety timeout
+        try:
+            connection.execute(text("SET LOCAL statement_timeout = '30min'"))
+        except Exception:
+            pass
         connection.execute(text("""
             ALTER TABLE s2_interim.usaspending_subawards_enriched
             ADD COLUMN IF NOT EXISTS semantic_description TEXT;
         """))
-        connection.execute(text("""
+        result = connection.execute(text("""
             UPDATE s2_interim.usaspending_subawards_enriched
             SET semantic_description =
                 COALESCE(subaward_description, '') || ' ' ||
@@ -84,9 +102,10 @@ def add_semantic_description_subawards():
                 COALESCE(prime_transaction_description, '') || ' ' ||
                 COALESCE(prime_naics_description, '') || ' ' ||
                 COALESCE(prime_product_or_service_code_description, '')
+            WHERE semantic_description IS NULL
         """))
-        connection.commit()
-        logger.info("semantic_description column added and populated for subawards.")
+        updated = getattr(result, 'rowcount', None)
+        logger.info(f"semantic_description populated for subawards_enriched; rows updated: {updated if updated is not None else '?' }.")
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)

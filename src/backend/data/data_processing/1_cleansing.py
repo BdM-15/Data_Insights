@@ -38,10 +38,18 @@ engine = create_engine(db_url, echo=False)
 logger = logging.getLogger(__name__)
 
 # --- Utility: Remove empty columns from a table ---
-def remove_empty_columns(table_name, schema='s2_interim'):
+def remove_empty_columns(table_name, schema='s2_interim', exempt_columns=None):
     """
     Drops columns from the table where all values are NULL or blank.
+    Args:
+        table_name: Name of the table to process
+        schema: Schema of the table
+        exempt_columns: List of columns to exempt from removal
+    Returns:
+        List of dropped columns
     """
+    if exempt_columns is None:
+        exempt_columns = []
     with engine.connect() as connection:
         cols_query = text(f"""
             SELECT column_name FROM information_schema.columns
@@ -50,6 +58,8 @@ def remove_empty_columns(table_name, schema='s2_interim'):
         cols = [row[0] for row in connection.execute(cols_query)]
         empty_cols = []
         for col in cols:
+            if col in exempt_columns:
+                continue
             null_count = connection.execute(text(f"SELECT COUNT(*) FROM {schema}.{table_name} WHERE {col} IS NOT NULL AND TRIM(COALESCE({col}::text,'')) <> ''")).scalar()
             if null_count == 0:
                 empty_cols.append(col)
@@ -78,88 +88,214 @@ def process_prime_awards(force_rebuild=True):
         # Drop destination if exists
         connection.execute(text(f"DROP TABLE IF EXISTS {PRIME_DEST} CASCADE"))
         connection.commit()
-        # Cleansing, transformation, and deduplication in one step
-        logger.info("Transforming, cleaning, and deduplicating prime awards...")
-        create_query = text(f"""
-CREATE TABLE {PRIME_DEST} AS
-SELECT DISTINCT ON ({compound_key_expr})
-    contract_transaction_unique_key,
-    contract_award_unique_key,
-    action_date_fiscal_year::text,
-    CASE 
-        WHEN EXTRACT(MONTH FROM action_date::date) IN (10, 11, 12) THEN 1
-        WHEN EXTRACT(MONTH FROM action_date::date) IN (1, 2, 3) THEN 2
-        WHEN EXTRACT(MONTH FROM action_date::date) IN (4, 5, 6) THEN 3
-        WHEN EXTRACT(MONTH FROM action_date::date) IN (7, 8, 9) THEN 4
-        ELSE NULL
-    END AS action_date_fiscal_quarter,
-    action_date::date,
-    parent_award_id_piid,
-    award_id_piid,
-    CASE WHEN modification_number IS NULL THEN '0'
-         WHEN TRIM(modification_number::text) = '' THEN '0'
-         ELSE TRIM(modification_number::text) END AS modification_number,
-    federal_action_obligation::numeric,
-    total_dollars_obligated::numeric,
-    potential_total_value_of_award::numeric,
-    total_outlayed_amount_for_overall_award::numeric,
-    period_of_performance_start_date::date,
-    period_of_performance_current_end_date::date,
-    period_of_performance_potential_end_date::date,
-    ordering_period_end_date::date,
-    primary_place_of_performance_city_name,
-    primary_place_of_performance_state_code,
-    prime_award_base_transaction_description,
-    transaction_description,
-    SUBSTRING(REGEXP_REPLACE(naics_code::text, '\\.0$', ''), 1, 6) AS naics_code,
-    naics_description,
-    product_or_service_code,
-    product_or_service_code_description,
-    dod_acquisition_program_description,
-    CASE
-        WHEN TRIM(parent_award_agency_name) ILIKE 'DEPT OF DEFENSE' THEN 'DEPARTMENT OF DEFENSE'
-        ELSE TRIM(parent_award_agency_name)
-    END AS parent_award_agency_name,
-    UPPER(awarding_sub_agency_name) AS awarding_sub_agency_name,
-    UPPER(awarding_office_name) AS awarding_office_name,
-    UPPER(funding_agency_name) AS funding_agency_name,
-    UPPER(funding_sub_agency_name) AS funding_sub_agency_name,
-    UPPER(funding_office_name) AS funding_office_name,
-    UPPER(recipient_name) AS recipient_name,
-    recipient_uei,
-    UPPER(recipient_parent_name) AS recipient_parent_name,
-    recipient_parent_uei,
-    solicitation_date::date,
-    solicitation_procedures,
-    UPPER(extent_competed) AS extent_competed,
-    CASE
-        WHEN type_of_set_aside ILIKE 'NO SET ASIDE USED.' THEN 'NO SET ASIDE USED'
-        WHEN UPPER(extent_competed) = 'FULL AND OPEN COMPETITION' THEN 'NO SET ASIDE USED'
-        WHEN UPPER(extent_competed) = 'FULL AND OPEN COMPETITION AFTER EXCLUSION OF SOURCES' AND (UPPER(type_of_set_aside) = 'NO SET ASIDE USED' OR UPPER(type_of_set_aside) = 'NO SET ASIDE USED.') THEN NULL
-        ELSE UPPER(type_of_set_aside)
-    END AS type_of_set_aside,
-    fair_opportunity_limited_sources,
-    other_than_full_and_open_competition,
-    number_of_offers_received::NUMERIC::INTEGER AS number_of_offers_received,
-    subcontracting_plan,
-    government_furnished_property,
-    UPPER(type_of_contract_pricing) AS type_of_contract_pricing,
-    action_type,
-    award_type,
-    type_of_idc,
-    idv_type,
-    undefinitized_action,
-    multi_year_contract,
-    multiple_or_single_award_idv,
-    usaspending_permalink
-FROM {PRIME_SRC}
-WHERE contract_transaction_unique_key IS NOT NULL
-ORDER BY {compound_key_expr}, action_date DESC;
+        # Create dedup table with only the three KBR boolean columns (default FALSE)
+        logger.info("Creating dedup table for prime awards with only KBR boolean columns...")
+        create_table_query = text(f"""
+            CREATE TABLE {PRIME_DEST} (
+                contract_transaction_unique_key TEXT PRIMARY KEY,
+                contract_award_unique_key TEXT,
+                action_date_fiscal_year TEXT,
+                action_date_fiscal_quarter INTEGER,
+                action_date DATE,
+                parent_award_id_piid TEXT,
+                award_id_piid TEXT,
+                modification_number TEXT,
+                federal_action_obligation NUMERIC,
+                total_dollars_obligated NUMERIC,
+                potential_total_value_of_award NUMERIC,
+                total_outlayed_amount_for_overall_award NUMERIC,
+                period_of_performance_start_date DATE,
+                period_of_performance_current_end_date DATE,
+                period_of_performance_potential_end_date DATE,
+                ordering_period_end_date DATE,
+                primary_place_of_performance_city_name TEXT,
+                primary_place_of_performance_state_code TEXT,
+                prime_award_base_transaction_description TEXT,
+                transaction_description TEXT,
+                naics_code TEXT,
+                naics_description TEXT,
+                product_or_service_code TEXT,
+                product_or_service_code_description TEXT,
+                dod_acquisition_program_description TEXT,
+                parent_award_agency_name TEXT,
+                awarding_sub_agency_name TEXT,
+                awarding_office_name TEXT,
+                funding_agency_name TEXT,
+                funding_sub_agency_name TEXT,
+                funding_office_name TEXT,
+                recipient_name TEXT,
+                recipient_uei TEXT,
+                recipient_parent_name TEXT,
+                recipient_parent_uei TEXT,
+                solicitation_date DATE,
+                solicitation_procedures TEXT,
+                extent_competed TEXT,
+                type_of_set_aside TEXT,
+                fair_opportunity_limited_sources TEXT,
+                other_than_full_and_open_competition TEXT,
+                number_of_offers_received INTEGER,
+                subcontracting_plan TEXT,
+                government_furnished_property TEXT,
+                type_of_contract_pricing TEXT,
+                action_type TEXT,
+                award_type TEXT,
+                type_of_idc TEXT,
+                idv_type TEXT,
+                undefinitized_action TEXT,
+                multi_year_contract TEXT,
+                multiple_or_single_award_idv TEXT,
+                usaspending_permalink TEXT,
+                kbr_prime BOOLEAN DEFAULT FALSE,
+                kbr_as_sub BOOLEAN DEFAULT FALSE,
+                kbr_sub_issued BOOLEAN DEFAULT FALSE
+            );
         """)
-        connection.execute(create_query)
+        connection.execute(create_table_query)
         connection.commit()
-        logger.info("Prime awards: removing empty columns...")
-        remove_empty_columns('usaspending_prime_awards_dedup')
+        # Insert data (no enrichment columns except KBR flags)
+        logger.info("Transforming, cleaning, and deduplicating prime awards...")
+        insert_query = text(rf"""
+            INSERT INTO {PRIME_DEST} (
+                contract_transaction_unique_key,
+                contract_award_unique_key,
+                action_date_fiscal_year,
+                action_date_fiscal_quarter,
+                action_date,
+                parent_award_id_piid,
+                award_id_piid,
+                modification_number,
+                federal_action_obligation,
+                total_dollars_obligated,
+                potential_total_value_of_award,
+                total_outlayed_amount_for_overall_award,
+                period_of_performance_start_date,
+                period_of_performance_current_end_date,
+                period_of_performance_potential_end_date,
+                ordering_period_end_date,
+                primary_place_of_performance_city_name,
+                primary_place_of_performance_state_code,
+                prime_award_base_transaction_description,
+                transaction_description,
+                naics_code,
+                naics_description,
+                product_or_service_code,
+                product_or_service_code_description,
+                dod_acquisition_program_description,
+                parent_award_agency_name,
+                awarding_sub_agency_name,
+                awarding_office_name,
+                funding_agency_name,
+                funding_sub_agency_name,
+                funding_office_name,
+                recipient_name,
+                recipient_uei,
+                recipient_parent_name,
+                recipient_parent_uei,
+                solicitation_date,
+                solicitation_procedures,
+                extent_competed,
+                type_of_set_aside,
+                fair_opportunity_limited_sources,
+                other_than_full_and_open_competition,
+                number_of_offers_received,
+                subcontracting_plan,
+                government_furnished_property,
+                type_of_contract_pricing,
+                action_type,
+                award_type,
+                type_of_idc,
+                idv_type,
+                undefinitized_action,
+                multi_year_contract,
+                multiple_or_single_award_idv,
+                usaspending_permalink,
+                kbr_prime,
+                kbr_as_sub,
+                kbr_sub_issued
+            )
+            SELECT DISTINCT ON ({compound_key_expr})
+                contract_transaction_unique_key,
+                contract_award_unique_key,
+                action_date_fiscal_year::text,
+                CASE 
+                    WHEN EXTRACT(MONTH FROM action_date::date) IN (10, 11, 12) THEN 1
+                    WHEN EXTRACT(MONTH FROM action_date::date) IN (1, 2, 3) THEN 2
+                    WHEN EXTRACT(MONTH FROM action_date::date) IN (4, 5, 6) THEN 3
+                    WHEN EXTRACT(MONTH FROM action_date::date) IN (7, 8, 9) THEN 4
+                    ELSE NULL
+                END AS action_date_fiscal_quarter,
+                action_date::date,
+                parent_award_id_piid,
+                award_id_piid,
+                CASE WHEN modification_number IS NULL THEN '0'
+                     WHEN TRIM(modification_number::text) = '' THEN '0'
+                     ELSE TRIM(modification_number::text) END AS modification_number,
+                federal_action_obligation::numeric,
+                total_dollars_obligated::numeric,
+                potential_total_value_of_award::numeric,
+                total_outlayed_amount_for_overall_award::numeric,
+                period_of_performance_start_date::date,
+                period_of_performance_current_end_date::date,
+                period_of_performance_potential_end_date::date,
+                ordering_period_end_date::date,
+                primary_place_of_performance_city_name,
+                primary_place_of_performance_state_code,
+                prime_award_base_transaction_description,
+                transaction_description,
+                SUBSTRING(REGEXP_REPLACE(naics_code::text, '\.0$', ''), 1, 6) AS naics_code,
+                naics_description,
+                product_or_service_code,
+                product_or_service_code_description,
+                dod_acquisition_program_description,
+                CASE
+                    WHEN TRIM(parent_award_agency_name) ILIKE 'DEPT OF DEFENSE' THEN 'DEPARTMENT OF DEFENSE'
+                    ELSE TRIM(parent_award_agency_name)
+                END AS parent_award_agency_name,
+                UPPER(awarding_sub_agency_name) AS awarding_sub_agency_name,
+                UPPER(awarding_office_name) AS awarding_office_name,
+                UPPER(funding_agency_name) AS funding_agency_name,
+                UPPER(funding_sub_agency_name) AS funding_sub_agency_name,
+                UPPER(funding_office_name) AS funding_office_name,
+                UPPER(recipient_name) AS recipient_name,
+                recipient_uei,
+                UPPER(recipient_parent_name) AS recipient_parent_name,
+                recipient_parent_uei,
+                solicitation_date::date,
+                solicitation_procedures,
+                UPPER(extent_competed) AS extent_competed,
+                CASE
+                    WHEN type_of_set_aside ILIKE 'NO SET ASIDE USED.' THEN 'NO SET ASIDE USED'
+                    WHEN UPPER(extent_competed) = 'FULL AND OPEN COMPETITION' THEN 'NO SET ASIDE USED'
+                    WHEN UPPER(extent_competed) = 'FULL AND OPEN COMPETITION AFTER EXCLUSION OF SOURCES' AND (UPPER(type_of_set_aside) = 'NO SET ASIDE USED' OR UPPER(type_of_set_aside) = 'NO SET ASIDE USED.') THEN NULL
+                    ELSE UPPER(type_of_set_aside)
+                END AS type_of_set_aside,
+                fair_opportunity_limited_sources,
+                other_than_full_and_open_competition,
+                number_of_offers_received::NUMERIC::INTEGER AS number_of_offers_received,
+                subcontracting_plan,
+                government_furnished_property,
+                UPPER(type_of_contract_pricing) AS type_of_contract_pricing,
+                action_type,
+                award_type,
+                type_of_idc,
+                idv_type,
+                undefinitized_action,
+                multi_year_contract,
+                multiple_or_single_award_idv,
+                usaspending_permalink,
+                FALSE AS kbr_prime,
+                FALSE AS kbr_as_sub,
+                FALSE AS kbr_sub_issued
+            FROM {PRIME_SRC}
+            WHERE contract_transaction_unique_key IS NOT NULL
+            ORDER BY {compound_key_expr}, action_date DESC;
+        """)
+        connection.execute(insert_query)
+        connection.commit()
+        # Only exempt KBR flag columns
+        exempt_cols = ['kbr_prime', 'kbr_as_sub', 'kbr_sub_issued']
+        logger.info("Prime awards: removing empty columns (only KBR flags exempt)...")
+        remove_empty_columns('usaspending_prime_awards_dedup', exempt_columns=exempt_cols)
         count_query = text(f"SELECT COUNT(*) FROM {PRIME_DEST}")
         row_count = connection.execute(count_query).scalar()
         logger.info(f"Prime awards deduplication complete: {row_count:,} rows in final table.")
@@ -173,7 +309,7 @@ ORDER BY {compound_key_expr}, action_date DESC;
 def process_subawards(force_rebuild=True):
     start_time = time.time()
     logger.info("Starting consolidated cleansing for subawards...")
-    SUB_SRC = "s1_raw.usaspending_subawards"
+    SUB_SRC = "s2_interim.usaspending_subawards"
     SUB_DEST = "s2_interim.usaspending_subawards_dedup"
     # Compound key for deduplication
     sub_keys = [
@@ -186,41 +322,107 @@ def process_subawards(force_rebuild=True):
     ]
     sub_key_expr = ", ".join(sub_keys)
     with engine.connect() as connection:
+        # Drop destination if exists
         connection.execute(text(f"DROP TABLE IF EXISTS {SUB_DEST} CASCADE"))
         connection.commit()
-        logger.info("Transforming, cleaning, and deduplicating subawards...")
+        # Create dedup table with enrichment flags (default FALSE)
+        logger.info("Creating dedup table for subawards...")
         create_query = text(f"""
-CREATE TABLE {SUB_DEST} AS
-SELECT DISTINCT ON ({sub_key_expr})
-    subaward_unique_key, -- Carry over surrogate key for traceability and batching
-    prime_award_unique_key,
-    subaward_number,
-    subaward_amount::numeric,
-    subaward_action_date::date,
-    TRIM(subaward_description) AS subaward_description,
-    UPPER(TRIM(subawardee_name)) AS subawardee_name,
-    subawardee_uei,
-    UPPER(TRIM(subawardee_parent_name)) AS subawardee_parent_name,
-    subawardee_parent_uei,
-    UPPER(TRIM(subawardee_city_name)) AS subawardee_city_name,
-    UPPER(TRIM(subawardee_state_code)) AS subawardee_state_code,
-    UPPER(TRIM(subawardee_country_code)) AS subawardee_country_code,
-    UPPER(TRIM(subawardee_country_name)) AS subawardee_country_name,
-    subawardee_business_types,
-    UPPER(TRIM(subaward_primary_place_of_performance_city_name)) AS subaward_primary_place_of_performance_city_name,
-    UPPER(TRIM(subaward_primary_place_of_performance_state_code)) AS subaward_primary_place_of_performance_state_code,
-    UPPER(TRIM(subaward_type)) AS subaward_type,
-    created_at,
-    updated_at,
-    fetch_date
-FROM s2_interim.usaspending_subawards
-WHERE prime_award_unique_key IS NOT NULL
-ORDER BY {sub_key_expr};
+            CREATE TABLE {SUB_DEST} (
+                subaward_unique_key BIGINT PRIMARY KEY,
+                prime_award_unique_key TEXT,
+                subaward_number TEXT,
+                subaward_amount NUMERIC,
+                subaward_action_date DATE,
+                subaward_description TEXT,
+                subawardee_name TEXT,
+                subawardee_uei TEXT,
+                subawardee_parent_name TEXT,
+                subawardee_parent_uei TEXT,
+                subawardee_city_name TEXT,
+                subawardee_state_code TEXT,
+                subawardee_country_code TEXT,
+                subawardee_country_name TEXT,
+                subawardee_business_types TEXT,
+                subaward_primary_place_of_performance_city_name TEXT,
+                subaward_primary_place_of_performance_state_code TEXT,
+                subaward_type TEXT,
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                fetch_date DATE,
+                kbr_prime BOOLEAN DEFAULT FALSE,
+                kbr_as_sub BOOLEAN DEFAULT FALSE,
+                kbr_sub_issued BOOLEAN DEFAULT FALSE
+            );
         """)
         connection.execute(create_query)
         connection.commit()
+        # Deduplication insert
+        logger.info("Inserting deduplicated subawards...")
+        insert_query = text(f"""
+            INSERT INTO {SUB_DEST} (
+                subaward_unique_key,
+                prime_award_unique_key,
+                subaward_number,
+                subaward_amount,
+                subaward_action_date,
+                subaward_description,
+                subawardee_name,
+                subawardee_uei,
+                subawardee_parent_name,
+                subawardee_parent_uei,
+                subawardee_city_name,
+                subawardee_state_code,
+                subawardee_country_code,
+                subawardee_country_name,
+                subawardee_business_types,
+                subaward_primary_place_of_performance_city_name,
+                subaward_primary_place_of_performance_state_code,
+                subaward_type,
+                created_at,
+                updated_at,
+                fetch_date,
+                kbr_prime,
+                kbr_as_sub,
+                kbr_sub_issued
+            )
+            SELECT DISTINCT ON ({sub_key_expr})
+                subaward_unique_key,
+                prime_award_unique_key,
+                subaward_number,
+                subaward_amount,
+                subaward_action_date,
+                subaward_description,
+                subawardee_name,
+                subawardee_uei,
+                subawardee_parent_name,
+                subawardee_parent_uei,
+                subawardee_city_name,
+                subawardee_state_code,
+                subawardee_country_code,
+                subawardee_country_name,
+                subawardee_business_types,
+                subaward_primary_place_of_performance_city_name,
+                subaward_primary_place_of_performance_state_code,
+                subaward_type,
+                created_at,
+                updated_at,
+                fetch_date,
+                FALSE AS kbr_prime,
+                FALSE AS kbr_as_sub,
+                FALSE AS kbr_sub_issued
+            FROM {SUB_SRC}
+            ORDER BY {sub_key_expr}, subaward_action_date DESC;
+        """)
+        connection.execute(insert_query)
+        connection.commit()
         logger.info("Subawards: removing empty columns...")
-        remove_empty_columns('usaspending_subawards_dedup')
+        exempt_cols = [
+            'subaward_unique_key', 'prime_award_unique_key', 'subaward_number', 'subaward_amount', 'subaward_action_date', 'subaward_description', 'subawardee_name', 'subawardee_uei', 'subawardee_parent_name', 'subawardee_parent_uei', 'subawardee_city_name', 'subawardee_state_code', 'subawardee_country_code', 'subawardee_country_name', 'subawardee_business_types', 'subaward_primary_place_of_performance_city_name', 'subaward_primary_place_of_performance_state_code', 'subaward_type', 'created_at', 'updated_at', 'fetch_date',
+            'prime_contract_transaction_unique_key', 'prime_contract_award_unique_key', 'prime_action_date_fiscal_year', 'prime_action_date_fiscal_quarter', 'prime_action_date', 'prime_parent_award_id_piid', 'prime_award_id_piid', 'prime_modification_number', 'prime_federal_action_obligation', 'prime_total_dollars_obligated', 'prime_potential_total_value_of_award', 'prime_total_outlayed_amount_for_overall_award', 'prime_period_of_performance_start_date', 'prime_period_of_performance_current_end_date', 'prime_period_of_performance_potential_end_date', 'prime_ordering_period_end_date', 'prime_primary_place_of_performance_city_name', 'prime_primary_place_of_performance_state_code', 'prime_prime_award_base_transaction_description', 'prime_transaction_description', 'prime_naics_code', 'prime_naics_description', 'prime_product_or_service_code', 'prime_product_or_service_code_description', 'prime_dod_acquisition_program_description', 'prime_parent_award_agency_name', 'prime_awarding_sub_agency_name', 'prime_awarding_office_name', 'prime_funding_agency_name', 'prime_funding_sub_agency_name', 'prime_funding_office_name', 'prime_recipient_name', 'prime_recipient_uei', 'prime_recipient_parent_name', 'prime_recipient_parent_uei', 'prime_solicitation_date', 'prime_solicitation_procedures', 'prime_extent_competed', 'prime_type_of_set_aside', 'prime_fair_opportunity_limited_sources', 'prime_other_than_full_and_open_competition', 'prime_number_of_offers_received', 'prime_subcontracting_plan', 'prime_government_furnished_property', 'prime_type_of_contract_pricing', 'prime_action_type', 'prime_award_type', 'prime_type_of_idc', 'prime_idv_type', 'prime_undefinitized_action', 'prime_multi_year_contract', 'prime_multiple_or_single_award_idv', 'prime_usaspending_permalink',
+            'kbr_prime', 'kbr_as_sub', 'kbr_sub_issued'
+        ]
+        remove_empty_columns('usaspending_subawards_dedup', exempt_columns=exempt_cols)
         count_query = text(f"SELECT COUNT(*) FROM {SUB_DEST}")
         row_count = connection.execute(count_query).scalar()
         logger.info(f"Subawards deduplication complete: {row_count:,} rows in final table.")
@@ -751,12 +953,13 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    logger.info(f"Python version: {sys.version}")
-    logger.info("Step 1: Cleansing raw prime awards (s1_raw.usaspending_prime_awards_slim) -> s2_interim.usaspending_prime_awards ...")
-    cleanse_data()
-    logger.info("Step 2: Deduplicating prime awards (s2_interim.usaspending_prime_awards_dedup) ...")
-    process_prime_awards()
-    logger.info("Step 3: Cleansing raw subawards (s1_raw.usaspending_subawards) -> s2_interim.usaspending_subawards ...")
-    cleanse_subawards_data()
-    logger.info("Step 4: Deduplicating subawards (s2_interim.usaspending_subawards_dedup) ...")
-    process_subawards()
+    # Run ETL steps in order
+    logger.info("\n--- Starting Prime Awards Cleansing ---")
+    cleanse_data(force_rebuild=True)
+    logger.info("\n--- Starting Subawards Cleansing ---")
+    cleanse_subawards_data(force_rebuild=True)
+    logger.info("\n--- Starting Prime Awards Deduplication ---")
+    process_prime_awards(force_rebuild=True)
+    logger.info("\n--- Starting Subawards Deduplication ---")
+    process_subawards(force_rebuild=True)
+

@@ -69,30 +69,44 @@ def enrich_prime_awards():
     """
     start_time = time.time()
     logger.info("Starting enrichment for prime awards...")
-    with engine.connect() as connection:
-        connection.execute(text("DROP TABLE IF EXISTS s2_interim.usaspending_prime_awards_enriched"))
-        connection.commit()
+    with engine.begin() as connection:
         kbr_uei_list = ', '.join([f"'{x}'" for x in UEI_LIST])
-        # kbr_as_sub: TRUE if there exists a subaward for this prime where KBR is the subawardee
-        # kbr_sub_issued: TRUE if this contract_award_unique_key appears in any subaward as prime_award_unique_key
-        create_query = text(f"""
-CREATE TABLE s2_interim.usaspending_prime_awards_enriched AS
-SELECT *,
-    CASE WHEN recipient_uei IN ({kbr_uei_list}) THEN TRUE ELSE FALSE END AS kbr_prime,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM s2_interim.usaspending_subawards_dedup sub
-        WHERE sub.prime_award_unique_key = contract_award_unique_key
-          AND sub.subawardee_uei IN ({kbr_uei_list})
-    ) THEN TRUE ELSE FALSE END AS kbr_as_sub,
-    CASE WHEN contract_award_unique_key IN (
-        SELECT DISTINCT prime_award_unique_key FROM s2_interim.usaspending_subawards_dedup WHERE prime_award_unique_key IS NOT NULL
-    ) THEN TRUE ELSE FALSE END AS kbr_sub_issued
-FROM s2_interim.usaspending_prime_awards_dedup
-""")
-        connection.execute(create_query)
-        connection.commit()
-        row_count = connection.execute(text("SELECT COUNT(*) FROM s2_interim.usaspending_prime_awards_enriched")).scalar()
-        logger.info(f"Prime awards enriched table created with {row_count:,} rows.")
+        # kbr_prime: TRUE if recipient_uei in UEI_LIST
+        update_kbr_prime = text(f"""
+            UPDATE s2_interim.usaspending_prime_awards_dedup
+            SET kbr_prime = TRUE
+            WHERE recipient_uei IN ({kbr_uei_list})
+        """)
+        result1 = connection.execute(update_kbr_prime)
+        logger.info(f"Updated kbr_prime to TRUE for {result1.rowcount:,} rows.")
+
+        # kbr_as_sub: TRUE if a KBR UEI is a subawardee for this contract and the prime recipient is NOT KBR
+        update_kbr_as_sub = text(f"""
+            UPDATE s2_interim.usaspending_prime_awards_dedup p
+            SET kbr_as_sub = TRUE
+            WHERE p.recipient_uei NOT IN ({kbr_uei_list})
+              AND EXISTS (
+                SELECT 1 FROM s2_interim.usaspending_subawards_dedup s
+                WHERE s.prime_award_unique_key = p.contract_award_unique_key
+                  AND s.subawardee_uei IN ({kbr_uei_list})
+              )
+        """)
+        result2 = connection.execute(update_kbr_as_sub)
+        logger.info(f"Updated kbr_as_sub to TRUE for {result2.rowcount:,} rows.")
+
+        # kbr_sub_issued: TRUE if this contract_award_unique_key ever appears as prime_award_unique_key in any subaward
+        update_kbr_sub_issued = text(f"""
+            UPDATE s2_interim.usaspending_prime_awards_dedup
+            SET kbr_sub_issued = TRUE
+            WHERE contract_award_unique_key IN (
+                SELECT DISTINCT prime_award_unique_key FROM s2_interim.usaspending_subawards_dedup WHERE prime_award_unique_key IS NOT NULL
+            )
+        """)
+        result3 = connection.execute(update_kbr_sub_issued)
+        logger.info(f"Updated kbr_sub_issued to TRUE for {result3.rowcount:,} rows.")
+
+        row_count = connection.execute(text("SELECT COUNT(*) FROM s2_interim.usaspending_prime_awards_dedup")).scalar()
+        logger.info(f"Prime awards enrichment complete. Table has {row_count:,} rows.")
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
@@ -104,14 +118,29 @@ def enrich_subawards():
     Enrich the subawards table by joining to prime awards and adding KBR/affiliate flags.
     Adds:
         - All prime columns (prefixed as needed)
-        - kbr_as_sub: TRUE if subawardee_uei in UEI_LIST
+        - kbr_as_sub: TRUE if subawardee_uei in UEI_LIST AND joined prime recipient_uei is NOT in UEI_LIST
         - kbr_sub_issued: TRUE if joined prime uei in UEI_LIST
     """
     start_time = time.time()
     logger.info("Starting enrichment for subawards...")
+    # Determine batch size for ~10 batches
     with engine.begin() as connection:
-        connection.execute(text("DROP TABLE IF EXISTS s2_interim.usaspending_subawards_enriched"))
-        # Get all columns from prime table for join
+        # Safety: avoid indefinite waits
+        try:
+            connection.execute(text("SET LOCAL statement_timeout = '30min'"))
+        except Exception as _:
+            pass
+        min_key = connection.execute(text("SELECT MIN(subaward_unique_key) FROM s2_interim.usaspending_subawards_dedup")).scalar()
+        max_key = connection.execute(text("SELECT MAX(subaward_unique_key) FROM s2_interim.usaspending_subawards_dedup")).scalar()
+    if min_key is None or max_key is None:
+        logger.warning("No subaward_unique_key values found. Skipping enrichment.")
+        return 0
+    total_rows = max_key - min_key + 1
+    batch_size = max(1, total_rows // 10)
+    logger.info(f"Batch size for subawards enrichment set to {batch_size} to complete in ~10 batches.")
+    with engine.begin() as connection:
+
+        # Materialize best prime row per contract_award_unique_key into a temp/interim table
         kbr_uei_list = ', '.join([f"'{x}'" for x in UEI_LIST])
         prime_cols = connection.execute(text("""
             SELECT column_name FROM information_schema.columns
@@ -125,53 +154,96 @@ def enrich_subawards():
         sub_cols = [row[0] for row in sub_cols]
         join_prime_cols = [col for col in prime_cols if col not in sub_cols or col == 'contract_award_unique_key']
         select_prime_cols = []
+        target_prime_cols = []
         for col in join_prime_cols:
             if col == 'contract_award_unique_key':
-                select_prime_cols.append(f"p.{col} AS contract_award_unique_key")
+                select_prime_cols.append(f"prime.{col} AS contract_award_unique_key")
+                target_prime_cols.append("contract_award_unique_key")
             else:
-                select_prime_cols.append(f"p.{col} AS prime_{col}")
-        select_sub_cols = [f"s.{col}" for col in sub_cols]
+                select_prime_cols.append(f"prime.{col} AS prime_{col}")
+                target_prime_cols.append(f"prime_{col}")
+        kbr_flag_cols = {"kbr_prime", "kbr_as_sub", "kbr_sub_issued"}
+        select_sub_cols = [f"s.{col}" for col in sub_cols if col not in kbr_flag_cols]
+        target_sub_cols = [col for col in sub_cols if col not in kbr_flag_cols]
         select_cols = select_sub_cols + select_prime_cols
+        target_cols = target_sub_cols + target_prime_cols + ["kbr_prime", "kbr_as_sub", "kbr_sub_issued"]
         select_cols_str = ',\n    '.join(select_cols)
-        # Create the empty table with the correct structure
-        connection.execute(text(f"""
-            CREATE TABLE s2_interim.usaspending_subawards_enriched (LIKE s2_interim.usaspending_subawards_dedup INCLUDING ALL)
-        """))
-        # Add prime columns (with prefix) and enrichment columns
-        for col in join_prime_cols:
-            if col == 'contract_award_unique_key':
-                continue
-            connection.execute(text(f"ALTER TABLE s2_interim.usaspending_subawards_enriched ADD COLUMN prime_{col} TEXT"))
-        # Add enrichment columns
-        connection.execute(text("ALTER TABLE s2_interim.usaspending_subawards_enriched ADD COLUMN kbr_prime BOOLEAN"))
-        connection.execute(text("ALTER TABLE s2_interim.usaspending_subawards_enriched ADD COLUMN kbr_as_sub BOOLEAN"))
-        connection.execute(text("ALTER TABLE s2_interim.usaspending_subawards_enriched ADD COLUMN kbr_sub_issued BOOLEAN"))
+        target_cols_str = ', '.join(target_cols)
 
-        # Get min and max subaward_unique_key for batching
-        min_key = connection.execute(text("SELECT MIN(subaward_unique_key) FROM s2_interim.usaspending_subawards_dedup")).scalar()
-        max_key = connection.execute(text("SELECT MAX(subaward_unique_key) FROM s2_interim.usaspending_subawards_dedup")).scalar()
-        batch_size = 1000000
-        total_inserted = 0
-        for batch_start in range(min_key, max_key + 1, batch_size):
-            batch_end = batch_start + batch_size - 1
-            logger.info(f"Processing subawards batch: {batch_start} to {batch_end}")
-            insert_query = text(f"""
-                INSERT INTO s2_interim.usaspending_subawards_enriched
-                SELECT
-                    {select_cols_str},
-                    CASE WHEN p.recipient_uei IN ({kbr_uei_list}) THEN TRUE ELSE FALSE END AS kbr_prime,
-                    CASE WHEN s.subawardee_uei IN ({kbr_uei_list}) THEN TRUE ELSE FALSE END AS kbr_as_sub,
-                    CASE WHEN p.recipient_uei IN ({kbr_uei_list}) AND (s.subawardee_uei IS NULL OR s.subawardee_uei NOT IN ({kbr_uei_list})) THEN TRUE ELSE FALSE END AS kbr_sub_issued
-                FROM s2_interim.usaspending_subawards_dedup s
-                LEFT JOIN s2_interim.usaspending_prime_awards_dedup p
-                    ON s.prime_award_unique_key = p.contract_award_unique_key
-                WHERE s.subaward_unique_key >= {batch_start} AND s.subaward_unique_key <= {batch_end}
-            """)
-            connection.execute(insert_query)
-            total_inserted += connection.execute(text(f"SELECT COUNT(*) FROM s2_interim.usaspending_subawards_enriched WHERE subaward_unique_key >= {batch_start} AND subaward_unique_key <= {batch_end}")).scalar()
-            logger.info(f"Inserted batch: {batch_start} to {batch_end}")
+        # Step 1: Create bestmod TEMP table via batched keys to avoid large sorts/memory spikes
+        logger.info("Collecting referenced contract_award_unique_key values into TEMP table...")
+        connection.execute(text("DROP TABLE IF EXISTS pg_temp.sub_keys"))
+        connection.execute(text(
+            """
+            CREATE TEMP TABLE sub_keys AS
+            SELECT ROW_NUMBER() OVER (ORDER BY prime_award_unique_key) AS rn,
+                   prime_award_unique_key AS contract_award_unique_key
+            FROM (
+                SELECT DISTINCT prime_award_unique_key
+                FROM s2_interim.usaspending_subawards_dedup
+                WHERE prime_award_unique_key IS NOT NULL
+            ) t
+            """
+        ))
+        key_count = connection.execute(text("SELECT COUNT(*) FROM sub_keys")).scalar()
+        logger.info(f"Referenced keys collected: {key_count:,}")
+
+        logger.info("Preparing TEMP table prime_awards_bestmod (empty)...")
+        connection.execute(text("DROP TABLE IF EXISTS pg_temp.prime_awards_bestmod"))
+        connection.execute(text(
+            """
+            CREATE TEMP TABLE prime_awards_bestmod AS
+            SELECT * FROM s2_interim.usaspending_prime_awards_dedup WHERE false
+            """
+        ))
+
+        keys_per_batch = 50000
+        num_key_batches = max(1, (key_count + keys_per_batch - 1) // keys_per_batch)
+        logger.info(f"Building bestmod in {num_key_batches} batches of up to {keys_per_batch} keys...")
+        total_inserted_best = 0
+        t0 = time.time()
+        for batch_idx in range(num_key_batches):
+            start_rn = batch_idx * keys_per_batch + 1
+            end_rn = min((batch_idx + 1) * keys_per_batch, key_count)
+            logger.info(f"[Bestmod {batch_idx+1}/{num_key_batches}] Keys rn {start_rn}-{end_rn}...")
+            insert_sql = text(
+                f"""
+                INSERT INTO prime_awards_bestmod
+                SELECT DISTINCT ON (p.contract_award_unique_key) p.*
+                FROM s2_interim.usaspending_prime_awards_dedup p
+                INNER JOIN sub_keys k
+                    ON k.contract_award_unique_key = p.contract_award_unique_key
+                WHERE k.rn BETWEEN {start_rn} AND {end_rn}
+                ORDER BY p.contract_award_unique_key,
+                         (p.modification_number = '0') DESC,
+                         p.modification_number DESC
+                """
+            )
+            bstart = time.time()
+            result = connection.execute(insert_sql)
+            bins = result.rowcount if hasattr(result, 'rowcount') else None
+            total_inserted_best += (bins or 0)
+            logger.info(f"[Bestmod {batch_idx+1}/{num_key_batches}] Inserted {bins if bins is not None else '?'} rows in {time.time()-bstart:.2f}s.")
+        logger.info(f"Bestmod TEMP table built with {total_inserted_best:,} rows in {time.time()-t0:.2f}s.")
+
+        # Step 2: Enrich subawards with direct join to bestmod table
+        logger.info("Creating subawards_enriched via direct join to TEMP bestmod table...")
+        connection.execute(text("DROP TABLE IF EXISTS s2_interim.usaspending_subawards_enriched"))
+        create_final_sql = f"""
+            CREATE TABLE s2_interim.usaspending_subawards_enriched AS
+            SELECT {select_cols_str},
+                CASE WHEN prime.recipient_uei IN ({kbr_uei_list}) THEN TRUE ELSE FALSE END AS kbr_prime,
+                CASE WHEN s.subawardee_uei IN ({kbr_uei_list}) AND (prime.recipient_uei IS NULL OR prime.recipient_uei NOT IN ({kbr_uei_list})) THEN TRUE ELSE FALSE END AS kbr_as_sub,
+                CASE WHEN prime.recipient_uei IN ({kbr_uei_list}) AND (s.subawardee_uei IS NULL OR s.subawardee_uei NOT IN ({kbr_uei_list})) THEN TRUE ELSE FALSE END AS kbr_sub_issued
+            FROM s2_interim.usaspending_subawards_dedup s
+            LEFT JOIN prime_awards_bestmod prime
+                ON s.prime_award_unique_key = prime.contract_award_unique_key
+        """
+        t1 = time.time()
+        connection.execute(text(create_final_sql))
         row_count = connection.execute(text("SELECT COUNT(*) FROM s2_interim.usaspending_subawards_enriched")).scalar()
-        logger.info(f"Subawards enriched table created with {row_count:,} rows.")
+        logger.info(f"Subawards enriched table created with {row_count:,} rows in {time.time() - t1:.2f}s.")
+
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
@@ -187,6 +259,32 @@ def enrich_all():
     results = {}
     results['prime_awards'] = enrich_prime_awards()
     results['subawards'] = enrich_subawards()
+    # Verification step: compare kbr_as_sub and kbr_sub_issued counts
+    with engine.begin() as connection:
+        kbr_as_sub_prime = connection.execute(text("""
+            SELECT COUNT(*) FROM s2_interim.usaspending_prime_awards_dedup WHERE kbr_as_sub IS TRUE
+        """)).scalar()
+        kbr_as_sub_sub = connection.execute(text("""
+            SELECT COUNT(*) FROM s2_interim.usaspending_subawards_enriched WHERE kbr_as_sub IS TRUE
+        """)).scalar()
+        kbr_sub_issued_prime = connection.execute(text("""
+            SELECT COUNT(*) FROM s2_interim.usaspending_prime_awards_dedup WHERE kbr_sub_issued IS TRUE
+        """)).scalar()
+        kbr_sub_issued_sub = connection.execute(text("""
+            SELECT COUNT(*) FROM s2_interim.usaspending_subawards_enriched WHERE kbr_sub_issued IS TRUE
+        """)).scalar()
+        logger.info(f"Verification: kbr_as_sub (prime table): {kbr_as_sub_prime:,}")
+        logger.info(f"Verification: kbr_as_sub (subawards table): {kbr_as_sub_sub:,}")
+        logger.info(f"Verification: kbr_sub_issued (prime table): {kbr_sub_issued_prime:,}")
+        logger.info(f"Verification: kbr_sub_issued (subawards table): {kbr_sub_issued_sub:,}")
+        if kbr_as_sub_prime != kbr_as_sub_sub:
+            logger.warning(f"Mismatch: kbr_as_sub count differs between prime ({kbr_as_sub_prime:,}) and subawards ({kbr_as_sub_sub:,}) tables!")
+        else:
+            logger.info("kbr_as_sub counts match between prime and subawards tables.")
+        if kbr_sub_issued_prime != kbr_sub_issued_sub:
+            logger.warning(f"Mismatch: kbr_sub_issued count differs between prime ({kbr_sub_issued_prime:,}) and subawards ({kbr_sub_issued_sub:,}) tables!")
+        else:
+            logger.info("kbr_sub_issued counts match between prime and subawards tables.")
     elapsed_all = time.time() - start_all
     minutes_all = int(elapsed_all // 60)
     seconds_all = int(elapsed_all % 60)
