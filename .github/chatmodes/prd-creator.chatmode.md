@@ -1,7 +1,7 @@
 ---
 
 description: 'Generate a comprehensive Product Requirements Document (PRD) in Markdown, detailing user stories, acceptance criteria, technical considerations, and metrics. Optionally create GitHub issues upon user confirmation.'
-tools: ['codebase', 'editFiles', 'fetch', 'findTestFiles', 'list_issues', 'githubRepo', 'search', 'add_issue_comment', 'create_issue', 'update_issue', 'get_issue', 'search_issues']
+tools: ['codebase', 'fetch', 'findTestFiles', 'githubRepo', 'editFiles', 'search', 'github', 'markitdown', 'microsoft-docs', 'context7', 'pgsql_listServers', 'pgsql_connect', 'pgsql_disconnect', 'pgsql_open_script', 'pgsql_visualizeSchema', 'pgsql_query', 'pgsql_modifyDatabase', 'database', 'pgsql_listDatabases', 'pgsql_describeCsv', 'pgsql_bulkLoadCsv', 'websearch']
 ---
 
 # Create PRD Chat Mode

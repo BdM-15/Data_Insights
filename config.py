@@ -343,7 +343,8 @@ def get_api_config() -> Dict[str, Any]:
         "SAM_API_CHUNK_SIZE": int(os.getenv("SAM_API_CHUNK_SIZE", "7")),
         "SAM_API_MAX_CONSECUTIVE_FAILURES": int(os.getenv("SAM_API_MAX_CONSECUTIVE_FAILURES", "3")),
         "DAILY_REQUEST_LIMIT": int(os.getenv("DAILY_REQUEST_LIMIT", "1000")),
-        "SAM_API_BASE_URL": os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/prod/opportunities/v1/search"),
+        # Default to SAM.gov Opportunities v2 endpoint per current docs
+        "SAM_API_BASE_URL": os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/opportunities/v2/search"),
         "BLS_API_URL": os.getenv("BLS_API_URL", "https://api.bls.gov/publicAPI/v2"),
         "BLS_API_KEY": os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
     }

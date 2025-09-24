@@ -1,0 +1,345 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "USAspending.gov API Connector",
+    "description": "Connector for fetching federal contract data from USAspending.gov. Supports business development by providing award details, funding, transactions, and subawards. No API key needed. Use for layman-friendly queries like \"Get details for contract ID X\". Parameters often include filters like dates (YYYY-MM-DD) or types (e.g., award_type_codes: A for definitive contracts, B for indefinite delivery, etc. full list in glossary).",
+    "version": "1.0.0"
+  },
+  "host": "api.usaspending.gov",
+  "basePath": "/api/v2",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "tags": [
+    {"name": "References", "description": "Reference data endpoints"},
+    {"name": "Awards", "description": "Award-related endpoints"},
+    {"name": "Transactions", "description": "Transaction-related endpoints"},
+    {"name": "Subawards", "description": "Subaward-related endpoints"}
+  ],
+  "paths": {
+    "/references/glossary/": {
+      "get": {
+        "tags": ["References"],
+        "summary": "Get Glossary Terms",
+        "description": "Retrieves definitions for federal spending terms. Helpful for understanding data like 'PIID' (unique contract ID) or 'NAICS codes' (industry classifications, e.g., 541512 for computer systems design). No inputs needed—returns all terms.",
+        "operationId": "GetGlossary",
+        "responses": {
+          "200": {
+            "description": "Glossary list.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array",
+                  "description": "Array of terms.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "term": {"type": "string", "description": "Term name (e.g., 'Award Amount')."},
+                      "definition": {"type": "string", "description": "Plain English explanation."}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/{award_id}/": {
+      "get": {
+        "tags": ["Awards"],
+        "summary": "Get Award Details",
+        "operationId": "GetAwardDetails",
+        "description": "Fetches full details for an award using its ID. Includes agency, recipient, amounts, dates, and more—like what you'd see on USAspending.gov award pages.",
+        "parameters": [
+          {"name": "award_id", "in": "path", "required": true, "type": "string", "description": "Award ID (generated_unique_award_id or internal award id).", "x-ms-url-encoding": "single"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Award data.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "piid": {"type": "string"},
+                "awarding_agency": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string", "description": "Agency name (e.g., 'Department of Energy')."}
+                  }
+                },
+                "recipient": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "uei": {"type": "string", "description": "Unique Entity ID."}
+                  }
+                },
+                "period_of_performance": {
+                  "type": "object",
+                  "properties": {
+                    "start_date": {"type": "string", "description": "Format YYYY-MM-DD."},
+                    "end_date": {"type": "string"}
+                  }
+                },
+                "total_obligation": {"type": "number", "format": "float"},
+                "description": {"type": "string"}
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/count/federal_account/{award_id}/": {
+      "get": {
+        "tags": ["Awards"],
+        "summary": "Count Federal Accounts",
+        "operationId": "CountFederalAccounts",
+        "description": "Counts funding accounts for a contract. Useful for budget analysis—e.g., how many govt 'pots of money' support it.",
+        "parameters": [
+          {"name": "award_id", "in": "path", "type": "string", "required": true, "description": "Contract ID."}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count.",
+            "schema": {"type": "object", "properties": {"federal_account_count": {"type": "integer", "format": "int32", "description": "Number of accounts."}}}
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/funding_rollup": {
+      "post": {
+        "tags": ["Awards"],
+        "summary": "Get Funding Summary",
+        "operationId": "GetFundingRollup",
+        "description": "Summarizes total funding, obligations, and agencies for a contract. Ideal for price strategy—shows committed vs. spent money.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "award_id": {"type": "string", "description": "Contract ID."}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Funding rollup.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "transaction_obligated_amount": {"type": "number", "format": "float"},
+                "awarding_agency_count": {"type": "integer", "format": "int32"},
+                "funding_agency_count": {"type": "integer", "format": "int32"},
+                "federal_account_count": {"type": "integer", "format": "int32"}
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/transactions/": {
+      "post": {
+        "tags": ["Transactions"],
+        "summary": "List Transactions",
+        "operationId": "ListTransactions",
+        "description": "Gets payment/modification history for a contract. Filter by date or type for IDIQ orders. Pagination: Use page/limit to handle large sets.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "award_id": {"type": "string"},
+                "page": {"type": "integer", "format": "int32", "description": "Page number (starts at 1)."},
+                "limit": {"type": "integer", "format": "int32", "description": "Items per page (up to 100)."},
+                "sort": {"type": "string", "description": "Field like 'action_date'."},
+                "order": {"type": "string", "description": "Sort order: asc or desc.", "enum": ["asc", "desc"]}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions list.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {"type": "integer", "format": "int32"},
+                      "action_date": {"type": "string"},
+                      "transaction_amount": {"type": "number", "format": "float"},
+                      "modification_number": {"type": "string"}
+                    }
+                  }
+                },
+                "page_metadata": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer", "format": "int32"},
+                    "page": {"type": "integer", "format": "int32"},
+                    "has_next_page": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/count/transaction/{award_id}/": {
+      "get": {
+        "tags": ["Awards"],
+        "summary": "Count Transactions",
+        "operationId": "CountTransactions",
+        "description": "Quick count of changes/payments for a contract. Helps gauge complexity.",
+        "parameters": [
+          {"name": "award_id", "in": "path", "type": "string", "required": true, "description": "Contract ID."}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count.",
+            "schema": {"type": "object", "properties": {"transaction_count": {"type": "integer", "format": "int32"}}}
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/count/subaward/{award_id}/": {
+      "get": {
+        "tags": ["Awards"],
+        "summary": "Count Subawards",
+        "operationId": "CountSubawards",
+        "description": "Counts subcontracts under a contract. For teaming intel.",
+        "parameters": [
+          {"name": "award_id", "in": "path", "type": "string", "required": true, "description": "Contract ID."}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count.",
+            "schema": {"type": "object", "properties": {"subaward_count": {"type": "integer", "format": "int32"}}}
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/awards/accounts/": {
+      "post": {
+        "tags": ["Awards"],
+        "summary": "List Funding Accounts",
+        "operationId": "ListFundingAccounts",
+        "description": "Lists govt accounts funding the contract. Useful for customer budgeting.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "award_id": {"type": "string"},
+                "page": {"type": "integer", "format": "int32"},
+                "limit": {"type": "integer", "format": "int32"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts list.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "account_title": {"type": "string"},
+                      "federal_account_code": {"type": "string"},
+                      "total_obligated_amount": {"type": "number", "format": "float"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    },
+  "/subawards/": {
+      "post": {
+        "tags": ["Subawards"],
+        "summary": "List Subawards",
+        "operationId": "ListSubawards",
+        "description": "Details on subcontracts, including recipients and amounts. Filter for specifics. Use for competitor/subcontractor analysis.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "award_id": {"type": "string"},
+                "page": {"type": "integer", "format": "int32"},
+                "limit": {"type": "integer", "format": "int32"},
+                "sort": {"type": "string"},
+                "order": {"type": "string", "description": "Sort order: asc or desc.", "enum": ["asc", "desc"]}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subawards list.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subaward_id": {"type": "integer", "format": "int32"},
+                      "subaward_amount": {"type": "number", "format": "float"},
+                      "awardee_name": {"type": "string"},
+                      "awardee_duns": {"type": "string"},
+                      "description": {"type": "string"}
+                    }
+                  }
+                },
+                "page_metadata": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer", "format": "int32"},
+                    "page": {"type": "integer", "format": "int32"},
+                    "has_next_page": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          },
+          "default": {"description": "Operation Failed."}
+        }
+      }
+    }
+  }
+}

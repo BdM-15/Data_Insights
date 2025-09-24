@@ -1,0 +1,392 @@
+swagger: "2.0"
+info:
+  title: "USASpending Custom Connector"
+  description: "Connects to USAspending.gov to fetch federal award data for business development, like contract details, spending trends, and competitor intel."
+  version: "1.0.0"
+host: "api.usaspending.gov"
+schemes:
+  - "https"
+produces:
+  - "application/json"
+paths:
+  /api/v2/references/glossary/:
+    get:
+      summary: "Get Glossary"
+      description: "Returns definitions of terms used in federal spending (e.g., what 'NAICS code' means—it's a way to classify industries like 'IT services')."
+      parameters: []
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items:
+                  $ref: "#/definitions/GlossaryTerm"
+  /api/v2/awards/{id}/:
+    get:
+      summary: "Get Award Details"
+      description: "Fetches details on a specific award (contract) by ID, like the example URL you gave (e.g., award amount, recipient, description)."
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: "The unique ID of the award, e.g., from a USAspending.gov link."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            $ref: "#/definitions/AwardDetails"
+  /api/v2/awards/count/federal_account/:
+    post:
+      summary: "Count Awards by Account"
+      description: "Counts awards linked to a federal account (a pot of money for an agency). Filters by keywords, dates, etc."
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              filters:
+                type: object
+                properties:
+                  keyword:
+                    type: string
+                    description: "Search term like 'IT services'."
+                  start_date:
+                    type: string
+                    description: "YYYY-MM-DD"
+                  end_date:
+                    type: string
+                    description: "YYYY-MM-DD"
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+  /api/v2/awards/funding_rollup/:
+    post:
+      summary: "Get Funding Summary"
+      description: "Rolls up total funding for an award, including obligations (promised money) and outlays (actual spent)."
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              award_id:
+                type: string
+                description: "The unique ID of the award."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            $ref: "#/definitions/FundingRollup"
+  /api/v2/transactions/:
+    get:
+      summary: "List Transactions"
+      description: "Lists individual transactions (payments or changes) for awards, with filters like date or amount."
+      parameters:
+        - name: award_id
+          in: query
+          type: string
+          description: "The unique ID of the award."
+        - name: page
+          in: query
+          type: integer
+          description: "Page number for pagination."
+        - name: limit
+          in: query
+          type: integer
+          description: "Number of results per page."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items:
+                  $ref: "#/definitions/Transaction"
+  /api/v2/awards/count/transaction/:
+    post:
+      summary: "Count Transactions"
+      description: "Counts transactions for an award (e.g., how many payments?)."
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              award_id:
+                type: string
+                description: "The unique ID of the award."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              transaction_count:
+                type: integer
+  /api/v2/awards/count/subaward/:
+    post:
+      summary: "Count Subawards"
+      description: "Counts subawards (subcontracts under a main award)."
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              award_id:
+                type: string
+                description: "The unique ID of the award."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              subaward_count:
+                type: integer
+  /api/v2/awards/accounts/:
+    post:
+      summary: "List Funding Accounts"
+      description: "Lists federal accounts funding an award."
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              award_id:
+                type: string
+                description: "The unique ID of the award."
+              page:
+                type: integer
+              limit:
+                type: integer
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items:
+                  $ref: "#/definitions/FundingAccount"
+  /api/v2/subawards/:
+    get:
+      summary: "List Subawards"
+      description: "Details on subawards, like sub-recipient and amount."
+      parameters:
+        - name: award_id
+          in: query
+          type: string
+          description: "The unique ID of the award."
+        - name: page
+          in: query
+          type: integer
+          description: "Page number for pagination."
+        - name: limit
+          in: query
+          type: integer
+          description: "Number of results per page."
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items:
+                  $ref: "#/definitions/Subaward"
+definitions:
+  GlossaryTerm:
+    type: object
+    properties:
+      term:
+        type: string
+        description: "The term being defined."
+      definition:
+        type: string
+        description: "The definition of the term."
+  AwardDetails:
+    type: object
+    properties:
+      id:
+        type: number
+        description: "Internal ID of the award."
+      generated_unique_award_id:
+        type: string
+        description: "Unique generated ID for the award."
+      piid:
+        type: string
+        description: "Procurement Instrument Identifier."
+      category:
+        type: string
+        description: "Category of the award (e.g., contract)."
+      type:
+        type: string
+        description: "Type code of the award."
+      type_description:
+        type: string
+        description: "Description of the award type."
+      description:
+        type: string
+        description: "Description of the award."
+      total_obligation:
+        type: number
+        description: "Total obligated amount."
+      subaward_count:
+        type: integer
+        description: "Number of subawards."
+      total_subaward_amount:
+        type: number
+        description: "Total subaward amount."
+      date_signed:
+        type: string
+        description: "Date the award was signed."
+      base_exercised_options:
+        type: number
+        description: "Base exercised options amount."
+      base_and_all_options:
+        type: number
+        description: "Base and all options amount."
+      parent_award:
+        type: object
+        description: "Details of the parent award."
+      awarding_agency:
+        type: object
+        description: "Awarding agency details."
+      funding_agency:
+        type: object
+        description: "Funding agency details."
+      recipient:
+        type: object
+        description: "Recipient details."
+      period_of_performance:
+        type: object
+        description: "Period of performance details."
+      place_of_performance:
+        type: object
+        description: "Place of performance details."
+      latest_transaction_contract_data:
+        type: object
+        description: "Latest transaction contract data."
+      executive_details:
+        type: object
+        description: "Executive details."
+  FundingRollup:
+    type: object
+    properties:
+      total_transaction_obligated_amount:
+        type: number
+        description: "Total obligated amount."
+      awarding_agency_count:
+        type: integer
+        description: "Number of awarding agencies."
+      funding_agency_count:
+        type: integer
+        description: "Number of funding agencies."
+      federal_account_count:
+        type: integer
+        description: "Number of federal accounts."
+  Transaction:
+    type: object
+    properties:
+      transaction_id:
+        type: number
+        description: "ID of the transaction."
+      action_date:
+        type: string
+        description: "Action date of the transaction."
+      action_type:
+        type: string
+        description: "Type of action."
+      modification_number:
+        type: string
+        description: "Modification number."
+      description:
+        type: string
+        description: "Description of the transaction."
+      transaction_amount:
+        type: number
+        description: "Amount of the transaction."
+  FundingAccount:
+    type: object
+    properties:
+      transaction_obligated_amount:
+        type: number
+        description: "Obligated amount."
+      gross_outlay_amount:
+        type: number
+        description: "Outlay amount."
+      disaster_emergency_fund_code:
+        type: string
+        description: "Disaster emergency fund code."
+      federal_account:
+        type: string
+        description: "Federal account code."
+      account_title:
+        type: string
+        description: "Title of the account."
+      funding_agency_name:
+        type: string
+        description: "Name of the funding agency."
+      funding_agency_id:
+        type: number
+        description: "ID of the funding agency."
+      funding_toptier_agency_id:
+        type: number
+        description: "Top tier funding agency ID."
+      funding_agency_slug:
+        type: string
+        description: "Slug of the funding agency."
+      awarding_agency_name:
+        type: string
+        description: "Name of the awarding agency."
+      awarding_agency_id:
+        type: number
+        description: "ID of the awarding agency."
+      awarding_toptier_agency_id:
+        type: number
+        description: "Top tier awarding agency ID."
+      awarding_agency_slug:
+        type: string
+        description: "Slug of the awarding agency."
+  Subaward:
+    type: object
+    properties:
+      subaward_id:
+        type: number
+        description: "ID of the subaward."
+      subaward_number:
+        type: string
+        description: "Number of the subaward."
+      amount:
+        type: number
+        description: "Amount of the subaward."
+      description:
+        type: string
+        description: "Description of the subaward."
+      action_date:
+        type: string
+        description: "Action date of the subaward."
+      recipient_name:
+        type: string
+        description: "Name of the sub-recipient."

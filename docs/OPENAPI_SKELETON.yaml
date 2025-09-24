@@ -1,0 +1,837 @@
+openapi: 3.0.3
+info:
+  title: Capture Intelligence Platform API
+  version: 0.1.0
+  description: |
+    Skeleton OpenAPI specification for the greenfield Next.js + FastAPI implementation.
+    This file defines the initial contract surface distilled from the current Streamlit prototype,
+    visualization SQL catalog, and PRD. All paths are draft and may be refined during implementation.
+  contact:
+    name: Platform Team
+servers:
+  - url: https://api.example.com/v1
+    description: Production (placeholder)
+  - url: https://staging.api.example.com/v1
+    description: Staging (placeholder)
+  - url: http://localhost:8000/v1
+    description: Local dev
+
+tags:
+  - name: health
+  - name: auth
+  - name: metadata
+  - name: filters
+  - name: awards
+  - name: agencies
+  - name: competition
+  - name: vehicles
+  - name: geography
+  - name: projections
+  - name: expiring
+  - name: subawards
+  - name: mentor-protege
+  - name: embeddings
+  - name: search
+  - name: call-plan
+  - name: llm
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness & readiness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /auth/token:
+    post:
+      tags: [auth]
+      summary: Exchange credentials for access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthRequest" }
+      responses:
+        "200":
+          {
+            description: Issued token,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AuthToken" } },
+              },
+          }
+        "401": { description: Invalid credentials }
+
+  /metadata/version:
+    get:
+      tags: [metadata]
+      summary: API & data version metadata
+      responses:
+        "200":
+          {
+            description: Version info,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/VersionInfo" } },
+              },
+          }
+
+  /filters/options:
+    get:
+      tags: [filters]
+      summary: Enumerated filter values (cached)
+      parameters:
+        - in: query
+          name: domain
+          schema:
+            { type: string, enum: [naics, psc, agency, recipient, vehicle] }
+          required: true
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Optional fuzzy search substring
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, minimum: 1, maximum: 500 }
+      responses:
+        "200":
+          {
+            description: Filter values,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/FilterOptionsResponse" },
+                  },
+              },
+          }
+
+  /awards/summary:
+    get:
+      tags: [awards]
+      summary: Award executive summary metrics
+      parameters:
+        [
+          { $ref: "#/components/parameters/naics" },
+          { $ref: "#/components/parameters/start_date" },
+          { $ref: "#/components/parameters/end_date" },
+          { $ref: "#/components/parameters/agency" },
+          { $ref: "#/components/parameters/psc" },
+          { $ref: "#/components/parameters/recipient" },
+        ]
+      responses:
+        "200":
+          {
+            description: Summary metrics,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AwardSummaryResponse" },
+                  },
+              },
+          }
+
+  /awards/quarterly-trends:
+    get:
+      tags: [awards]
+      summary: Quarterly fiscal trends (cumulative per FY)
+      parameters:
+        [
+          { $ref: "#/components/parameters/naics" },
+          { $ref: "#/components/parameters/start_date" },
+          { $ref: "#/components/parameters/end_date" },
+          { $ref: "#/components/parameters/agency" },
+          { $ref: "#/components/parameters/psc" },
+        ]
+      responses:
+        "200":
+          {
+            description: Time series,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/QuarterlyTrendSeries" },
+                  },
+              },
+          }
+
+  /agencies/top:
+    get:
+      tags: [agencies]
+      summary: Top agencies by count or obligation
+      parameters:
+        - in: query
+          name: metric
+          schema: { type: string, enum: [count, obligation], default: count }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 15 }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/start_date"
+        - $ref: "#/components/parameters/end_date"
+        - $ref: "#/components/parameters/psc"
+      responses:
+        "200":
+          {
+            description: Agencies,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/TopAgenciesResponse" },
+                  },
+              },
+          }
+
+  /agencies/{agency}/top-breakdown:
+    get:
+      tags: [agencies]
+      summary: Agency-specific NAICS / PSC / contractors breakdown
+      parameters:
+        - name: agency
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/start_date"
+        - $ref: "#/components/parameters/end_date"
+        - $ref: "#/components/parameters/psc"
+      responses:
+        "200":
+          {
+            description: Breakdown sets,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AgencyBreakdownResponse" },
+                  },
+              },
+          }
+
+  /competition/treemap:
+    get:
+      tags: [competition]
+      summary: Competitive landscape treemap data
+      parameters:
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/start_date"
+        - $ref: "#/components/parameters/end_date"
+        - $ref: "#/components/parameters/agency"
+        - $ref: "#/components/parameters/psc"
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          {
+            description: Treemap nodes,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TreemapResponse" } },
+              },
+          }
+
+  /competition/agency-relations:
+    get:
+      tags: [competition]
+      summary: Competitor-agency relationship matrix (top N competitors)
+      parameters:
+        - in: query
+          name: top_n
+          schema: { type: integer, default: 5 }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/start_date"
+        - $ref: "#/components/parameters/end_date"
+        - $ref: "#/components/parameters/psc"
+      responses:
+        "200":
+          {
+            description: Heatmap cells,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/CompetitorAgencyMatrix" },
+                  },
+              },
+          }
+
+  /vehicles/agency-preferences:
+    get:
+      tags: [vehicles]
+      summary: Agency contract vehicle preference distribution
+      parameters:
+        [
+          { $ref: "#/components/parameters/naics" },
+          { $ref: "#/components/parameters/start_date" },
+          { $ref: "#/components/parameters/end_date" },
+          { $ref: "#/components/parameters/agency" },
+          { $ref: "#/components/parameters/psc" },
+        ]
+      responses:
+        "200":
+          {
+            description: Vehicle obligations,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AgencyVehiclePreferences" },
+                  },
+              },
+          }
+
+  /geography/states:
+    get:
+      tags: [geography]
+      summary: Obligations aggregated by recipient state
+      parameters:
+        [
+          { $ref: "#/components/parameters/naics" },
+          { $ref: "#/components/parameters/start_date" },
+          { $ref: "#/components/parameters/end_date" },
+          { $ref: "#/components/parameters/agency" },
+          { $ref: "#/components/parameters/psc" },
+        ]
+      responses:
+        "200":
+          {
+            description: State obligations,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/StateObligationResponse" },
+                  },
+              },
+          }
+
+  /projections/five-year:
+    get:
+      tags: [projections]
+      summary: Five-year recompete & suitability projection
+      parameters:
+        - in: query
+          name: suitability_percentage
+          schema:
+            {
+              type: number,
+              format: float,
+              default: 9.0,
+              minimum: 0,
+              maximum: 100,
+            }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/agency"
+      responses:
+        "200":
+          {
+            description: Projection quarters,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/ProjectionSeries" } },
+              },
+          }
+
+  /expiring/contracts:
+    get:
+      tags: [expiring]
+      summary: Contracts expiring within horizon
+      parameters:
+        - in: query
+          name: months_ahead
+          schema: { type: integer, default: 24, minimum: 1, maximum: 60 }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/agency"
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100 }
+      responses:
+        "200":
+          {
+            description: Expiring contracts,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        $ref: "#/components/schemas/ExpiringContractsResponse",
+                      },
+                  },
+              },
+          }
+
+  /subawards/summary:
+    get:
+      tags: [subawards]
+      summary: Prime vs subcontract role metrics (KBR-centric)
+      parameters:
+        [
+          { $ref: "#/components/parameters/start_date" },
+          { $ref: "#/components/parameters/end_date" },
+        ]
+      responses:
+        "200":
+          {
+            description: Subaward stance,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/SubawardSummary" } },
+              },
+          }
+
+  /mentor-protege/active:
+    get:
+      tags: [mentor-protege]
+      summary: Active SBA mentor-protégé relationships
+      parameters:
+        - in: query
+          name: mentor
+          schema: { type: string }
+        - in: query
+          name: protege
+          schema: { type: string }
+      responses:
+        "200":
+          {
+            description: Relationships,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/MentorProtegeList" },
+                  },
+              },
+          }
+
+  /embeddings/query:
+    post:
+      tags: [embeddings]
+      summary: Vector similarity search over prime/subaward semantic corpus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmbeddingSearchRequest" }
+      responses:
+        "200":
+          {
+            description: Search results,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/EmbeddingSearchResponse" },
+                  },
+              },
+          }
+
+  /search/contracts:
+    get:
+      tags: [search]
+      summary: Structured contract search (faceted)
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - $ref: "#/components/parameters/naics"
+        - $ref: "#/components/parameters/agency"
+        - $ref: "#/components/parameters/psc"
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          {
+            description: Contracts page,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/ContractSearchResponse" },
+                  },
+              },
+          }
+
+  /call-plan/generate:
+    post:
+      tags: [call-plan, llm]
+      summary: Generate structured call plan for an agency/office
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CallPlanRequest" }
+      responses:
+        "200":
+          {
+            description: Generated plan,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/CallPlan" } },
+              },
+          }
+
+  /llm/summary/capabilities:
+    post:
+      tags: [llm]
+      summary: AI capability narrative summarization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CapabilitySummaryRequest" }
+      responses:
+        "200":
+          {
+            description: Narrative,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/CapabilitySummary" },
+                  },
+              },
+          }
+
+components:
+  parameters:
+    naics:
+      name: naics_code
+      in: query
+      schema: { type: string }
+    psc:
+      name: psc
+      in: query
+      schema: { type: string }
+    agency:
+      name: agency
+      in: query
+      schema: { type: string }
+    recipient:
+      name: recipient
+      in: query
+      schema: { type: string }
+    start_date:
+      name: start_date
+      in: query
+      schema: { type: string, format: date }
+    end_date:
+      name: end_date
+      in: query
+      schema: { type: string, format: date }
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string, example: OK }
+        uptime_seconds: { type: number }
+        timestamp: { type: string, format: date-time }
+    AuthRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string, format: password }
+    AuthToken:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: bearer }
+        expires_in: { type: integer }
+    VersionInfo:
+      type: object
+      properties:
+        api_version: { type: string }
+        build_commit: { type: string }
+        data_snapshot_date: { type: string, format: date }
+    FilterOptionsResponse:
+      type: object
+      properties:
+        domain: { type: string }
+        values:
+          type: array
+          items: { type: string }
+    AwardSummaryItem:
+      type: object
+      properties:
+        category: { type: string }
+        value: { type: number }
+    AwardSummaryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AwardSummaryItem" }
+    QuarterlyTrendPoint:
+      type: object
+      properties:
+        quarter: { type: string, example: 2025-Q3 }
+        year: { type: integer }
+        total_obligation: { type: number }
+        award_count: { type: integer }
+    QuarterlyTrendSeries:
+      type: object
+      properties:
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/QuarterlyTrendPoint" }
+    TopAgency:
+      type: object
+      properties:
+        parent_award_agency_name: { type: string }
+        award_count: { type: integer, nullable: true }
+        federal_action_obligation: { type: number, nullable: true }
+    TopAgenciesResponse:
+      type: object
+      properties:
+        agencies:
+          type: array
+          items: { $ref: "#/components/schemas/TopAgency" }
+    AgencyBreakdownResponse:
+      type: object
+      properties:
+        naics:
+          type: array
+          items:
+            type: object
+            properties:
+              naics_code: { type: string }
+              naics_description: { type: string }
+              federal_action_obligation: { type: number }
+        psc:
+          type: array
+          items:
+            type: object
+            properties:
+              product_or_service_code: { type: string }
+              product_or_service_code_description: { type: string }
+              federal_action_obligation: { type: number }
+        contractors:
+          type: array
+          items:
+            type: object
+            properties:
+              recipient_name: { type: string }
+              federal_action_obligation: { type: number }
+    TreemapNode:
+      type: object
+      properties:
+        recipient_parent_name: { type: string }
+        recipient_name: { type: string }
+        funding_sub_agency_name: { type: string }
+        transaction_description: { type: string }
+        federal_action_obligation: { type: number }
+        award_count: { type: integer }
+        market_share: { type: number }
+        win_rate: { type: number }
+    TreemapResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/TreemapNode" }
+    CompetitorAgencyCell:
+      type: object
+      properties:
+        recipient_name: { type: string }
+        parent_award_agency_name: { type: string }
+        federal_action_obligation: { type: number }
+    CompetitorAgencyMatrix:
+      type: object
+      properties:
+        cells:
+          type: array
+          items: { $ref: "#/components/schemas/CompetitorAgencyCell" }
+    AgencyVehiclePreference:
+      type: object
+      properties:
+        parent_award_agency_name: { type: string }
+        award_type: { type: string }
+        federal_action_obligation: { type: number }
+    AgencyVehiclePreferences:
+      type: object
+      properties:
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/AgencyVehiclePreference" }
+    StateObligation:
+      type: object
+      properties:
+        location: { type: string }
+        value: { type: number }
+    StateObligationResponse:
+      type: object
+      properties:
+        states:
+          type: array
+          items: { $ref: "#/components/schemas/StateObligation" }
+    ProjectionQuarter:
+      type: object
+      properties:
+        quarter: { type: string }
+        year: { type: integer }
+        total_obligation: { type: number }
+        award_count: { type: integer }
+        suitability_obligation: { type: number }
+        is_projection: { type: boolean }
+    ProjectionSeries:
+      type: object
+      properties:
+        quarters:
+          type: array
+          items: { $ref: "#/components/schemas/ProjectionQuarter" }
+    ExpiringContract:
+      type: object
+      properties:
+        contract_award_unique_key: { type: string }
+        award_id_piid: { type: string, nullable: true }
+        recipient_name: { type: string }
+        parent_award_agency_name: { type: string }
+        funding_sub_agency_name: { type: string }
+        federal_action_obligation: { type: number }
+        potential_total_value_of_award: { type: number }
+        period_of_performance_current_end_date:
+          { type: string, format: date-time, nullable: true }
+        days_to_expiration: { type: integer }
+    ExpiringContractsResponse:
+      type: object
+      properties:
+        contracts:
+          type: array
+          items: { $ref: "#/components/schemas/ExpiringContract" }
+    SubawardSummary:
+      type: object
+      properties:
+        prime_awards_count: { type: integer }
+        prime_obligation: { type: number }
+        subawards_received_count: { type: integer }
+        subawards_received_value: { type: number }
+        subawards_issued_count: { type: integer }
+        subawards_issued_value: { type: number }
+        unique_naics_prime: { type: integer }
+        unique_naics_issued: { type: integer }
+    MentorProtege:
+      type: object
+      properties:
+        mentor_name: { type: string }
+        protege_name: { type: string }
+        approval_date: { type: string, format: date, nullable: true }
+        expiration_date: { type: string, format: date, nullable: true }
+        primary_naics: { type: string, nullable: true }
+    MentorProtegeList:
+      type: object
+      properties:
+        relationships:
+          type: array
+          items: { $ref: "#/components/schemas/MentorProtege" }
+    EmbeddingSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        top_k: { type: integer, default: 10 }
+        scope: { type: string, enum: [prime, sub, both], default: both }
+    EmbeddingSearchResult:
+      type: object
+      properties:
+        id: { type: string }
+        score: { type: number }
+        snippet: { type: string }
+        source: { type: string, enum: [prime, sub] }
+    EmbeddingSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/EmbeddingSearchResult" }
+    ContractSearchItem:
+      type: object
+      properties:
+        contract_award_unique_key: { type: string }
+        award_id_piid: { type: string, nullable: true }
+        recipient_name: { type: string }
+        parent_award_agency_name: { type: string }
+        federal_action_obligation: { type: number }
+        action_date: { type: string, format: date }
+        naics_code: { type: string, nullable: true }
+        product_or_service_code: { type: string, nullable: true }
+    ContractSearchResponse:
+      type: object
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ContractSearchItem" }
+    CallPlanRequest:
+      type: object
+      required: [agency]
+      properties:
+        agency: { type: string }
+        office: { type: string, nullable: true }
+        opportunity_context: { type: string, nullable: true }
+        focus_areas: { type: array, items: { type: string } }
+    CallPlan:
+      type: object
+      properties:
+        agency: { type: string }
+        office: { type: string, nullable: true }
+        stakeholders: { type: array, items: { type: string } }
+        pain_points: { type: array, items: { type: string } }
+        tailored_questions: { type: array, items: { type: string } }
+        follow_up_actions: { type: array, items: { type: string } }
+    CapabilitySummaryRequest:
+      type: object
+      properties:
+        scope: { type: string, enum: [prime, sub, combined], default: combined }
+        include_semantic_examples: { type: boolean, default: true }
+    CapabilitySummary:
+      type: object
+      properties:
+        narrative: { type: string }
+        extracted_capabilities: { type: array, items: { type: string } }
+    Error:
+      type: object
+      properties:
+        detail: { type: string }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+x-next-steps:
+  - Add pagination metadata objects
+  - Wire enum sources to dynamic database-driven registries
+  - Introduce rate limiting headers documentation
+  - Add webhook section for async LLM task completion (future)

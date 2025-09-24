@@ -1,5 +1,29 @@
 # CAPTUREINTEL.md
 
+> NOTE: This document now contains (1) high-level strategic context, (2) structured table schemas, and (3) a narrative element-by-element reference. Where definitions appear in both a schema table and the later narrative list, the schema table should be treated as the canonical concise form; the narrative list offers expanded prose. Future edits should modify both only when substantive meaning changes.
+
+## Table of Contents
+
+1. [Purpose](#purpose)
+2. [High-Level Vision](#high-level-vision)
+3. [Competitive Edge](#competitive-edge)
+4. [How They Create Insights and Drive Decisions](#how-they-create-insights-and-drive-decisions)
+5. [Call Plan Feature](#call-plan-feature)
+6. [Subaward Data Integration](#subaward-data-integration)
+7. [SBA Mentor-Protégé Agreements Integration](#sba-mentor-protégé-agreements-integration)
+8. [Data Dictionary Overview](#data-dictionary)
+9. [Prime Awards Deduplicated Table Schema](#table-s2_interimusaspending_prime_awards_dedup)
+10. [Subawards Enriched Table Schema](#table-s2_interimusaspending_subawards_enriched)
+11. [LLM Fine-Tuning Guidance](#llm-fine-tuning-guidance-prime--subaward-tables)
+12. [Expanded Narrative Element Reference](#expanded-narrative-element-reference)
+13. [Shipley Capture Milestone Mapping](#shipley-capture-milestone-mapping)
+14. [Advanced Pricing Analysis Integration](#advanced-pricing-analysis-integration)
+15. [Strategic Default Dashboard Specification](#strategic-default-dashboard-specification)
+16. [Offers Received Data Integration](#offers-received-data-integration)
+17. [External Data Sources Integration](#external-data-sources-integration)
+18. [Company Capabilities & Competitor Research](#company-capabilities-foundation--competitor-research-2025-update)
+19. [SAM.gov Solicitation Enrichment Pipeline](#samgov-solicitation-enrichment-pipeline-may-2025)
+
 ## Purpose
 
 To maximize the value of the 297 data elements, this document outlines a structured approach tailored to the needs of business development (identifying opportunities and building customer relationships) and capture management (winning specific contracts). The ultimate goal is to create comprehensive, AI-powered Capture Profiles that synthesize intelligence from multiple sources to support strategic decision-making and proposal development.
@@ -242,7 +266,531 @@ These data elements are the most impactful because they collectively provide a h
 
 Their historical nature amplifies their value, allowing trend analysis over time—e.g., rising DoD investments in cybersecurity or shifts toward competitive procurements.
 
-### Contract Identification Elements
+---
+
+## Table: s2_interim.usaspending_prime_awards_dedup
+
+Cleaned & deduplicated prime award actions. Each row represents a unique business-significant contract action after compound-key deduplication. Flags & semantic fields support downstream analytics and retrieval augmentation.
+
+> Human Readable Reference: The following subsections mirror the style of the Contract Identification Elements list (Definition / Why It Matters / Modeling Notes). The earlier markdown table has been replaced for readability. If a compact machine-readable table is re-required, generate from these entries.
+
+### Identification & Keys
+
+#### contract_transaction_unique_key (TEXT, PK)
+
+- Definition: System-unique identifier for a specific transaction/action.
+- Why It Matters: Golden key for joins back to raw tables & prevents duplicate analytics.
+- Modeling Notes: Treat as opaque stable ID; no token splitting.
+
+#### contract_award_unique_key (TEXT)
+
+- Definition: Identifier grouping all actions under the same underlying award/vehicle.
+- Why It Matters: Enables roll‑up (value, lifecycle) and recompete timing.
+- Modeling Notes: Use as grouping feature / clustering handle.
+
+#### parent_award_id_piid (TEXT)
+
+- Definition: PIID of parent (IDIQ/BPA) when this is a task/delivery order.
+- Why It Matters: Reveals strategic vehicle context & on‑ramp pathways.
+- Modeling Notes: Link to aggregated vehicle narratives.
+
+#### award_id_piid (TEXT)
+
+- Definition: Procurement Instrument Identifier for the contract/order.
+- Why It Matters: Industry-familiar external reference for research & validation.
+- Modeling Notes: Preserve exact casing; high lexical salience.
+
+#### modification_number (TEXT; '0' = base)
+
+- Definition: Sequence identifier of modification vs base award.
+- Why It Matters: Tracks contract churn, scope evolution, and lifecycle stage.
+- Modeling Notes: Use sequence patterns in time‑series / narrative generation.
+
+### Temporal Fields
+
+#### action_date (DATE)
+
+- Definition: Official action signature date.
+- Why It Matters: Baseline for recency, velocity, and timeline analytics.
+- Modeling Notes: Derive recency & intervals to solicitation_date.
+
+#### action_date_fiscal_year (TEXT YYYY)
+
+- Definition: Fiscal year derived from action_date.
+- Why It Matters: Aligns with federal budget cycles & Q4 surge analysis.
+- Modeling Notes: Treat as categorical year token.
+
+#### action_date_fiscal_quarter (INTEGER 1–4)
+
+- Definition: Fiscal quarter for the action.
+- Why It Matters: Reveals intra‑year buying cadence.
+- Modeling Notes: Discrete token (Q1..Q4) for seasonality features.
+
+#### period_of_performance_start_date / current_end_date / potential_end_date (DATE)
+
+- Definition: Lifecycle start, current scheduled completion, maximum potential completion.
+- Why It Matters: Drives recompete forecasting & long‑tail revenue estimation.
+- Modeling Notes: Generate duration, days_to_end, option_depth (potential - current).
+
+#### ordering_period_end_date (DATE)
+
+- Definition: Final ordering date for IDIQ/vehicle.
+- Why It Matters: Urgency indicator for final task order pursuits.
+- Modeling Notes: Derive days_remaining_ordering_period.
+
+### Financial Fields
+
+#### federal_action_obligation (NUMERIC)
+
+- Definition: Dollars obligated by this specific action.
+- Why It Matters: Measures incremental funding momentum.
+- Modeling Notes: Log transform; pair with cumulative metrics.
+
+#### total_dollars_obligated (NUMERIC)
+
+- Definition: Cumulative obligations to date.
+- Why It Matters: Execution progress vs ceiling.
+- Modeling Notes: Compute utilization_ratio = total / potential_total_value_of_award.
+
+#### potential_total_value_of_award (NUMERIC)
+
+- Definition: Ceiling if all options executed.
+- Why It Matters: Maximum strategic value sizing.
+- Modeling Notes: Use with obligations for growth headroom features.
+
+#### total_outlayed_amount_for_overall_award (NUMERIC)
+
+- Definition: Dollars actually disbursed.
+- Why It Matters: Execution fidelity; gap vs obligations signals slippage.
+- Modeling Notes: Derived outlay_vs_obligation ratio.
+
+### Performance & Scope Narratives
+
+#### prime_award_base_transaction_description (TEXT)
+
+- Definition: Base award scope narrative.
+- Why It Matters: Context anchor for all downstream actions.
+- Modeling Notes: Core segment in semantic_description.
+
+#### transaction_description (TEXT)
+
+- Definition: Action‑specific narrative.
+- Why It Matters: Captures scope changes or refinements.
+- Modeling Notes: Concatenate with base description for embeddings.
+
+### Classification Codes
+
+#### naics_code / naics_description
+
+- Definition: Industry classification code + text label.
+- Why It Matters: Aligns opportunity with corporate competencies & small business thresholds.
+- Modeling Notes: Use both code and description tokens.
+
+#### product_or_service_code / product_or_service_code_description
+
+- Definition: PSC/FSC functional category + label.
+- Why It Matters: Finer granularity for capability targeting.
+- Modeling Notes: Pair with NAICS for richer vectors.
+
+#### dod_acquisition_program_description (TEXT)
+
+- Definition: DoD program name if present.
+- Why It Matters: Ties contract to modernization / portfolio initiatives.
+- Modeling Notes: Entity feature for knowledge graph.
+
+### Organizational / Customer Fields
+
+#### parent_award_agency_name; awarding_sub_agency_name; awarding_office_name
+
+- Definition: Hierarchy of awarding entities.
+- Why It Matters: Drives customer segmentation & relationship mapping.
+- Modeling Notes: Maintain normalized casing; build org hierarchy embeddings.
+
+#### funding_agency_name / funding_sub_agency_name / funding_office_name
+
+- Definition: Budget source hierarchy.
+- Why It Matters: Identifies true budget holders distinct from contracting office.
+- Modeling Notes: Cross features with awarding for split-funding patterns.
+
+### Contractor Identity Fields
+
+#### recipient_name / recipient_uei
+
+- Definition: Prime contractor name & UEI.
+- Why It Matters: Incumbent & competitor identification.
+- Modeling Notes: UEI as stable join key; name for surface narrative.
+
+#### recipient_parent_name / recipient_parent_uei
+
+- Definition: Ultimate parent entity & UEI.
+- Why It Matters: Corporate roll‑up / consolidation analytics.
+- Modeling Notes: Aggregation key for portfolio views.
+
+### Competition & Procurement
+
+#### solicitation_date / solicitation_procedures
+
+- Definition: RFx issuance date & method.
+- Why It Matters: Lead time & acquisition strategy insight.
+- Modeling Notes: Derive cycle_time = action_date - solicitation_date.
+
+#### extent_competed / type_of_set_aside
+
+- Definition: Competition extent & socioeconomic reservation.
+- Why It Matters: Determines market openness and eligibility pathways.
+- Modeling Notes: Critical categorical features for competitive intensity modeling.
+
+#### fair_opportunity_limited_sources / other_than_full_and_open_competition
+
+- Definition: Justifications limiting competition.
+- Why It Matters: Indicates constrained landscape & renewal likelihood.
+- Modeling Notes: Narrative explanatory tokens.
+
+#### number_of_offers_received (INTEGER)
+
+- Definition: Count of offers.
+- Why It Matters: Direct historical competitiveness signal.
+- Modeling Notes: Use for intensity scores & pWin modeling.
+
+#### subcontracting_plan (TEXT)
+
+- Definition: Subcontracting plan indicator/type.
+- Why It Matters: Signals mandated small business participation.
+- Modeling Notes: Binary/enum for teaming recommendations.
+
+### Pricing / Contract Structure
+
+#### type_of_contract_pricing (TEXT)
+
+- Definition: Pricing arrangement (FFP/CPFF/T&M/etc.).
+- Why It Matters: Risk & margin strategy implications.
+- Modeling Notes: Normalize to controlled vocabulary.
+
+#### action_type / award_type
+
+- Definition: Transaction nature & instrument category.
+- Why It Matters: Distinguishes base vs mods and vehicle form.
+- Modeling Notes: Sequence features for lifecycle modeling.
+
+#### type_of_idc / idv_type
+
+- Definition: IDC & Indefinite Delivery Vehicle classifications.
+- Why It Matters: Vehicle strategy & competition mechanics.
+- Modeling Notes: Low frequency; retain categorical encoding.
+
+#### undefinitized_action (TEXT)
+
+- Definition: Indicator of undefinitized award status.
+- Why It Matters: Higher schedule urgency & future adjustment risk.
+- Modeling Notes: Uncertainty signal.
+
+#### multi_year_contract (TEXT)
+
+- Definition: Multi‑year contract flag.
+- Why It Matters: Long-term revenue stability.
+- Modeling Notes: Convert to boolean.
+
+#### multiple_or_single_award_idv (TEXT)
+
+- Definition: Single vs multiple award structure.
+- Why It Matters: Task order competition frequency & strategy.
+- Modeling Notes: Key driver for opportunity generation prompts.
+
+### Traceability & External Reference
+
+#### usaspending_permalink (TEXT)
+
+- Definition: Canonical public URL.
+- Why It Matters: Analyst validation & drill‑down.
+- Modeling Notes: Provide as citation link; not for embedding.
+
+### KBR Role Flags
+
+#### kbr_prime / kbr_as_sub / kbr_sub_issued (BOOLEAN)
+
+- Definition: Role classification flags based on UEI list & subaward linkages.
+- Why It Matters: Distinguishes internal footprint (prime vs sub) and teaming issuance behavior.
+- Modeling Notes: Model as tri-state patterns for role narrative.
+
+### Semantic Fields
+
+#### semantic_description (TEXT)
+
+- Definition: Concatenated descriptive fields for embedding.
+- Why It Matters: Powers semantic search & similarity retrieval.
+- Modeling Notes: Do not manually edit post-generation.
+
+#### semantic_vector (DOUBLE PRECISION[])
+
+- Definition: Dense embedding of semantic_description.
+- Why It Matters: Enables vector similarity (RAG, clustering, nearest neighbor search).
+- Modeling Notes: Use cosine similarity; dimension model-dependent.
+
+### Prime Table Usage Patterns
+
+- Recompete Targeting: Use period_of_performance_current_end_date within 6–18 month window + high potential_total_value_of_award utilization gaps.
+- Competitive Intensity: Combine number_of_offers_received, extent_competed, type_of_set_aside.
+- Strategic Vehicle Mapping: parent_award_id_piid + idv_type + multiple_or_single_award_idv.
+- Incumbent Posture: recipient_name + modification_number sequence analysis.
+
+---
+
+## Table: s2_interim.usaspending_subawards_enriched
+
+Enriched subaward events with joined prime award attributes and role flags. Each row is a deduplicated subaward instance.
+
+### Core Identification
+
+#### subaward_unique_key (BIGINT, PK)
+
+- Definition: Surrogate unique key for subaward row.
+- Why It Matters: Stable reference & batching anchor.
+- Modeling Notes: Primary retrieval / vector ID.
+
+#### subaward_number (TEXT)
+
+- Definition: Subaward identifier when provided.
+- Why It Matters: Differentiates multiple subs under same prime action.
+- Modeling Notes: Sparse—retain but handle null.
+
+#### prime_award_unique_key / contract_award_unique_key (TEXT)
+
+- Definition: Linkage to prime award/contract.
+- Why It Matters: Connects subcontract scope to vehicle and recompete context.
+- Modeling Notes: Join path to prime features & narratives.
+
+### Timing & Financials
+
+#### subaward_action_date (DATE)
+
+- Definition: Execution date of subaward.
+- Why It Matters: Sequencing of partner onboarding.
+- Modeling Notes: Lag vs prime_action_date.
+
+#### subaward_amount (NUMERIC)
+
+- Definition: Dollar amount allocated to this subcontract event.
+- Why It Matters: Magnitude of dependency / capability outsourcing.
+- Modeling Notes: Log transform; compute share vs prime obligations.
+
+### Subcontract Scope & Parties
+
+#### subaward_description (TEXT)
+
+- Definition: Narrative of subcontracted work.
+- Why It Matters: Reveals delegated functions & capability gaps.
+- Modeling Notes: Included in semantic_description.
+
+#### subawardee_name / subawardee_uei
+
+- Definition: Subcontractor identity & unique entity ID.
+- Why It Matters: Partner mapping & teaming strategy insights.
+- Modeling Notes: UEI for disambiguation; name for narratives.
+
+#### subawardee_parent_name / subawardee_parent_uei
+
+- Definition: Parent corporation identifiers.
+- Why It Matters: Corporate ecosystem concentration & influence.
+- Modeling Notes: Hierarchical aggregation features.
+
+### Geography & Business Profile
+
+#### subawardee_city_name / subawardee_state_code / subawardee_country_code / subawardee_country_name
+
+- Definition: Location fields of subcontractor.
+- Why It Matters: Regional supply chain footprint & compliance considerations.
+- Modeling Notes: Normalize state/country codes; geocluster features.
+
+#### subawardee_business_types (TEXT)
+
+- Definition: Socioeconomic and classification codes (delimited).
+- Why It Matters: Set‑aside teaming qualification & diversity analysis.
+- Modeling Notes: Multi‑label tokenization.
+
+#### subaward_primary_place_of_performance_city_name / \_state_code
+
+- Definition: Location of performance for the subcontract.
+- Why It Matters: Operational footprint granularity beyond HQ.
+- Modeling Notes: Co‑location analysis vs prime performance locale.
+
+#### subaward_type (TEXT)
+
+- Definition: Instrument/category of subcontract.
+- Why It Matters: Indicates services vs supply & risk posture.
+- Modeling Notes: Sparse categorical—retain label.
+
+### Lineage & ETL Meta
+
+#### created_at / updated_at / fetch_date
+
+- Definition: Record creation, last update, ingestion dates.
+- Why It Matters: Data freshness & change tracking.
+- Modeling Notes: Features for staleness scoring; usually excluded from embeddings.
+
+### KBR Role Flags
+
+#### kbr_prime / kbr_as_sub / kbr_sub_issued
+
+- Definition: Role classification relative to KBR UEI list.
+- Why It Matters: Identifies leadership, partnership, and issuance behaviors in teaming structure.
+- Modeling Notes: Use combined state vectors for role classification tasks.
+
+### Joined Prime Context (All prefixed prime\_\*)
+
+#### prime_contract_transaction_unique_key
+
+- Definition: Prime action transaction key.
+- Why It Matters: High‑resolution join to specific prime action semantics.
+- Modeling Notes: Use for fine‑grained temporal alignment.
+
+#### prime_action_date / prime_action_date_fiscal_year / prime_action_date_fiscal_quarter
+
+- Definition: Prime action timing fields.
+- Why It Matters: Anchor for lag analyses & seasonality of subcontracting.
+- Modeling Notes: Derive sub_lag_days.
+
+#### prime_modification_number
+
+- Definition: Prime mod identifier.
+- Why It Matters: Associates subcontract with modification events.
+- Modeling Notes: Sequence modeling feature.
+
+#### prime_federal_action_obligation / prime_total_dollars_obligated / prime_potential_total_value_of_award / prime_total_outlayed_amount_for_overall_award
+
+- Definition: Prime financial metrics.
+- Why It Matters: Context for subcontract scale & maturity stage.
+- Modeling Notes: Compute sub_share_ratio & maturity indicators.
+
+#### prime_period_of_performance_start_date / \_current_end_date / \_potential_end_date / prime_ordering_period_end_date
+
+- Definition: Prime lifecycle & ordering window.
+- Why It Matters: Remaining runway for sub performance & expansion.
+- Modeling Notes: Duration & forecasting features.
+
+#### prime_primary_place_of_performance_city_name / \_state_code
+
+- Definition: Prime performance geography.
+- Why It Matters: Geo proximity synergy or dispersion vs subcontract performance.
+- Modeling Notes: Generate co_location flags.
+
+#### prime_prime_award_base_transaction_description / prime_transaction_description
+
+- Definition: Base award narrative & action narrative (prime).
+- Why It Matters: Semantic context for subaward purpose alignment.
+- Modeling Notes: Combined into embedding pipeline.
+
+#### prime_naics_code / prime_naics_description / prime_product_or_service_code / prime_product_or_service_code_description
+
+- Definition: Prime classification codes & descriptions.
+- Why It Matters: Capability domain & overlap/mismatch analysis with sub scope.
+- Modeling Notes: Comparative features to subaward_description tokens.
+
+#### prime_dod_acquisition_program_description
+
+- Definition: DoD program context.
+- Why It Matters: Strategic alignment & modernization initiatives.
+- Modeling Notes: Knowledge graph entity.
+
+#### prime_parent_award_agency_name / prime_awarding_sub_agency_name / prime_awarding_office_name
+
+- Definition: Prime awarding hierarchy.
+- Why It Matters: Customer ecosystem mapping.
+- Modeling Notes: Organizational embedding features.
+
+#### prime_funding_agency_name / prime_funding_sub_agency_name / prime_funding_office_name
+
+- Definition: Prime funding hierarchy.
+- Why It Matters: Budget origin & influence channels.
+- Modeling Notes: Cross with awarding for split patterns.
+
+#### prime_recipient_name / prime_recipient_uei / prime_recipient_parent_name / prime_recipient_parent_uei
+
+- Definition: Prime contractor identity & corporate parent.
+- Why It Matters: Incumbent leverage & consolidation.
+- Modeling Notes: Entity linking to prime awards table.
+
+#### prime_solicitation_date / prime_solicitation_procedures / prime_extent_competed / prime_type_of_set_aside
+
+- Definition: Prime procurement timing & competition attributes.
+- Why It Matters: Predicts subcontract diversity & stability.
+- Modeling Notes: Competitive intensity features.
+
+#### prime_fair_opportunity_limited_sources / prime_other_than_full_and_open_competition
+
+- Definition: Competition limitation justifications.
+- Why It Matters: Indicates constrained subcontract landscape.
+- Modeling Notes: Narrative explanation tokens.
+
+#### prime_number_of_offers_received / prime_subcontracting_plan
+
+- Definition: Prime competition count & subcontracting plan indicator.
+- Why It Matters: Competitive pressure & mandated teaming commitments.
+- Modeling Notes: Intensity & teaming propensity metrics.
+
+#### prime_government_furnished_property
+
+- Definition: GFP involvement at prime level.
+- Why It Matters: Logistics complexity cascading to subs.
+- Modeling Notes: Risk indicator.
+
+#### prime_type_of_contract_pricing / prime_action_type / prime_award_type / prime_type_of_idc / prime_idv_type
+
+- Definition: Prime pricing and vehicle structure fields.
+- Why It Matters: Governs risk allocation & tasking mechanisms.
+- Modeling Notes: Categorical encoding; some low frequency.
+
+#### prime_undefinitized_action / prime_multi_year_contract / prime_multiple_or_single_award_idv
+
+- Definition: Status & structural flags.
+- Why It Matters: Scope fluidity, duration stability, competition structure.
+- Modeling Notes: Boolean/enum normalization.
+
+#### prime_usaspending_permalink
+
+- Definition: Public reference URL for prime award.
+- Why It Matters: Traceability & analyst drill‑down.
+- Modeling Notes: Exclude from embeddings; surface for citations.
+
+### Semantic Fields (Subawards)
+
+#### semantic_description (TEXT)
+
+- Definition: Concatenated sub + relevant prime descriptors.
+- Why It Matters: Drives semantic retrieval & similarity search.
+- Modeling Notes: Do not hand edit post generation.
+
+#### semantic_vector (DOUBLE PRECISION[])
+
+- Definition: Embedding of semantic_description.
+- Why It Matters: Vector search for partner/requirement matching.
+- Modeling Notes: Cosine similarity; dimension defined by embedding model.
+
+### Subawards Usage Patterns
+
+- Partner Identification: Rank subawardee_name frequency & diversity under target agencies.
+- Incumbent Team Analysis: Compare prime_recipient_name vs repeated subawardee_name across vehicles.
+- Capability Gap Mapping: Contrast prime_prime_award_base_transaction_description with subaward_description to infer outsourced functions.
+- Recompete Strategy: Use nearing prime_period_of_performance_current_end_date + active subaward network breadth as incumbent defensibility indicator.
+
+---
+
+### LLM Fine-Tuning Guidance (Prime & Subaward Tables)
+
+When creating training examples:
+
+- Provide both raw categorical values (e.g., NAICS 541330) and human-readable description in the same context window for grounding.
+- Construct contrastive pairs: (High competition: number_of_offers_received=15) vs (Low competition: number_of_offers_received=1) with explanation.
+- Include temporal deltas (days_to_end, utilization_ratio) as derived narrative features rather than introducing new base columns.
+- Emphasize role triplet states for KBR: (kbr_prime, kbr_as_sub, kbr_sub_issued) to teach role classification.
+- Use semantic_description only as source text; avoid duplicating prime/sub fields verbatim unless clarifying.
+
+---
+
+### Expanded Narrative Element Reference
+
+The following sections provide extended prose descriptions of individual data elements. They may repeat concise schema table definitions for readability and training material preparation.
+
+#### Contract Identification Elements
 
 - **Award ID (award_id_piid)**:
 
@@ -291,7 +839,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Contextualizes individual task orders within their parent vehicle.
   - **Utility**: Helps understand the broader scope of the parent vehicle.
 
-### Financial Information Elements
+#### Financial Information Elements
 
 - **Obligation Amount (federal_action_obligation)**:
 
@@ -316,7 +864,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Shows execution rate of contracts.
   - **Utility**: Enables comparison of spending rate to obligations to identify slow-moving contracts.
 
-### Timeline Information Elements
+#### Timeline Information Elements
 
 - **Award Date (action_date)**:
 
@@ -353,7 +901,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Connects contract actions to budget cycles.
   - **Utility**: Allows alignment of analysis with government budget cycles.
 
-### Contracting Agency Elements
+#### Contracting Agency Elements
 
 - **Awarding Agency (parent_award_agency_name)**:
 
@@ -390,7 +938,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Pinpoints program offices with spending authority.
   - **Utility**: Helps target relationship-building with program offices controlling budgets.
 
-### Contractor Information Elements
+#### Contractor Information Elements
 
 - **Awardee (recipient_name)**:
 
@@ -415,7 +963,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Links subsidiaries to parent organizations.
   - **Utility**: Enables tracking of all subsidiaries of major competitors.
 
-### Competition and Procurement Elements
+#### Competition and Procurement Elements
 
 - **Solicitation Date (solicitation_date)**:
 
@@ -464,7 +1012,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Indicates small business participation requirements.
   - **Utility**: Helps identify teaming opportunities and small business requirements.
 
-### Contract Terms and Types Elements
+#### Contract Terms and Types Elements
 
 - **Contract Type (type_of_contract_pricing)**:
 
@@ -513,7 +1061,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Indicates long-term commitments.
   - **Utility**: Helps identify stable, long-term funding commitments.
 
-### Performance Information Elements
+#### Performance Information Elements
 
 - **Place of Performance City (primary_place_of_performance_city_name)**:
 
@@ -544,7 +1092,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Provides shorthand reference for programs.
   - **Utility**: Helps quickly identify associated programs.
 
-### Reference Information Elements
+#### Reference Information Elements
 
 - **Modification No (modification_number)**:
 
@@ -557,7 +1105,7 @@ Their historical nature amplifies their value, allowing trend analysis over time
   - **Impact**: Provides access to official source data.
   - **Utility**: Enables access to full contract details for deeper research.
 
-### Subaward Elements (Planned Addition)
+#### Subaward Elements (Planned Addition)
 
 - **Subaward ID**:
 
