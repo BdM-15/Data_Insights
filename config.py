@@ -57,7 +57,7 @@ SDMX_API_URL = "https://www.ilo.org/sdmx/rest"
 
 # BLS API (Bureau of Labor Statistics)
 BLS_API_URL = "https://api.bls.gov/publicAPI/v2"
-BLS_API_KEY = os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
+BLS_API_KEY = os.getenv("BLS_API_KEY")
 
 # AI and GPU Configuration
 # Ollama Configuration
@@ -207,7 +207,10 @@ TABLE_CURRENT_USASPENDING = "fetched_current_usaspending"
 TABLE_HISTORICAL_USASPENDING = "fetched_historical_usaspending" 
 
 # Database URL
-DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}"
+if PG_USER and PG_PASSWORD and PG_HOST and PG_PORT and PG_DATABASE:
+    DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}"
+else:
+    DATABASE_URL = None
 
 # Request Settings
 REQUEST_TIMEOUT = 30
@@ -346,7 +349,7 @@ def get_api_config() -> Dict[str, Any]:
         # Default to SAM.gov Opportunities v2 endpoint per current docs
         "SAM_API_BASE_URL": os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/opportunities/v2/search"),
         "BLS_API_URL": os.getenv("BLS_API_URL", "https://api.bls.gov/publicAPI/v2"),
-        "BLS_API_KEY": os.getenv("BLS_API_KEY", "048186641837463e8d5eccba12e798a4")
+        "BLS_API_KEY": os.getenv("BLS_API_KEY")
     }
 
 def get_app_config() -> Dict[str, Any]:

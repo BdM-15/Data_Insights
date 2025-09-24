@@ -13,7 +13,7 @@ class AgentLogger:
     """
     Handles logging and retrieval of agent/LLM interactions in the app_logs.agent_interaction_log table.
     """
-    _log_db_dsn = os.getenv("AGENT_LOG_DB_DSN", "postgresql://postgres:postgres@localhost:5432/capture")
+    _log_db_dsn = os.getenv("AGENT_LOG_DB_DSN")
 
     async def log_interaction(
         self,
