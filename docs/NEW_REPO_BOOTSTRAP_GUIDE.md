@@ -145,7 +145,7 @@ Example engine snippet:
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from backend.app.config import settings
 
-DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/capture_intel"
+DATABASE_URL = "postgresql+asyncpg://your_username:your_password@localhost:5432/your_database"
 engine = create_async_engine(DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 ```
