@@ -129,6 +129,7 @@ TARGET_FIELDS = [
     "recipient_parent_name",
     "recipient_parent_uei",
     "solicitation_date",
+    "solicitation_identifier",
     "solicitation_procedures", 
     "extent_competed",
     "type_of_set_aside",
