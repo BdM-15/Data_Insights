@@ -873,45 +873,97 @@
   - ✅ Display results in a DataFrame with CSV export.
   - ✅ Render all visualizations correctly in expandable sections.
   - Status: ✅ Completed
-- **Milestone 2: MCP Integration and Advanced AI Tools**:
+- **Milestone 2: Model Context Protocol (MCP) AI Agent Integration**:
+
+  **Purpose:** Deploy local AI agents that automate complex, multi-step workflows while maintaining complete privacy and security.
+
   - ✅ Integrate and deploy the first MCP tool (GitHub MCP server) as a local agent service
   - ✅ Document configuration and usage in planning and modularization docs
   - ✅ Test agent workflow end-to-end with local LLM inference
-  - Develop and integrate Visualization Tool with the main application
-  - Create VS Code integrated Chatbot for award data analysis
-  - Build Capability Identifier for competitive analysis
-  - Implement Web Intelligence Scraper for market research
-  - Develop Document Creator/Editor Agent for multi-format outputs
-  - Status: Planned, first priority to establish the foundation for advanced features.
+  - **Database Analytics Agent:** Intelligent query generation, complex analysis, and insight extraction from 66M+ contract records using natural language interaction
+  - **Visualization Intelligence Tool:** Automated chart and graph generation with contextual recommendations based on data patterns and user intent
+  - **Web Intelligence Scraper:** AI-powered research tool for agency news, budget information, strategic priorities, and competitive intelligence from public sources
+  - **Document Creator/Editor Agent:** Multi-format document generation and editing (Word, Excel, PowerPoint) with template management and brand consistency
+  - **Strategic Analysis & Reasoning Engine:** Advanced analytical agent for competitive positioning, capability gap analysis, and strategic recommendation generation
+  - **Capability Stance Manager:** Automated derivation and maintenance of company capability profile from contract performance history
+  
+  **Technical Foundation:** Model Context Protocol (MCP) provides standardized interface for local AI agents, ensuring privacy, modularity, and extensibility.
+  
+  **Business Value:** These agents handle the repetitive, cognitive-load-intensive tasks (data analysis, research, document drafting) freeing professionals to focus on strategy, customer relationships, and solution development.
+  
+  - Status: In Progress (MCP migration to Python SDK underway), first priority to establish the AI automation foundation for all advanced features.
 - **Milestone 3: External Data Source Integration**:
-  - Integrate SAM.gov API for future opportunity data
-  - Connect SBA SubNet for subcontracting opportunities
-  - Implement GovWin IQ and Bloomberg Government API integrations
-  - Create Salesforce REST API connector for CRM integration
-  - Status: Planned, to be developed in parallel with MCP tools.
+
+  **Purpose:** Expand intelligence foundation beyond historical USAspending data to include forward-looking opportunities, subcontracting intelligence, and market analysis.
+
+  - **SAM.gov API:** Live opportunity monitoring, solicitation tracking, and entity registration data for real-time competitive intelligence
+  - **SBA SubNet:** Subcontracting opportunities and mentor-protégé relationship data for teaming strategy and small business partnership identification
+  - **GovWin IQ & Bloomberg Government:** Advanced market intelligence, budget forecasts, and agency spending priorities for proactive capture planning
+  - **Salesforce REST API (Optional):** CRM integration to automate opportunity tracking, contact management, and pipeline reporting based on capture intelligence
+  
+  **Business Value:** Transform the platform from historical analysis tool to forward-looking capture management system with predictive capabilities and automated opportunity identification.
+  
+  - Status: Planned, to be developed in parallel with MCP tools to create comprehensive intelligence ecosystem.
 - **Milestone 4: Enhanced Capture Management**:
-  - Implement pipeline building with automated opportunity feeds
-  - Develop opportunity qualification with PWin scoring models
-  - Create teaming partner identification and management
-  - Build competitive analysis with visualization dashboards
-  - Implement proposal development automation
-  - Status: Planned, to be developed after data source integration.
-- **Milestone 5: Enhanced Capture Profile Generator**:
 
-  - Implement a comprehensive profile generator that leverages all MCP tools
-  - Create document generation with AI-assisted narratives and integrated visualizations
-  - Build export capabilities for proposal and business development teams
-  - Develop executive summary with synthesized intelligence from all sources
-  - Implement PWin calculation using multi-factor analysis from all tools
-  - Create strategic recommendation sections from Analysis and Reasoning tool
-  - Build automated visual aids generation for proposal support
-  - Generate ghosting strategies based on competitor intelligence
-  - Status: Planned, to be developed after MCP tools are functional, as it represents the end-state deliverable that consolidates all AI capabilities
+  **Purpose:** Automate repetitive capture management tasks and provide data-driven decision support for opportunity qualification and teaming strategy.
 
-- **Milestone 6: Advanced Features and Optimization**:
-  - Add advanced filtering and enhanced visualizations.
-  - Optimize performance for large datasets.
-  - Status: Planned.
+  - **Pipeline Building:** Automated opportunity feeds from SAM.gov and other sources with configurable alerts for expiring contracts and new solicitations
+  - **Opportunity Qualification:** PWin scoring models using multi-factor analysis (competitive positioning, incumbent strength, capability fit, past performance) to prioritize pursuits
+  - **Teaming Partner Identification:** AI-powered partner matching based on complementary capabilities, subcontracting patterns, past performance, and strategic fit
+  - **Competitive Analysis Dashboards:** Real-time competitor tracking with win rate analysis, contract portfolio visualization, and teaming relationship mapping
+  - **Proposal Development Integration:** Connect capture intelligence to proposal libraries and content management systems for seamless handoff
+  
+  **Business Value:** Enable capture managers to focus on customer relationships and strategy rather than manual data gathering and analysis. Support faster, more informed bid/no-bid decisions.
+  
+  - Status: Planned, to be developed after external data source integration provides the intelligence foundation.
+- **Milestone 5: Automated Capture Profile Generator**:
+
+  **Purpose:** Transform weeks of manual capture planning into hours with AI-powered automation that produces professional, consistent capture profiles. This is the flagship end-state capability that delivers measurable productivity gains and ROI.
+
+  **Core Capabilities:**
+  - **One-Click Document Generation:** Automatically create comprehensive capture profiles from opportunity selection, eliminating 60+ hours of manual research and writing per opportunity
+  - **AI-Assisted Strategic Narratives:** Generate executive summaries, win themes, and competitive positioning statements with source citations and traceability
+  - **Integrated Intelligence Synthesis:** Leverage all MCP tools (database analytics, web intelligence, visualization, analysis) to produce cohesive, evidence-based strategic recommendations
+  - **Multi-Format Export:** Professional Word documents ready for leadership review and proposal kickoff (PDF export planned)
+  - **PWin Scoring Engine:** Data-driven probability of win calculations based on multi-factor analysis including competitive positioning, incumbent analysis, and historical patterns
+  - **Competitive Differentiation:** Automated ghosting strategies and positioning recommendations derived from competitor intelligence and capability gap analysis
+  - **Visual Intelligence Integration:** Embedded charts, graphs, and visualizations that support narrative sections and strategic recommendations
+  - **Teaming Strategy Recommendations:** AI-identified partner candidates based on subcontracting patterns, complementary capabilities, and past performance
+  
+  **Business Impact:**
+  - Reduce capture planning time from 73-100 hours to 8-11 hours per opportunity (85% time savings)
+  - Achieve 80%+ consistency in capture profile quality and structure across all opportunities
+  - Enable teams to pursue 2-3x more opportunities with the same resources
+  - Typical ROI achieved in 3-6 weeks based on time savings and improved win rates
+  
+  **Key Deliverables:**
+  1. Executive Summary with go/no-go decision brief
+  2. Market Analysis with spending trends and competitive landscape
+  3. Opportunity Profile with contract details and incumbent analysis
+  4. Competitive Positioning with strengths, gaps, and differentiators
+  5. Win Themes with data-backed differentiators and source citations
+  6. Teaming Strategy with partner recommendations
+  7. Risk Assessment with modification patterns and pricing analysis
+  8. Action Plan with capture strategy and next steps
+  9. Supporting Data with full methodology and audit trail
+  
+  - Status: Planned, to be developed after MCP tools are functional, as it represents the transformational end-state deliverable that consolidates all AI capabilities and delivers the core business value proposition
+
+- **Milestone 6: Advanced Features and User Experience Optimization**:
+
+  **Purpose:** Refine user experience, expand analytical capabilities, and optimize performance for enterprise-scale usage.
+
+  - **Advanced Filtering:** Keyword search across descriptions, multi-select filters with logical operators (AND/OR/NOT), saved filter sets for common market segments
+  - **Enhanced Visualizations:** Interactive drill-down capabilities, custom dashboard creation, export-ready charts for presentations and proposals
+  - **Performance Optimization:** Query response time improvements for complex analyses, caching strategies for common patterns, materialized view expansion
+  - **Semantic Search:** Natural language queries across all contract data with intelligent result ranking and contextual relevance
+  - **Custom Dashboards:** Role-specific views (executive, capture manager, analyst, proposal writer) with configurable metrics and alerts
+  - **Salesforce API Automation (Optional):** Bidirectional sync between capture intelligence and CRM for automated pipeline management and reporting
+  
+  **Business Value:** Enhance usability for diverse user roles, support more sophisticated analysis patterns, and enable seamless integration with existing business systems.
+  
+  - Status: Planned, to be implemented after core capture profile generation capabilities are stable and proven.
 - **Milestone 7: UI/UX Enhancement**:
   - Implement multipage application structure
   - Add tabbed interfaces for content organization
