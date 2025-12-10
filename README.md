@@ -85,9 +85,11 @@ Data Insights is a business intelligence workstation that automates federal cont
 
 **The game-changer: complete capture profiles in minutes**
 
-Select a target opportunity and generate a professional document containing:
+The Capture Profile Generator is an AI-powered tool that automatically creates comprehensive documents with contract details, competitive analysis, and strategic insights to support government contract pursuit. It transforms raw contract data into actionable intelligence by combining historical information, competitor analysis, and market trends, while generating narrative sections like executive summaries and win strategies. This automation saves capture teams significant time in gathering and analyzing information, allowing them to focus on developing winning proposals rather than manual intelligence collection and document creation.
 
-- **Executive Summary:** Decision brief for leadership go/no-go
+**What you get in the generated document:**
+
+- **Executive Summary:** Decision brief for leadership go/no-go with PWin score
 - **Market Analysis:** Spending trends, growth patterns, competitive landscape
 - **Opportunity Profile:** Contract details, incumbent analysis, strategic value assessment
 - **Competitive Positioning:** Your strengths vs. incumbent vs. field, with gap analysis
@@ -96,6 +98,8 @@ Select a target opportunity and generate a professional document containing:
 - **Risk Assessment:** Modification history, pricing patterns, recompete indicators
 - **Action Plan:** Next steps and capture strategy recommendations
 - **Supporting Data:** Full methodology, source references, audit trail
+
+**Impact:** Reduces capture planning from 73-100 hours to 8-11 hours (85% time savings)
 
 **Output:** Professional Word document ready for leadership review or proposal kickoff. (PDF export planned)
 
@@ -190,40 +194,108 @@ streamlit run C:\GitHub\Data_Insights\app.py
 4. **Try the AI Data Agent** with simple questions about your market
 5. **Generate your first capture profile** from the Opportunity Explorer
 
-## Roadmap: Current to Future State
+## Roadmap: Milestones to Full Capability
 
-### ✅ Available Now
+### Milestone 1: Core Functionality ✅ Complete
 
-- Strategic dashboard with market intelligence
-- Opportunity explorer with incumbent analysis
-- Capability profile management
-- Basic capture profile generation
-- Local AI agent for research
-- Complete privacy and security
+**1.1 Data Querying and Filtering**
 
-### 🚧 Next 6 Months
+- Filter contract data by agency, NAICS/PSC codes, date range, contract type
+- Multi-dimensional filtering with smart defaults
 
-- **One-click capture profiles:** Complete document generation from opportunity selection
-- **PWin scoring:** Data-driven probability of win calculations
-- **Advanced teaming:** Intelligent partner matching
-- **Opportunity alerts:** Automated notifications for expiring contracts
-- **Enhanced AI narratives:** More sophisticated competitive differentiation
+**1.2 Visualization Suite**
 
-### 📋 Next 12 Months
+- Interactive spending trends, top recipients, expiring contracts
+- Market share analysis and geographic maps
+- Export capabilities for reports
 
-- **SAM.gov integration:** Live opportunity monitoring
-- **Customer intelligence:** Budget trends and buying patterns
-- **Relationship tracking:** Contact and engagement history
-- **Proposal library connection:** Link capture intel to content management
-- **Semantic search:** Complex questions across all contract data
+### Milestone 2: Advanced AI Tools 🛠️ Next 6 Months
 
-### 🔮 Future Vision (18-24 Months)
+**2.1 AI-Powered Visualization Tool**
 
-- **Predictive analytics:** Forecast award probabilities
-- **Competitive monitoring:** Track competitor wins and capabilities in real-time
-- **Custom dashboards:** Role-specific views for different team members
-- **API ecosystem:** Integration with CRM and proposal tools
-- **Multi-user collaboration:** Team workspace with workflow management
+- Context-aware chart generation from natural language
+- Interactive drill-down with automated insights
+
+**2.2 Conversational Data Agent (Chatbot)**
+
+- Natural language querying and analysis
+- Narrative generation for reports
+- Local AI processing for privacy
+
+**Impact:** Reduces analyst cognitive load through automation
+
+### Milestone 3: External Data Integration 📅 12 Months
+
+**3.1 SAM.gov and SBA SubNet**
+
+- Active opportunity monitoring and alerts
+- Subcontracting and mentor-protégé data
+
+**3.2 GovWin IQ and Bloomberg Government**
+
+- Advanced market intelligence
+- Agency budget trends and policy impact
+
+**Impact:** Forward-looking intelligence complements historical analysis
+
+### Milestone 4: Enhanced Capture Management 📈 12-15 Months
+
+**4.1 Pipeline and Opportunity Qualification**
+
+- Automated opportunity feeds
+- PWin scoring and bid/no-bid recommendations
+
+**4.2 Competitive Analysis Dashboards**
+
+- Real-time competitor tracking
+- Teaming partner identification with capability matching
+
+**Impact:** Proactive capture with automated qualification
+
+### Milestone 5: Enhanced Capture Profile Generator 🎯 15-18 Months (Flagship)
+
+**The Transformational Capability:**
+
+**5.1 One-Click Document Generation**
+
+- AI-driven narratives with source citations
+- Integrated visualizations and strategic insights
+- PWin calculations and ghosting strategies
+- Teaming recommendations with rationale
+- 9 comprehensive sections (see Capture Profile Generator above)
+
+**5.2 Strategic Recommendations Engine**
+
+- Multi-factor PWin calculations
+- Competitor vulnerability analysis
+- Pricing guidance from historical patterns
+- Capture timeline recommendations
+
+**Business Impact:**
+
+- 85% time reduction (73-100 hours → 8-11 hours per opportunity)
+- 3-6 week ROI for mid-size contractors
+- 80%+ consistency without revision
+
+**Export:** Word, PDF, and Markdown formats
+
+### Milestone 6: Advanced Features 🚀 18-24 Months
+
+**6.1 Advanced Filtering and Semantic Search**
+
+- Keyword search across full contract text
+- Multi-select filters with saved sets
+- Complex natural language queries
+- Custom role-based dashboards
+
+**6.2 CRM Integration and Workflow Automation**
+
+- Salesforce API for bidirectional data flow
+- Automated pipeline updates
+- Contact and relationship synchronization
+- Proposal milestone tracking
+
+**Impact:** Complete ecosystem from opportunity ID through proposal submission
 
 ## Support and Documentation
 
